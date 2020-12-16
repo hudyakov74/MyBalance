@@ -1,0 +1,67 @@
+// ------------------------------------------------------------------
+// Transitive dependencies of this project determined from the
+// maven pom organized by organization.
+// ------------------------------------------------------------------
+
+Apache Olingo
+
+
+From: 'Eclipse Foundation' (https://www.eclipse.org)
+  - JavaBeans Activation Framework API jar (https://github.com/eclipse-ee4j/jaf/jakarta.activation-api) jakarta.activation:jakarta.activation-api:jar:1.2.1
+    License: EDL 1.0  (http://www.eclipse.org/org/documents/edl-v10.php)
+  - jakarta.xml.bind-api (https://github.com/eclipse-ee4j/jaxb-api/jakarta.xml.bind-api) jakarta.xml.bind:jakarta.xml.bind-api:jar:2.3.2
+    License: Eclipse Distribution License - v 1.0  (http://www.eclipse.org/org/documents/edl-v10.php)
+
+From: 'FasterXML' (http://fasterxml.com)
+  - Woodstox (https://github.com/FasterXML/woodstox) com.fasterxml.woodstox:woodstox-core:bundle:6.0.1
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'FasterXML' (http://fasterxml.com/)
+  - aalto-xml (http://github.com/FasterXML/aalto-xml/) com.fasterxml:aalto-xml:bundle:0.9.11
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Jackson-annotations (http://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-annotations:bundle:2.10.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Jackson-core (https://github.com/FasterXML/jackson-core) com.fasterxml.jackson.core:jackson-core:bundle:2.10.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - jackson-databind (http://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-databind:bundle:2.10.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Jackson-dataformat-XML (https://github.com/FasterXML/jackson-dataformat-xml) com.fasterxml.jackson.dataformat:jackson-dataformat-xml:bundle:2.10.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Jackson module: JAXB Annotations (https://github.com/FasterXML/jackson-modules-base) com.fasterxml.jackson.module:jackson-module-jaxb-annotations:bundle:2.10.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'fasterxml.com' (http://fasterxml.com)
+  - Stax2 API (http://github.com/FasterXML/stax2-api) org.codehaus.woodstox:stax2-api:bundle:4.2
+    License: The BSD License  (http://www.opensource.org/licenses/bsd-license.php)
+
+From: 'QOS.ch' (http://www.qos.ch)
+  - SLF4J API Module (http://www.slf4j.org) org.slf4j:slf4j-api:jar:1.7.7
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+
+From: 'The Apache Software Foundation' (http://www.apache.org/)
+  - Apache HttpClient (http://hc.apache.org/httpcomponents-client) org.apache.httpcomponents:httpclient:jar:4.5.8
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache HttpCore (http://hc.apache.org/httpcomponents-core-ga) org.apache.httpcomponents:httpcore:jar:4.4.11
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - odata-client-api (http://olingo.apache.org/odata-lib/odata-client-api) org.apache.olingo:odata-client-api:bundle:4.7.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - odata-client-core (http://olingo.apache.org/odata-lib/odata-client-core) org.apache.olingo:odata-client-core:bundle:4.7.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - odata-client-proxy (http://olingo.apache.org/odata-ext/odata-client-proxy) org.apache.olingo:odata-client-proxy:jar:4.7.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - odata-commons-api (http://olingo.apache.org/odata-lib/odata-commons-api) org.apache.olingo:odata-commons-api:bundle:4.7.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+  - odata-commons-core (http://olingo.apache.org/odata-lib/odata-commons-core) org.apache.olingo:odata-commons-core:bundle:4.7.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+From: 'The Apache Software Foundation' (https://www.apache.org/)
+  - Apache Commons Codec (http://commons.apache.org/proper/commons-codec/) commons-codec:commons-codec:jar:1.12
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Commons IO (http://commons.apache.org/proper/commons-io/) commons-io:commons-io:jar:2.6
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+  - Apache Commons Lang (http://commons.apache.org/proper/commons-lang/) org.apache.commons:commons-lang3:jar:3.9
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+
+
