@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Forms.form001CfoCostPrint" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="30" bottomMargin="30" uuid="46aa6cbf-8d46-4a8d-8697-e4c78faa7ace">
+	<property name="net.sf.jasperreports.export.xls.print.page.width" value="842"/>
+	<property name="net.sf.jasperreports.export.xls.print.page.height" value="595"/>
+	<style name="DefaultStyle" isDefault="true" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle2" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle1" mode="Opaque" backcolor="#DFDFDF" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle0" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<field name="task.object" class="java.lang.Long"/>
+	<field name="cfo.object" class="java.lang.Long"/>
+	<field name="cost.object" class="java.lang.Long"/>
+	<field name="calcTable.object" class="java.lang.Long"/>
+	<field name="taskTable.object" class="java.lang.Long"/>
+	<field name="nameCalcComposition(taskTable)" class="java.lang.String"/>
+	<field name="name(calcTable)" class="java.lang.String"/>
+	<field name="pos(cfo)" class="java.lang.Integer"/>
+	<field name="pos(cost)" class="java.lang.Integer"/>
+	<field name="canonicalName(cfo)" class="java.lang.String"/>
+	<field name="canonicalName(cost)" class="java.lang.String"/>
+	<field name="name(cfo)" class="java.lang.String"/>
+	<field name="tabName(cfo)" class="java.lang.String"/>
+	<field name="tabName(cfo).background" class="java.awt.Color"/>
+	<field name="tabName(cost)" class="java.lang.String"/>
+	<field name="tabName(cost).background" class="java.awt.Color"/>
+	<field name="valueCost" class="java.math.BigDecimal"/>
+	<field name="valueCost.header" class="java.lang.String"/>
+	<field name="valueCost.background" class="java.awt.Color"/>
+	<group name="designGroup3234">
+		<groupExpression><![CDATA[String.valueOf($F{task.object})]]></groupExpression>
+	</group>
+	<pageHeader>
+		<band height="18">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="0" y="0" width="109" height="18" uuid="a422d4ea-7186-494d-93d5-48a416ca230c"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Наименование задачи"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="109" y="0" width="109" height="18" uuid="f012dbfc-4fa1-4c67-8704-8beadd30dad6"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Наименование"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="218" y="0" width="34" height="18" uuid="d2e4d9f8-8a4f-49e0-aac8-76b8dcfb88ac"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Порядок"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="252" y="0" width="34" height="18" uuid="5369432f-4976-408e-9ffc-01f634becfec"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Порядок"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="286" y="0" width="109" height="18" uuid="23c2d1e0-2e9b-4e08-9625-f878f4d05170"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Каноническое имя"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="395" y="0" width="109" height="18" uuid="7156af8c-4760-4a0c-b01a-ed532809c90d"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Каноническое имя"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="504" y="0" width="109" height="18" uuid="9a844aa7-4af3-44de-9f97-81722d748ac4"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Наименование"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="613" y="0" width="72" height="18" uuid="f066c6ef-03a0-4077-941e-88adcc5b665b"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["имя"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="685" y="0" width="72" height="18" uuid="e394fbf0-8590-4466-943b-13b2f911bdd3"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["имя"]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="757" y="0" width="45" height="18" uuid="2633b6fe-c2d3-4413-b702-92493fcc48c0"/>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA[$F{valueCost.header}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="18">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="109" height="18" uuid="52738659-73c8-4e8f-83fd-2ea54d399faf"/>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{nameCalcComposition(taskTable)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="109" y="0" width="109" height="18" uuid="1dd44fbd-a6af-4f2d-840c-bca50bd169ae"/>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{name(calcTable)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="218" y="0" width="34" height="18" uuid="4778fcd4-0bcb-4e07-98ed-6fd74a28baf4"/>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{pos(cfo)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="252" y="0" width="34" height="18" uuid="04d34d4b-de66-4e0f-8659-7136222c4bfb"/>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{pos(cost)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="286" y="0" width="109" height="18" uuid="de1f9975-6d37-4a14-98c6-63821b0556f6"/>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{canonicalName(cfo)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="395" y="0" width="109" height="18" uuid="792a0bbf-4f17-45ed-a6d9-c89cf0283df6"/>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{canonicalName(cost)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="504" y="0" width="109" height="18" uuid="671f1f1a-120e-4fc5-b964-823f364e7233"/>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{name(cfo)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="613" y="0" width="72" height="18" uuid="99995586-c6d9-4d6c-b913-aa2da46faf38">
+					<propertyExpression name="net.sf.jasperreports.style.backcolor"><![CDATA["#" + net.sf.jasperreports.engine.util.JRColorUtil.getColorHexa($F{tabName(cfo).background})]]></propertyExpression>
+				</reportElement>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{tabName(cfo)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="685" y="0" width="72" height="18" uuid="9af31766-eb63-4738-a0fc-4aaba14f1c53">
+					<propertyExpression name="net.sf.jasperreports.style.backcolor"><![CDATA["#" + net.sf.jasperreports.engine.util.JRColorUtil.getColorHexa($F{tabName(cost).background})]]></propertyExpression>
+				</reportElement>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{tabName(cost)}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="757" y="0" width="45" height="18" uuid="02a347fc-280b-4fa5-af96-5d8963715a19">
+					<propertyExpression name="net.sf.jasperreports.style.backcolor"><![CDATA["#" + net.sf.jasperreports.engine.util.JRColorUtil.getColorHexa($F{valueCost.background})]]></propertyExpression>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{valueCost}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,132 @@
+MODULE Calc;
+
+REQUIRE TaskTune,Utils,PeriodCalendar;
+
+NAMESPACE Calc;
+
+
+
+// --- шапка расчета объединяющая книги --------------------
+CLASS Calc  'Расчет';
+TABLE calc(Calc);
+
+
+calcDate 'Дата расчета' = DATA DATE (Calc) IN base NONULL ; 
+calcDateBegin 'начало' = DATA DATE (Calc) IN base NONULL; 
+calcDateEnd 'окончание' = DATA DATE (Calc) IN base NONULL; 
+
+
+description 'Комментарий' = DATA STRING[1000] (Calc) IN base;
+periodType 'Используемые периоды'  =  DATA PeriodType (Calc) NONULL;
+scenario 'Сценарий' = DATA Scenario(Calc ) NONULL;
+calcVariant 'Вид расчета'  = DATA CalcVariant(Calc) NONULL;
+name 'Наименование' (c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
+                                        nameScenario(scenario(c)),   
+                                        nameType(periodType(c)),
+                                        (
+                                        CONCAT  ' ',
+                                            'с ',
+                                           toChar(calcDateBegin(c),'DD.MM.YYYY'),
+                                            'по ',
+                                           toChar(calcDateEnd(c),'DD.MM.YYYY') 
+                                        )   )                   
+                                        ;// DATA STRING[254] (Calc) IN id;
+                                        
+  
+getPeriodByDate(Calc c,DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodType(p) == periodType (c) 
+                                                                                AND d >= dateBegin(p) 
+                                                                                AND d<= dateEnd(p);
+ 
+ 
+ 
+FORM calcList 'Реестр расчетов' 
+OBJECTS c = Calc
+PROPERTIES  n01 'Дата' = calcDate(c) READONLY,
+            n03 'Сценарий' = nameScenario(scenario(c)) READONLY,
+            nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c)) READONLY,
+            begDate 'с'  = calcDateBegin(c), 
+            endDate 'по' = calcDateEnd(c),
+            n02 'Комментарий' = description(c) READONLY 
+PROPERTIES(c) NEW,DELETE
+ORDERS n01,n03;
+
+DESIGN calcList {
+      PROPERTY(n01) { charWidth='14'; } 
+      PROPERTY(n03) { charWidth='10'; }
+      PROPERTY(nameCV) { charWidth='10'; }
+      PROPERTY(begDate) { charWidth='14'; } 
+      PROPERTY(endDate) { charWidth='14'; } 
+      PROPERTY(n02) { charWidth='50'; } 
+  };
+  
+  
+ openTask ABSTRACT (Calc, Task);
+ 
+// ================ОСНОВНАЯ ФОРМА================================================
+FORM calcCard 'Расчет' 
+OBJECTS curCalc = Calc PANEL 
+//OBJECTS p = CalcPeriod
+OBJECTS task = Task 
+PROPERTIES 
+           n01 'Дата' = calcDate (curCalc) , 
+           n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) ,
+           n03 'Сценарий' = nameScenario(scenario(curCalc)),
+           name(curCalc),
+           n1 'Периодичность' = nameType(periodType(curCalc)),
+           begDate 'с'  = calcDateBegin(curCalc),  
+           endDate 'по' = calcDateEnd(curCalc),
+           
+           n02 'Комментарий' = description(curCalc) 
+PROPERTIES openTask(curCalc, task) GRID READONLYIF isGroup(task)  
+PROPERTIES READONLY  
+            nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor() ,
+            nameCol 'тип' = nameCalcBook(type(task)), 
+            canonicalName(task), pos(task) // hide
+
+FILTERS calcVariant(curCalc) == calcVariant(task)
+ORDERS  pos(task), canonicalName(task)
+;
+  
+  
+// открываем форму расчета с деревом задач
+openCalcCard(Calc c_) {
+   SHOW calcCard OBJECTS  curCalc = c_ DOCKED NOWAIT MANAGESESSION;
+} 
+ 
+EXTEND FORM calcList PROPERTIES opn 'Открыть' = openCalcCard(c)  BEFORE n01 GRID;
+  
+DESIGN calcCard   {
+PROPERTY (pos(task)) {hide =TRUE;}
+PROPERTY (canonicalName(task)){hide=TRUE;}
+PROPERTY (pos(task)){hide=TRUE;}
+
+  PANEL (curCalc) {
+        NEW pan1 {
+            type = COLUMNS;
+            columns = 3;
+            MOVE PROPERTY(n01) { charWidth='14'; align = STRETCH;};
+            MOVE PROPERTY(n04) { charWidth='14'; align = STRETCH;};
+            MOVE PROPERTY(n03) { charWidth='14'; align = STRETCH;};
+        }
+        NEW pan2 {
+            type = COLUMNS;
+            columns = 3;
+            MOVE PROPERTY(begDate) { charWidth='14'; align = STRETCH;} 
+            MOVE PROPERTY(endDate) { charWidth='14'; align = STRETCH;} 
+            MOVE PROPERTY(n1) { charWidth='14'; align = STRETCH;}
+        } 
+        MOVE PROPERTY(n02) { charWidth='50'; align = STRETCH;} 
+  }
+   OBJECTS {
+      NEW tabPanelcalc {
+                 type = TABBED ;
+                 flex = 1; 
+                 align  = STRETCH;
+                 MOVE   BOX (task); 
+                // MOVE   BOX (p);
+                  
+            }
+    }
+};
+
+  

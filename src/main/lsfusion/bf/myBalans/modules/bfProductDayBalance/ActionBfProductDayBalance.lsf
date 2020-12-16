@@ -1,0 +1,255 @@
+MODULE ActionBfProductDayBalance;
+
+REQUIRE  FormBfProductDayBalance,ExtUtil,Time,DimRawNomenklBf,BfUtils;
+
+NAMESPACE BfProductDayBalance;
+
+daysAmount(DATE d1,DATE d2) = FORMULA '$2 - $1';
+
+// процедуры загрузки
+EXTEND CLASS TypeRequest {
+    FormBfProductDayBalance1 'Загрузка остатков (Расчет закупа у бф)', 
+    FormBfProductDayBalanceCreateDocuments 'Создать документы'
+}
+
+CLASS TestForm;
+
+
+ 
+//iterate(INTEGER i, INTEGER from, INTEGER to) = RECURSION i==from AND from IS INTEGER AND to IS INTEGER STEP i==$i+1 AND i<=to CYCLES IMPOSSIBLE;
+//toChar
+// urlEncoded
+// urlEncode
+// urlDecoded
+// urlDecode
+func1FormBfProductDayBalance1(CalcTask ct,ExtRequest er){
+        headers('Authorization') <- password(extSource(er)); 
+        LOCAL result = FILE();
+    
+     // СПИСОК НОМЕНКЛАТУРЫ   
+         EXTERNAL HTTP GET conectString(extSource(er)) + 
+         'Catalog_Номенклатура?$filter=IsFolder%20eq%20false&$format=json&$select=Ref_Key,Артикул,Code,Description' 
+             HEADERS headers TO result;
+         LOCAL nRef_KeyN = BPSTRING[36] (INTEGER);
+         LOCAL nArtikle  = BPSTRING[50] (INTEGER);
+         LOCAL nCode = BPSTRING[11] (INTEGER);
+         LOCAL nDescription = BPSTRING[100] (INTEGER);
+         
+         IMPORT JSON FROM result()  TO   nRef_KeyN = 'Ref_Key',
+                                         nArtikle = 'Артикул',
+                                         nCode = 'Code',
+                                         nDescription ='Description';    
+        
+    // 41.01                                  
+        LOCAL ChartRef_Key = BPSTRING[36] (INTEGER);
+        LOCAL ChartCode = BPSTRING[11] (INTEGER);
+          
+        EXTERNAL HTTP GET conectString(extSource(er)) + 
+            'ChartOfAccounts_Хозрасчетный?$filter=Code%20eq%20%2741.01%27&$format=json' 
+             HEADERS headers TO result;                                
+        IMPORT JSON FROM result()  TO   ChartRef_Key = 'Ref_Key', ChartCode = 'Code';           
+        
+ // для каждой выполним запрос к 1с
+    LOCAL iProduct  = STRING (INTEGER);
+    LOCAL iArticle  = STRING (INTEGER);
+    LOCAL iAmount   = NUMERIC[18,2](INTEGER);
+    
+    LOCAL     Chart4XRef_Key  =    BPSTRING[36] (INTEGER);
+    LOCAL     Chart4XQuantity =    NUMERIC[18,2] (INTEGER);
+    LOCAL     Chart4XQuantity1 =    NUMERIC[18,2] (INTEGER);
+    
+    FOR iterate(DATE d, calcDateBegin(calc(ct)), calcDateEnd(calc(ct))) DO {
+      // запрос на остатки
+ 
+      // импортBfUtils
+        EXTERNAL HTTP GET conectString(extSource(er)) + 
+            'AccountingRegister_Хозрасчетный/Balance(Period=datetime%27'+to1cDate2359(d)+'%27,AccountCondition=%27Account_Key%20eq%20guid%27'
+            + (GROUP MAX ChartRef_Key(INTEGER i) IF  ChartCode(i) == '41.01')
+            +'%27%27)?$select=ExtDimension1,КоличествоBalance&$format=json' HEADERS headers TO result; 
+           
+           IMPORT JSON FROM result()  TO   Chart4XRef_Key = 'ExtDimension1', Chart4XQuantity = 'КоличествоBalance'; 
+           LOCAL nameM =  DimRawNomenkl(INTEGER);
+           
+           FOR imported(INTEGER n) NEW nr = CubeBfProductDayBalance  DO {
+              addDimRawNomenklArticle((GROUP MAX  nDescription(INTEGER m) IF nRef_KeyN(m) == Chart4XRef_Key(n)),
+                                      (GROUP MAX      nArtikle(INTEGER m) IF nRef_KeyN(m) == Chart4XRef_Key(n)),
+                                     'BfBuh');
+               task(nr) <- task(ct);
+               calc(nr) <- calc(ct);
+               period(nr) <- getPeriodByDate(calc(ct),d);                     
+               product(nr) <- rawNomenkl();
+               balansStoreDate(nr)<-d ;
+               balansStore(nr) <- Chart4XQuantity(n);
+           }
+    }
+}
+  
+  CLASS TmpImpTst;
+      saleProduct = DATA LOCAL  BPSTRING[36] (TmpImpTst) ;
+      saleSum     = DATA LOCAL  NUMERIC[15,2] (TmpImpTst);
+      saleCount   = DATA LOCAL  NUMERIC[15,2](TmpImpTst);
+     
+     saleProduct1 = DATA LOCAL  BPSTRING[36] (INTEGER) ;
+     saleSum1     = DATA LOCAL  NUMERIC[15,2] (INTEGER);
+     saleCount1   = DATA LOCAL  NUMERIC[15,2](INTEGER);
+   
+   dBallSumByGroup(BPSTRING[36] str) = GROUP SUM saleSum(n1) BY saleProduct(n1);
+   dBallSCountByGroup(BPSTRING[36] str) = GROUP SUM saleCount(n1) BY saleProduct(n1);
+
+createDocuments(CalcTask ct,ExtRequest er){
+    LOCAL result = FILE();
+    headers('Authorization') <- password(extSource(er)); 
+    // СПИСОК НОМЕНКЛАТУРЫ   
+    EXTERNAL HTTP GET conectString(extSource(er)) + 
+    'Catalog_Номенклатура?$filter=IsFolder%20eq%20false&$format=json&$select=Ref_Key,Артикул,ЕдиницаИзмерения_Key,Description' 
+    HEADERS headers TO result;
+    LOCAL nRef_KeyN = BPSTRING[36] (INTEGER);
+    LOCAL nArtikle  = BPSTRING[50] (INTEGER);
+    LOCAL nEd = BPSTRING[36] (INTEGER);
+    LOCAL nDescription = BPSTRING[100] (INTEGER);
+    IMPORT JSON FROM result()  TO   nRef_KeyN = 'Ref_Key',
+                                    nArtikle = 'Артикул',
+                                    nEd = 'ЕдиницаИзмерения_Key',
+                                    nDescription ='Description'; 
+    
+     EXTERNAL HTTP GET conectString(extSource(er)) + 
+       'Document_РеализацияТоваровУслуг?$format=json&$filter=Posted%20eq%20true' //%20and%20Date%20ge%20datetime%27'
+               + // to1cDate0000(calcDateBegin(calc(ct)))  +'%27%20and%20Date%20le%20datetime%27' + to1cDate2359(calcDateEnd(calc(ct)))  + '%27&
+               '$select=Товары'
+       HEADERS headers TO result;
+       
+       LOCAL saleTable   = TEXT (INTEGER);
+      
+       
+       LOCAL salePriceT   = NUMERIC[15,2](BPSTRING[36]);
+       LOCAL saleSumT     = NUMERIC[15,2](BPSTRING[36]);
+       LOCAL saleCountT   = NUMERIC[15,2](BPSTRING[36]);
+       
+        
+       IMPORT JSON FROM result()  TO   saleTable = 'Товары';
+       FOR saleTable(INTEGER n) DO {
+             IMPORT JSON FROM textValue2JsonFile(saleTable(n)) TO   saleProduct1 = 'Номенклатура_Key',saleSum1='Сумма',saleCount1='Количество';        
+                FOR imported(nnn) NEW ntmp =TmpImpTst DO {
+                  saleProduct(ntmp) <- saleProduct1(nnn);
+                  saleSum(ntmp) <- saleSum1(nnn);  
+                  saleCount(ntmp) <- saleCount1(nnn);  
+                }
+       }
+       
+       saleSumT(pos)    <- dBallSumByGroup(pos);
+       saleCountT(pos)  <- dBallSCountByGroup(pos);
+       
+    //  FOR saleSumT(pos) DO {
+        salePriceT(pos) <- round(saleSumT(pos)/saleCountT(pos)*0.66,-1) ; 
+    //  }
+       
+//              LOCAL keyByArticle  = STRING[100] (BPSTRING[36]);
+//              keyByArticle() <- 
+              ;  
+  
+     // выбор данных по дням где сумма прихода не 0 
+     
+    FOR  getBalansStoreProductDayRez(day) > 0 DO {
+        LOCAL file = CSVFILE();
+        LOCAL keyByArticle  = STRING[100] (DimRawNomenkl); 
+        LOCAL edByArticle   = STRING[100] (DimRawNomenkl); 
+        FOR  getBalansReq(ct,DimRawNomenkl  prod, day) > 0 DO {
+             keyByArticle(prod) <- 
+                IF   GROUP MAX nRef_KeyN(i) IF RemoveBF(nArtikle(i)) ==  article(prod)
+                THEN GROUP MAX nRef_KeyN(i) IF RemoveBF(nArtikle(i)) ==  article(prod)
+                ELSE GROUP MAX nRef_KeyN(i) IF  nDescription(i) ==  name(prod);
+             edByArticle(prod) <- 
+                     IF   GROUP MAX nEd(i) IF RemoveBF(nArtikle(i)) ==  article(prod)
+                     THEN GROUP MAX nEd(i) IF RemoveBF(nArtikle(i)) ==  article(prod)
+                     ELSE GROUP MAX nEd(i) IF  nDescription(i) ==  name(prod);
+        }
+        EXPORT CSV NOHEADER FROM      getBalansReq(ct, DimRawNomenkl prod, day),
+                                   salePriceT(keyByArticle(prod)),
+                                   getBalansReq(ct,   prod, day) * salePriceT(keyByArticle(prod)),
+                                   keyByArticle(prod), 
+                                   edByArticle(prod)
+        WHERE   getBalansReq(ct,  prod, day) > 0                           
+        TO file;
+        writeDoc( file(),conectString(extSource(er)),
+                      IF user(extSource(er)) THEN user(extSource(er)) ELSE '',
+                      password(extSource(er)) ,
+                      day);  
+    }
+  
+  
+    
+//   
+//    //RemoveBF('f')
+//     LOCAL keyByArticle  = STRING[100] (CubeProductBalanceCalc1); 
+//     LOCAL edByArticle   = STRING[100] (CubeProductBalanceCalc1);     
+//     keyByArticle(CubeProductBalanceCalc1 cc) <- 
+//        IF   GROUP MAX nRef_KeyN(i) IF RemoveBF(nArtikle(i)) ==  article(product(cc))
+//        THEN GROUP MAX nRef_KeyN(i) IF RemoveBF(nArtikle(i)) ==  article(product(cc))
+//        ELSE GROUP MAX nRef_KeyN(i) IF  nDescription(i) ==  name(product(cc));
+//     edByArticle(CubeProductBalanceCalc1 cc) <- 
+//             IF   GROUP MAX nEd(i) IF RemoveBF(nArtikle(i)) ==  article(product(cc))
+//             THEN GROUP MAX nEd(i) IF RemoveBF(nArtikle(i)) ==  article(product(cc))
+//             ELSE GROUP MAX nEd(i) IF  nDescription(i) ==  name(product(cc));
+//     
+//     
+//      EXPORT CSV NOHEADER FROM purchase(CubeProductBalanceCalc1 curr IF (purchase(curr) > 0) AND (task(curr) == task(ct)) AND  (calc(curr) == calc(ct))),
+//                               purchasePrice(curr IF (purchase(curr ) > 0) AND (task(curr) == task(ct)) AND  (calc(curr) == calc(ct))),
+//                               purchaseSum(curr IF (purchase(curr) > 0) AND (task(curr) == task(ct)) AND  (calc(curr) == calc(ct))),
+//                               keyByArticle(curr IF (purchase(curr) > 0) AND (task(curr) == task(ct)) AND  (calc(curr) == calc(ct))),
+//                               edByArticle(curr IF (purchase(curr) > 0) AND (task(curr) == task(ct)) AND  (calc(curr) == calc(ct)))
+//      TO file;
+//  //   WRITE CLIENT DIALOG file() TO 'loadedfile';
+//     writeDoc( file(),conectString(extSource(extR)),
+//                     IF user(extSource(extR)) THEN user(extSource(extR)) ELSE '',
+//                     password(extSource(extR)) ,
+//                     currentDate());  
+}
+  
+calcBuyBalance(CalcTask ct) {
+  NEWEXECUTOR {
+    FOR getBalansStoreProduct(ct, prod) AND  (getBalansStoreProductMin( ct, prod  )  <0) DO {
+        LOCAL corr = INTEGER ();
+          LOCAL tmp = INTEGER ();
+          LOCAL tmp2= INTEGER ();
+         corr()<-0;  
+         FOR iterate(DATE d, calcDateBegin(calc(ct)), calcDateEnd(calc(ct))) DO {
+          tmp() <- getBalansStore(ct, prod, d);
+             IF  tmp() THEN {
+               tmp() <-  tmp() + corr();
+               balansReq(cb) <-  (IF tmp()<0 THEN - tmp() ELSE 0)
+                WHERE calc(cb) == calc(ct) AND  task(cb) == task(ct)
+                AND product(cb) == prod AND balansStoreDate(cb) = d;
+                corr() <-  IF tmp()<0 THEN corr()-tmp() ELSE corr();
+             }
+         }
+    }
+  }    THREADS 4;
+};
+  
+  
+  
+  
+operationBfProductDayBalance(CalcTask ct,  MenuOperationsBfProductDayBalance m) + {
+    CASE EXCLUSIVE  
+     WHEN  m  ==  MenuOperationsBfProductDayBalance.calcBuyBalance THEN {
+        calcBuyBalance(ct);
+     }
+    
+      
+};  
+  
+  
+// ПРОЦЕДУРА ВЫБОРА
+functionsBfProductDayBalance(CalcTask ct,ExtRequest er) + {
+    // берем отчет - грузим отчет
+   CASE EXCLUSIVE  
+             WHEN type(er) == TypeRequest.FormBfProductDayBalance1 THEN { 
+                            func1FormBfProductDayBalance1(ct,er);
+                            }
+             WHEN type(er) == TypeRequest.FormBfProductDayBalanceCreateDocuments THEN { 
+                            createDocuments(ct,er);
+                            }
+//             WHEN type(er) == TypeRequest.FormBfProductBalance3 THEN { 
+//                                        Report1FormBfProductBalance3(ct,er);
+//                                        }
+}  

@@ -1,0 +1,154 @@
+MODULE DimensFirm;
+  
+REQUIRE TaskTune,Dimens,ExtFormRequestList;
+
+NAMESPACE   Dimens; 
+
+CLASS DimFirm 'Организации';
+TABLE dimFirm(DimFirm);
+FORM formDimFirmGroup 'Группы организации'; 
+FORM formDimFirmlist 'Организации'; 
+ 
+FORM formDimFirmTreeList 'Организации'; 
+@configDimWO(DimFirm){
+pos 'Порядок' = DATA INTEGER  (DimFirm) IN base CHARWIDTH 5;
+code 'Код' = DATA STRING[15] (DimFirm) IN id;
+name 'Наименование' = DATA ISTRING[254] (DimFirm) IN id INDEXED ;
+isGroup 'Группа' = DATA BOOLEAN (DimFirm);
+parent 'Родитель' = DATA DimFirm(DimFirm);
+isRoot 'корень' = DATA BOOLEAN (DimFirm);
+
+level 'Уровень' (DimFirm child, DimFirm parent) =
+   RECURSION 1l IF child IS DimFirm AND parent = child
+        STEP 2l IF parent = parent($parent) MATERIALIZED;
+
+isParent 'Родитель' (DimFirm child, DimFirm parent) = TRUE IF level(child, parent);
+        
+canonicalName 'Каноническое имя' (DimFirm group) =  GROUP CONCAT name(DimFirm parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
+levelNum 'levelNum' (DimFirm group) =   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+backgroundColor(DimFirm s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;   
+tabName 'имя' (DimFirm group) =  (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
+getRootDimFirm()  = GROUP MAX DimFirm c IF isRoot(c) AND NOT isGroup(c);
+getEmptyDimFirm() = GROUP MAX DimFirm c IF isRoot(c) AND isGroup(c);
+WHEN LOCAL CHANGED(isRoot(DimFirm sd))  AND ( (GROUP SUM(1) IF (isRoot(DimFirm all) AND NOT isGroup(all)  AND all IS DimFirm)) > 1 ) DO {
+   isRoot(sd)<-NULL ;
+   MESSAGE 'только один элемент может представлять корень';
+};
+// список для выбора группы 
+EXTEND FORM formDimFirmGroup  
+OBJECTS d = DimFirm 
+PROPERTIES(d) READONLY pos, code, canonicalName
+ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+
+selectGroup(DimFirm r) {
+ DIALOG formDimFirmGroup OBJECTS d = parent(r) CHANGE;
+};
+     
+EXTEND  FORM  formDimFirmTreeList  
+TREE treeDimFirm t = DimFirm  PARENT parent(t)
+PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
+,pos
+// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+FILTERS NOT isRoot(t)
+ORDERS  pos(t),tabName(t) 
+LIST DimFirm OBJECT t;
+DESIGN   formDimFirmTreeList { 
+    PROPERTY (tabName(t)) { charWidth='100'; }
+} ;
+         
+                         
+FORM formDimFirmSelectlist  
+    OBJECTS  d = DimFirm  
+    PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
+    ,pos  ,canonicalName
+    PROPERTIES(d) NEWEDIT,EDIT 
+     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+    FILTERS NOT isRoot(d)
+    ORDERS  pos(d), canonicalName(d)
+    ;
+
+DESIGN   formDimFirmSelectlist { 
+   PROPERTY  (tabName(d))   { charWidth='40'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (pos(d))   { hide = TRUE ; }
+   PROPERTY (canonicalName(d)) { hide = TRUE ;  }
+  BOX { size = (1200,600);}
+} ;      
+
+delAllDimFirm 'удалить все'() {
+ DELETE DimFirm a WHERE a IS DimFirm ;
+};
+
+     
+      // форма для редактирования списка - открывается только из меню
+       EXTEND FORM  formDimFirmlist  
+       OBJECTS d = DimFirm 
+       PROPERTIES delAllDimFirm()
+       PROPERTIES(d)   isRoot,NEW ,DELETE, 
+                       isGroup BACKGROUND backgroundColor(d),
+                       levelNum BACKGROUND backgroundColor(d), 
+                       pos BACKGROUND backgroundColor(d), 
+                       tabName BACKGROUND backgroundColor(d), 
+                       name BACKGROUND backgroundColor(d) 
+                       
+   
+       PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
+                       canonicalName(d) BACKGROUND backgroundColor(d)
+       ORDERS  pos(d),canonicalName(d) 
+       ; 
+       
+       NAVIGATOR {
+                   dimCatalogs   {
+                    NEW formDimFirmlist;
+                   }
+                 }
+        
+        
+
+currentDimFirm = DATA LOCAL DimFirm ();
+
+newByNameDimFirm(name) {
+ IF name AND NOT (name == '') THEN {
+    currentDimFirm() <- GROUP MAX DimFirm d IF name(d) == name;
+    IF (NOT currentDimFirm())   THEN {
+              NEW  new =  DimFirm  {
+                  name(new) <- name;
+                  currentDimFirm() <- new;
+           }
+    }  
+ }
+ ELSE currentDimFirm() <- NULL;
+}
+        
+        
+        
+};
+
+// МЕСТО для доп. свойств
+ 
+// добавление списка в CalcComposition
+TABLE dimFirmTask(Task,DimFirm);
+checkedFirm 'выбрано' = DATA BOOLEAN  (Task,DimFirm) TABLE dimFirmTask;
+@configDim2TaskTune(DimFirm,checkedFirm,vFirm){ 
+    EXTEND FORM  taskTune
+    OBJECTS vFirm = DimFirm
+    PROPERTIES  checkedFirm(f,vFirm) BACKGROUND IF isGroup(vFirm) THEN Budget.groupBackColor(3) // #f2f2f2
+    PROPERTIES READONLY pos(vFirm),name(vFirm),tabName(vFirm),canonicalName(vFirm)
+    ORDERS pos(vFirm),canonicalName(vFirm)
+   // FILTERS NOT isRoot(var)
+    ;
+    
+    DESIGN taskTune { // расширяем дизайн формы Item
+        PROPERTY (name(vFirm)) { hide = TRUE; }
+        PROPERTY (canonicalName(vFirm)) { hide = TRUE; } 
+        PROPERTY (pos(vFirm)) { charWidth = 5; flex = FALSE; } 
+        details {
+            MOVE BOX(vFirm){
+                  showIf = NOT isGroup(f);
+            }
+        }
+    };
+    
+};
+
+// добавление операций над задачей
+// операции Расчетов

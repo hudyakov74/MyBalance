@@ -1,0 +1,31 @@
+MODULE CalcTask;
+
+REQUIRE Calc,Cube;
+
+NAMESPACE Calc;
+
+CLASS CalcTask 'Задача';
+TABLE calcTask(CalcTask);
+calc 'Расчет' = DATA Calc(CalcTask) INDEXED; 
+task 'Задача' = DATA Task(CalcTask) INDEXED;
+taskChecked 'Проверен' = DATA BOOLEAN (CalcTask);
+ 
+getCalcTask(Calc calcL,Task taskL) = GROUP MAX CalcTask c IF calc(c) == calcL AND task(c) == taskL;
+checkOrCreateCalcTask (Calc calcL,Task taskL)
+{
+     IF NOT  getCalcTask(calcL,taskL) THEN  {
+      NEWSESSION {
+        NEW ct = CalcTask  {
+            calc(ct) <- calcL;
+            task(ct) <- taskL;
+        }
+       APPLY ;
+       }
+     }
+}
+
+ 
+taskChecked(Calc c,Task t) = GROUP MAX taskChecked(CalcTask ct) IF calc(ct)==c AND  task(ct) == t;
+EXTEND FORM calcCard
+PROPERTIES   taskChecked 'Выполнен' = taskChecked(curCalc,task) GRID;
+DESIGN calcCard {PROPERTY (taskChecked){charWidth = 8;}}

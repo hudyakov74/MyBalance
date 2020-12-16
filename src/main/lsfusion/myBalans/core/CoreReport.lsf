@@ -1,0 +1,192 @@
+MODULE CoreReport;
+
+//REQUIRE  Utils;
+
+NAMESPACE Budget;
+
+META repDimenObj(fname, d1,d1T, d1N,   d2, d2T, d2N,  d3, d3T, d3N,  d4, d4T, d4N)
+   CLASS ###fname;
+   TABLE tmp###fname(###fname);
+   fname##Pos         = DATA LOCAL INTEGER(###fname);
+   fname##Visible     = DATA LOCAL BOOLEAN(###fname);
+   fname##Level       = DATA LOCAL INTEGER(###fname);
+   fname##SubLevel    = DATA LOCAL INTEGER(###fname);
+   fname##Parent      = DATA LOCAL ###fname(###fname);
+   
+   fname##Folded      = DATA LOCAL BOOLEAN(###fname);
+   fname##ImageFolder(###fname i) = IF   NOT fname##Level(i) THEN '          ' + staticCaption(FolderImage.document) 
+                           ELSE IF NOT fname##Folded(i) THEN  STRING(repeat('  ',fname##Level(i)))+staticCaption(FolderImage.open) 
+                                ELSE STRING(repeat('  ',fname##Level(i)))+staticCaption(FolderImage.close)
+                           ; 
+     
+   fname##FormGroupMode2 'Наименования' = DATA LOCAL BOOLEAN();
+    
+   fname###d1  = DATA LOCAL d1T(###fname);
+   fname###d2  = DATA LOCAL d2T(###fname);
+   fname###d3  = DATA LOCAL d3T(###fname);
+   fname###d4  = DATA LOCAL d4T(###fname);
+
+   fname###AllElements(g1,g2,g3,g4) = GROUP MAX ###fname i BY fname###d1(i),fname###d2(i),fname###d3(i),fname###d4(i); 
+   
+   fname##SetVisible ABSTRACT (###fname, ###fname, INTEGER); 
+   
+   fname##SetVisible(###fname root,###fname i, INTEGER visible)+{ 
+        FOR ###fname n IF fname##Parent(n) == i AND (NOT fname##Folded(i) OR root == i) DO {
+             fname##Visible(n) <- IF visible == 1 THEN TRUE ELSE NULL;
+             fname##SetVisible(root,n,visible); 
+        }
+   }
+    
+    fname##Hide(###fname i) {
+            {
+            fname##SetVisible(i,i,0); 
+            fname##Folded(i)  <- TRUE; 
+            fname##Visible(i) <- NULL;
+            }   
+    }
+    
+    fname##Click(###fname i) {
+        {
+        fname##SetVisible(i, i, IF fname##Folded(i) THEN 1 ELSE 0); 
+        fname##Folded(i)  <- NOT fname##Folded(i); 
+        }   
+   }
+  //fname##ExtendDate 'доп.период'= DATA LOCAL BOOLEAN();
+
+   FORM fname##Form  
+   
+   OBJECTS  sc = (plan 'Сценарий 1' = Scenario, fact 'Сценарий 2' = Scenario) PANEL
+   PROPERTIES nameScenario(plan) SELECTOR , nameScenario(fact) SELECTOR 
+   OBJECTS  date = (date1 'Дата начала' = DATE, date2 'Дата окончания' = DATE, fname##ExtendDate '' = BOOLEAN, date3 'Дата начала(доп)' = DATE, date4 'Дата окончания(доп)' = DATE,currentDate 'Пропорция по дату' = DATE) PANEL
+   PROPERTIES 
+    VALUE (date1), 
+    VALUE (date2), 
+    VALUE (currentDate),
+    fname##ExtendDate 'доп.период' = fname##ExtendDate, 
+    VALUE (date3) SHOWIF fname##ExtendDate, 
+    VALUE (date4) SHOWIF fname##ExtendDate 
+   
+   OBJECTS i = ###fname 
+// TREE tree1 i = INTEGER PARENT fname##Parent(i)
+   PROPERTIES      fname##FormGroupMode2()  
+  
+  // fname##Level(i), 
+  // fname##Parent(i),
+   PROPERTIES fname##ImageFolder '' = fname##ImageFolder(i) ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i))
+   PROPERTIES  
+   hide 'Скрыть строку' = fname##Hide(i),
+   treeName  = CASE EXCLUSIVE WHEN fname##Level(i)  == 1 THEN  name(fname###d1(i))
+                              WHEN fname##Level(i)  == 2 THEN '    '+name(fname###d2(i))
+                              WHEN fname##Level(i)  == 3 THEN '        '+name(fname###d3(i))
+                              ELSE                            '            '+ name(fname###d4(i))
+              SHOWIF NOT fname##FormGroupMode2() 
+              ON CHANGE {fname##Click(i);}
+              BACKGROUND groupColor(fname##Level(i))
+              HEADER d1N + ' / ' + d2N+ ' / ' + d3N+ ' / ' + d4N
+              ,
+   fname###d1 d1N = name(fname###d1(i)) IF fname##Level(i) == 1  SHOWIF NULL AND NOT fname##FormGroupMode2() ON CHANGE {fname##Click(i);}  BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d2 d2N = name(fname###d2(i)) IF fname##Level(i) == 2  SHOWIF NULL AND NOT fname##FormGroupMode2() ON CHANGE {fname##Click(i);}  BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d3 d3N = name(fname###d3(i)) IF fname##Level(i) == 3  SHOWIF NULL AND NOT fname##FormGroupMode2() ON CHANGE {fname##Click(i);}  BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d4 d4N = name(fname###d4(i))  SHOWIF NULL AND NOT fname##FormGroupMode2() ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i)) ,
+   
+   fname###d1_ d1N = name(fname###d1(i)) SHOWIF fname##FormGroupMode2() ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d2_ d2N = name(fname###d2(i)) SHOWIF fname##FormGroupMode2() ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d3_ d3N = name(fname###d3(i)) SHOWIF fname##FormGroupMode2() ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i)) ,
+   fname###d4_ d4N = name(fname###d4(i)) SHOWIF fname##FormGroupMode2() ON CHANGE {fname##Click(i);} BACKGROUND groupColor(fname##Level(i))    
+   
+   
+   
+   ORDERS fname###d1_,fname###d2_,fname###d3_,fname###d4_
+   FILTERS fname##Visible(i)
+    
+//   FILTERGROUP  FILTER 'Только отмеченные' parnterReqPackage(pv1,pr1)  'F11' DEFAULT 
+   
+   ;
+   
+   DESIGN fname###Form {  
+   // PROPERTY (fname##Level(i)) {charWidth = 3;}
+   PROPERTY (fname##ImageFolder) {charWidth = 5;} //fontSize = 24; Unifont Upper 12  font = 'Unifont 24';
+   PROPERTY (fname###d1)  {charWidth = 10;}
+   PROPERTY (fname###d2)  {charWidth = 10;}
+   PROPERTY (fname###d3)  {charWidth = 10;}
+   PROPERTY (fname###d4)  {charWidth = 10;}
+   PROPERTY (fname###d1_) {charWidth = 10;}
+   PROPERTY (fname###d2_) {charWidth = 10;}
+   PROPERTY (fname###d3_) {charWidth = 10;}
+   PROPERTY (fname###d4_) {charWidth = 10;}
+  // PROPERTY (hide) {charWidth = 1;}
+   }
+   
+       
+fname###FoldLevel(INTEGER fixLevel, INTEGER level, INTEGER maxlevel) {
+    // для указанного уровня fname##Folded  fname##Visible  
+  //  1 // никогда не сворачивается 
+  //  2
+  //  3
+  // null
+  IF level == maxlevel THEN {
+    fname###Folded(###fname i)  <- NULL WHERE fname###Folded(i);
+    fname###Visible(###fname i) <- TRUE  ;
+  }
+  ELSE {
+    fname###Folded(i)  <- NULL WHERE fname###Level(i) <  level;
+    fname###Visible(i) <- TRUE WHERE fname###Level(i) <= level;
+    
+    fname###Folded(i)  <- TRUE WHERE fname###Level(i) =  level;
+    fname###Visible(i) <- NULL WHERE fname###Level(i) > level OR NOT fname###Level(i);
+    
+    IF fixLevel == 1 THEN {fname###Folded(i) <- TRUE WHERE fname###Level(i) > level;} 
+  }
+} 
+fname###foldLevel1()   {fname###FoldLevel(1,1,5);};
+fname###foldLevel2()   {fname###FoldLevel(1,2,5);};
+fname###foldLevel3()   {fname###FoldLevel(1,3,5);};
+fname###foldLevel4()   {fname###FoldLevel(1,4,5);};
+fname###foldLevelMax() {fname###FoldLevel(1,5,5);};
+
+EXTEND FORM fname##Form
+PROPERTIES  l1 '①' =  fname###foldLevel1(),
+            l2 '②' =  fname###foldLevel2(),
+            l3 '③' =  fname###foldLevel3(),
+            l4 '④' =  fname###foldLevel4(),
+            l5 '⑤' =  fname###foldLevelMax();
+DESIGN fname##Form {
+       GROUP(){
+        columns = 10;        
+       }
+       GROUP(,date){
+        MOVE PROPERTY(fname##ExtendDate)  FIRST;
+         columns = 15;    
+       }
+}
+END
+ 
+META repAddFieldObj(fname, parName, NameParName, pattern_, fontStyle_)
+    fname###parName = DATA LOCAL NUMERIC[18,2] (###fname);
+    EXTEND FORM fname##Form
+    PROPERTIES READONLY 
+    fname###parName NameParName = fname###parName(i)  
+   // FOOTER fname###parName##Sum()
+    BACKGROUND groupColor(fname##Level(i));
+    
+    DESIGN fname##Form {   //'#,##0.00'
+     PROPERTY (fname###parName) {pattern = pattern_; fontStyle=fontStyle_;}
+    }
+END
+
+META repAddFunctSumObj(fname, parName, NameParName, d1, d2, d3, pattern_, fontStyle_)
+    fname###parName = DATA LOCAL NUMERIC[18,3] (###fname);
+    fname###parName##Group(g1,g2,g3) = GROUP SUM fname###parName(###fname i) IF NOT fname##Level(i) BY fname###d1(i),fname###d2(i),fname###d3(i);
+    fname###parName##Group(g1,g2)    = GROUP SUM fname###parName(###fname i) IF NOT fname##Level(i) BY fname###d1(i),fname###d2(i);
+    fname###parName##Group(g1)       = GROUP SUM fname###parName(###fname i) IF NOT fname##Level(i) BY fname###d1(i);   
+    fname###parName##Group()         = GROUP SUM fname###parName(###fname i) IF NOT fname##Level(i);   
+        
+    EXTEND FORM fname##Form
+    PROPERTIES READONLY fname###parName NameParName = fname###parName(i)  
+    FOOTER fname###parName##Group()
+    BACKGROUND groupColor(fname##Level(i));
+    
+    DESIGN fname##Form {
+     PROPERTY (fname###parName) {pattern = pattern_; fontStyle=fontStyle_;}
+    }
+END

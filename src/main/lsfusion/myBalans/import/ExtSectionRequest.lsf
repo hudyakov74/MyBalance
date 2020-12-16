@@ -1,0 +1,11 @@
+MODULE ExtSectionRequest;
+
+NAMESPACE ExtSystem; 
+
+CLASS SectionRequest 'Раздел импорта' {
+   
+   // type2 'импорт ...'
+}
+FORM SectionRequestList 'Раздел импорта' 
+OBJECTS s = SectionRequest PROPERTIES(s) READONLY staticCaption
+LIST SectionRequest OBJECT s;

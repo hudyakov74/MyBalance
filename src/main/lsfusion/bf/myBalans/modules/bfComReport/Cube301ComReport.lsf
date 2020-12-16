@@ -1,0 +1,30 @@
+MODULE Cube301ComReport;
+
+REQUIRE CalcCore,Calc,DimensCFO,DimensCostItems,Cube,DimensFirm,DimensPartner,DimensRawNomenkl;
+
+NAMESPACE Cube;
+
+CLASS CubeValueComReportTitle 'Отчеты коммисионеров';
+@createCubeReqDim(CubeValueComReportTitle,cubeValueComReportTitle){
+TABLE cubeValueComReportTitle(CubeValueComReportTitle);
+task   'задача' = DATA Task(CubeValueComReportTitle) INDEXED IN id;
+period 'Период' = DATA Period(CubeValueComReportTitle) INDEXED IN id; // для плоских списков 
+calc   'расчет' = DATA Calc(CubeValueComReportTitle) INDEXED IN id NONULL;
+};
+
+CLASS CubeValueComReport 'Отчеты коммисионеров';
+TABLE cubeValueComReport(CubeValueComReport);
+
+reportName 'Номер отчета' = DATA ISTRING[15] (CubeValueComReportTitle);
+date 'дата операции' = DATA DATE(CubeValueComReportTitle);
+dimFirm 'Организация' = DATA DimFirm(CubeValueComReportTitle);
+partner 'Контрагент' = DATA DimPartner(CubeValueComReportTitle);
+
+report 'отчет' = DATA CubeValueComReportTitle  (CubeValueComReport) NONULL DELETE;
+numRow 'Строка' = DATA INTEGER (CubeValueComReport); 
+dimRawNomenkl 'Номенклатура' = DATA DimRawNomenkl(CubeValueComReport);
+nameR '' = DATA LOCAL ISTRING[150] (CubeValueComReport);
+valueCRepSum 'Сумма, руб' = DATA NUMERIC[18,2] (CubeValueComReport);
+valueCRepCount 'Количество, базов.ед.' =  DATA NUMERIC[18,0]  (CubeValueComReport);
+valueCommission 'Комис. вознагр.' = DATA NUMERIC[18,2] (CubeValueComReport);  
+

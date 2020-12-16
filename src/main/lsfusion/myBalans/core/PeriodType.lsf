@@ -1,0 +1,8 @@
+MODULE PeriodType;
+
+NAMESPACE Budget;
+
+CLASS PeriodType  'Виды периодов';
+TABLE periodType (PeriodType);
+nameType  'Наименование' = DATA STRING[100] (PeriodType) IN id ;
+ 

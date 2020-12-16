@@ -1,0 +1,18 @@
+MODULE CalcCore;
+
+REQUIRE PeriodType,Period,Scenario,TypeTask,CoreColor,Time;
+
+NAMESPACE Budget;
+ 
+// простой список наименований видов расчетов  
+CLASS CalcVariant 'Реестр видов расчетов';
+TABLE calcVariant(CalcVariant);
+nameCalcVariant 'Расчет' = DATA STRING[500] (CalcVariant);
+
+FORM calcVariantList 'Виды расчетов'
+OBJECTS c = CalcVariant
+PROPERTIES(c) nameCalcVariant, NEW, DELETE 
+LIST CalcVariant OBJECT c;
+
+
+

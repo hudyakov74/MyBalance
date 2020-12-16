@@ -1,0 +1,82 @@
+MODULE Form;
+
+NAMESPACE Forms; //<br>
+
+strAInt_(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\'<br> <b>\' ||  TO_CHAR($2,\'FM999G999G999G999D00\') || \'</b>\' ';
+strAInt(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\' 2 \' ||  TO_CHAR($2,\'FM999G999G999G999D00\')';
+
+formatNum(NUMERIC n) = FORMULA 'TO_CHAR($1,\'FM999G999G999G990D00\')';
+textColumnName(STRING s, NUMERIC[18,2] n) =  IF strAInt(s,n) THEN strAInt(s,n) ELSE s; 
+
+META createFormReqPropertysBeforeOBJ(formname,MainCubeClass)
+new###formname 'Добавить' (calcTask){
+    NEW nC = MainCubeClass {
+        task(nC) <- Calc.task(calcTask); 
+        calc(nC) <- Calc.calc(calcTask); 
+     //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
+    }
+}
+delete###formname(calcTask){
+    DELETE   MainCubeClass nC 
+    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
+}
+
+EXTEND FORM form###formname
+OBJECTS calcTask = CalcTask  PANEL;
+END
+
+META createFormReqPropertyAfterOBJ(formname,cubeObject,namePropertyCalc,namePropertyTask)
+EXTEND FORM formname
+PROPERTIES  taskChecked(calcTask), 
+            nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY 
+PROPERTIES  namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
+FILTERS     (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )
+        AND calc(calcTask) = namePropertyCalc(cubeObject);
+
+DESIGN formname {
+   OBJECTS { 
+   MOVE PROPERTY (nameB) FIRST; 
+   MOVE PROPERTY (taskChecked(calcTask)) FIRST;
+   }
+   PROPERTY(namePropertyTask(cubeObject)){hide = TRUE;} 
+   PROPERTY(namePropertyCalc(cubeObject)){hide = TRUE;} 
+ }    
+END
+ 
+ 
+ 
+ 
+META createLocalMenuOperation(menuName,extendedForm)
+ // меню операции ..........................................
+ CLASS MenuOperations##menuName 'Операции...'{ 
+   copy  'Скопировать...'
+ } 
+   
+ FORM menuOperations##menuName##list 
+ OBJECTS op = MenuOperations##menuName 
+ PROPERTIES staticCaption(op)
+ LIST MenuOperations##menuName OBJECT op;
+   
+ operation##menuName ABSTRACT (CalcTask,  MenuOperations##menuName);
+ //====================== 
+ runOperation##menuName(CalcTask ct , s) {
+   DIALOG menuOperations##menuName##list OBJECTS op INPUT z FLOAT CANCEL DO {
+             operation##menuName(ct, z);
+      }  
+ };
+   ///3 ОФОРМЛЕНИЕ
+   EXTEND FORM extendedForm 
+     PROPERTIES  // exec 'Импорт/экспорт...' = runActions(calcTask),
+     execLocal 'Расчеты...'= runOperation##menuName(calcTask,s); 
+    
+   // ДИЗАЙН
+   DESIGN extendedForm {
+    OBJECTS {
+       NEW horizPanel FIRST {
+         type = CONTAINERH;
+         MOVE PROPERTY (execLocal) ;
+         }
+       };
+    }
+ END
+ 

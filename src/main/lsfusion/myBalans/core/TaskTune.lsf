@@ -1,0 +1,70 @@
+MODULE TaskTune;
+
+REQUIRE Task;
+
+NAMESPACE Budget;
+
+
+FORM taskTune 'Настройка задач расчета'
+OBJECTS cv = CalcVariant  PANEL
+TREE taskTree f = Task PARENT parent(f) 
+PROPERTIES nameCalcVariant(cv) READONLY PANEL  
+PROPERTIES 
+pos(f),
+nameTaskTab(f) 
+                FOREGROUND  IF isGroup(f) THEN Budget.groupFontColor() 
+                ON  CONTEXTMENU 'Редактировать' {SHOW taskListCard;} SELECTOR,
+nameCol 'тип' = nameCalcBook(type(f)) READONLY,
+parentCol 'в группе' = nameTask(parent(f)),
+isGroup(f)
+
+PROPERTIES  stButN 'Новый элемент' = NEW(f), stButD 'Удалить' = DELETE(f)
+
+EVENTS ON INIT {EXPAND ALL TOP taskTune.f;}
+// EVENTS ON CHANGE f {EXPAND ALL calcCompositionTune.f;}
+FILTERS cv = calcVariant(f);
+
+
+//
+newGroupTask(CalcVariant cv) {
+  NEW new = Task {
+        isGroup(new) <-TRUE;
+        nameTask(new) <- 'Новая группа';
+        calcVariant(new) <- cv;
+        SEEK taskTune.f = new;
+    }
+}
+EXTEND FORM taskTune 
+PROPERTIES newGroup '+ Новая группа' = newGroupTask(cv);
+
+// открытие формы настроек сделаем из списка расчетов
+openTaskList(CalcVariant calcV) {
+    SHOW taskTune OBJECTS  cv = calcV DOCKED NOWAIT MANAGESESSION 
+    ;
+}
+// добавим в форму слева
+EXTEND FORM calcVariantList
+PROPERTIES    openTaskList(c)  BEFORE nameCalcVariant(c)  GRID;
+
+
+DESIGN  taskTune {
+ PROPERTY (isGroup(f)){ hide = TRUE; }
+    PROPERTY (nameTaskTab(f)) { charWidth ='20'; } 
+    PROPERTY (parentCol) {charWidth = 20; } 
+    PROPERTY (nameCalcVariant(cv) ) { fontStyle = 'bold'; } 
+     
+  TOOLBAR ( TREE taskTree) {
+        MOVE PROPERTY (newGroup)  BEFORE PROPERTY (stButN);
+  }
+     
+     
+    NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
+    // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
+        type = TABBED;
+        fill = 1; // пусть расширяется на всю форму
+    }
+};
+
+
+
+

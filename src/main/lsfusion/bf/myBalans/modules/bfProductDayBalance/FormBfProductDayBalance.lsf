@@ -1,0 +1,120 @@
+MODULE FormBfProductDayBalance;
+
+REQUIRE  Form, CubeBfProductDayBalance,PeriodCalendar,CalcTask;
+
+NAMESPACE BfProductDayBalance;
+
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+     BfProductDayBalance 'Расчет закупа по дням'
+}
+
+FORM  formBfProductDayBalance 'Задача: Расчет закупа';
+@createFormReqPropertysBeforeOBJ(bfProductDayBalance,CubeBfProductDayBalance){
+newBfProductDayBalance 'Добавить' (calcTask){
+    NEW nC = CubeBfProductDayBalance {
+        task(nC) <- Calc.task(calcTask); 
+        calc(nC) <- Calc.calc(calcTask); 
+     //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
+    }
+}
+deleteBfProductDayBalance(calcTask){
+    DELETE   CubeBfProductDayBalance nC 
+    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
+}
+
+EXTEND FORM formBfProductDayBalance
+OBJECTS calcTask = CalcTask  PANEL;
+};
+EXTEND FORM formBfProductDayBalance OBJECTS prod = CubeBfProductDayBalance;
+@createFormReqPropertyAfterOBJ(formBfProductDayBalance,prod,calc,task){
+EXTEND FORM formBfProductDayBalance
+PROPERTIES  taskChecked(calcTask), 
+            nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY 
+PROPERTIES  task(prod),calc(prod) 
+FILTERS     (task(calcTask) = task(prod) OR NOT task(prod) )
+        AND calc(calcTask) = calc(prod);
+
+DESIGN formBfProductDayBalance {
+   OBJECTS { 
+   MOVE PROPERTY (nameB) FIRST; 
+   MOVE PROPERTY (taskChecked(calcTask)) FIRST;
+   }
+   PROPERTY(task(prod)){hide = TRUE;} 
+   PROPERTY(calc(prod)){hide = TRUE;} 
+ }    
+};
+EXTEND FORM formBfProductDayBalance
+PROPERTIES nameProd  'продукт'  = name(product(prod)),
+           new '+ Добавить'= newBfProductDayBalance(calcTask),
+           delAll 'Удалить все' = deleteBfProductDayBalance(calcTask)
+           
+PROPERTIES(prod) DELETE,
+                 balansStoreDate,
+                 balansStore,
+                 balansReq 
+;
+DESIGN formBfProductDayBalance {
+ TOOLBAR(prod) {
+ MOVE PROPERTY (new) FIRST ;
+ MOVE PROPERTY (delAll);
+ }
+}
+ 
+
+// ДЕЙСТВИЯ ФОРМЫ 
+
+
+// меню операции ..........................................
+CLASS MenuOperationsBfProductDayBalance 'Операции...'{
+    calcBuyBalance 'Расчет количества поступлений'
+} 
+FORM menuOperationsBfProductDayBalancelist 
+OBJECTS op = MenuOperationsBfProductDayBalance 
+PROPERTIES staticCaption(op)
+LIST MenuOperationsBfProductDayBalance OBJECT op;
+
+
+operationBfProductDayBalance ABSTRACT (CalcTask,  MenuOperationsBfProductDayBalance);
+//====================== 
+
+runOperation(CalcTask ct  ) {
+  DIALOG menuOperationsBfProductDayBalancelist OBJECTS op INPUT z FLOAT CANCEL DO {
+            operationBfProductDayBalance(ct, z);
+     }  
+};
+ 
+
+
+///1 МЕНЮ
+// меню функции загрузка данных
+EXTEND CLASS SectionRequest {
+    sectionBfProductDayBalance  'БФ. Торговый баланс по дням.'
+}
+
+///2 ФУНКЦИИ
+functionsBfProductDayBalance ABSTRACT (CalcTask,ExtRequest);
+
+runActions(CalcTask calcTask) {
+  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.sectionBfProductDayBalance, er INPUT extReq FLOAT CANCEL DO {
+            functionsBfProductDayBalance(calcTask,extReq);
+     }  
+}; 
+
+///3 ОФОРМЛЕНИЕ
+EXTEND FORM formBfProductDayBalance 
+PROPERTIES exec 'Импорт/экспорт...' = runActions(calcTask),
+  execLocal 'Расчеты...'= runOperation(calcTask ); 
+ 
+ 
+// ДИЗАЙН
+DESIGN formBfProductDayBalance {
+ OBJECTS {
+    NEW horizPanel FIRST {
+      type = CONTAINERH;
+      MOVE PROPERTY (execLocal) ;
+      MOVE PROPERTY (exec) FIRST;
+      }
+    };
+ }

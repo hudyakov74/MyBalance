@@ -1,0 +1,179 @@
+MODULE DimensCFO;
+ 
+REQUIRE TaskTune,Dimens,ExtFormRequestList;
+
+NAMESPACE   Dimens; 
+
+CLASS DimCFO 'Центры финансовой ответственности';
+TABLE dimCFO(DimCFO);
+FORM formDimCFOGroup 'Группы ЦФО'; 
+FORM formDimCFOlist 'Центры финансовой ответственности'; 
+ 
+FORM formDimCFOTreeList 'Центры финансовой ответственности'; 
+@configDimWO(DimCFO){
+pos 'Порядок' = DATA INTEGER  (DimCFO) IN base CHARWIDTH 5;
+code 'Код' = DATA STRING[15] (DimCFO) IN id;
+name 'Наименование' = DATA ISTRING[254] (DimCFO) IN id INDEXED ;
+isGroup 'Группа' = DATA BOOLEAN (DimCFO);
+parent 'Родитель' = DATA DimCFO(DimCFO);
+isRoot 'корень' = DATA BOOLEAN (DimCFO);
+
+level 'Уровень' (DimCFO child, DimCFO parent) =
+   RECURSION 1l IF child IS DimCFO AND parent = child
+        STEP 2l IF parent = parent($parent) MATERIALIZED;
+
+isParent 'Родитель' (DimCFO child, DimCFO parent) = TRUE IF level(child, parent);
+        
+canonicalName 'Каноническое имя' (DimCFO group) =  GROUP CONCAT name(DimCFO parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
+levelNum 'levelNum' (DimCFO group) =   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+backgroundColor(DimCFO s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;   
+tabName 'имя' (DimCFO group) =  (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
+getRootDimCFO()  = GROUP MAX DimCFO c IF isRoot(c) AND NOT isGroup(c);
+getEmptyDimCFO() = GROUP MAX DimCFO c IF isRoot(c) AND isGroup(c);
+WHEN LOCAL CHANGED(isRoot(DimCFO sd))  AND ( (GROUP SUM(1) IF (isRoot(DimCFO all) AND NOT isGroup(all)  AND all IS DimCFO)) > 1 ) DO {
+   isRoot(sd)<-NULL ;
+   MESSAGE 'только один элемент может представлять корень';
+};
+// список для выбора группы 
+EXTEND FORM formDimCFOGroup  
+OBJECTS d = DimCFO 
+PROPERTIES(d) READONLY pos, code, canonicalName
+ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+
+selectGroup(DimCFO r) {
+ DIALOG formDimCFOGroup OBJECTS d = parent(r) CHANGE;
+};
+     
+EXTEND  FORM  formDimCFOTreeList  
+TREE treeDimCFO t = DimCFO  PARENT parent(t)
+PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
+,pos
+// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+FILTERS NOT isRoot(t)
+ORDERS  pos(t),tabName(t) 
+LIST DimCFO OBJECT t;
+DESIGN   formDimCFOTreeList { 
+    PROPERTY (tabName(t)) { charWidth='100'; }
+} ;
+         
+                         
+FORM formDimCFOSelectlist  
+    OBJECTS  d = DimCFO  
+    PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
+    ,pos  ,canonicalName
+    PROPERTIES(d) NEWEDIT,EDIT 
+     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+    FILTERS NOT isRoot(d)
+    ORDERS  pos(d), canonicalName(d)
+    ;
+
+DESIGN   formDimCFOSelectlist { 
+   PROPERTY  (tabName(d))   { charWidth='40'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (pos(d))   { hide = TRUE ; }
+   PROPERTY (canonicalName(d)) { hide = TRUE ;  }
+  BOX { size = (1200,600);}
+} ;      
+
+delAllDimCFO 'удалить все'() {
+ DELETE DimCFO a WHERE a IS DimCFO ;
+};
+
+     
+      // форма для редактирования списка - открывается только из меню
+       EXTEND FORM  formDimCFOlist  
+       OBJECTS d = DimCFO 
+       PROPERTIES delAllDimCFO()
+       PROPERTIES(d)   isRoot,NEW ,DELETE, 
+                       isGroup BACKGROUND backgroundColor(d),
+                       levelNum BACKGROUND backgroundColor(d), 
+                       pos BACKGROUND backgroundColor(d), 
+                       tabName BACKGROUND backgroundColor(d), 
+                       name BACKGROUND backgroundColor(d) 
+                       
+   
+       PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
+                       canonicalName(d) BACKGROUND backgroundColor(d)
+       ORDERS  pos(d),canonicalName(d) 
+       ; 
+       
+       NAVIGATOR {
+                   dimCatalogs   {
+                    NEW formDimCFOlist;
+                   }
+                 }
+        
+        
+
+currentDimCFO = DATA LOCAL DimCFO ();
+
+newByNameDimCFO(name) {
+ IF name AND NOT (name == '') THEN {
+    currentDimCFO() <- GROUP MAX DimCFO d IF name(d) == name;
+    IF (NOT currentDimCFO())   THEN {
+              NEW  new =  DimCFO  {
+                  name(new) <- name;
+                  currentDimCFO() <- new;
+           }
+    }  
+ }
+ ELSE currentDimCFO() <- NULL;
+}
+        
+        
+        
+};
+
+// МЕСТО для доп. свойств
+ 
+// добавление списка в CalcComposition
+TABLE dimCfoTask(Task,DimCFO);
+checkedCFO 'выбрано' = DATA BOOLEAN  (Task,DimCFO) TABLE dimCfoTask;
+@configDim2TaskTune(DimCFO,checkedCFO,vCFO){ 
+    EXTEND FORM  taskTune
+    OBJECTS vCFO = DimCFO
+    PROPERTIES  checkedCFO(f,vCFO) BACKGROUND IF isGroup(vCFO) THEN Budget.groupBackColor(3) // #f2f2f2
+    PROPERTIES READONLY pos(vCFO),name(vCFO),tabName(vCFO),canonicalName(vCFO)
+    ORDERS pos(vCFO),canonicalName(vCFO)
+   // FILTERS NOT isRoot(var)
+    ;
+    
+    DESIGN taskTune { // расширяем дизайн формы Item
+        PROPERTY (name(vCFO)) { hide = TRUE; }
+        PROPERTY (canonicalName(vCFO)) { hide = TRUE; } 
+        PROPERTY (pos(vCFO)) { charWidth = 5; flex = FALSE; } 
+        details {
+            MOVE BOX(vCFO){
+                  showIf = NOT isGroup(f);
+            }
+        }
+    };
+    
+};
+
+// добавление операций над задачей
+// операции Расчетов
+
+// операции Импорта 
+EXTEND CLASS SectionRequest {
+    sectionDimCFO 'Cправочник ЦФО'
+}
+EXTEND CLASS TypeRequest {
+    DimCfoOper1 'Загрузить ЦФО (Cправочник ЦФО)'
+}
+
+runActions() {
+  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.sectionDimCFO, er INPUT z FLOAT CANCEL DO {
+         MESSAGE 'Selected sku : ' + name(z) ;
+     }  
+}; 
+
+EXTEND FORM formDimCFOlist PROPERTIES exec 'Функции...' = runActions();
+ 
+ 
+
+
+
+
+// КОНЕЦ ТЕКСТА
+
+ 

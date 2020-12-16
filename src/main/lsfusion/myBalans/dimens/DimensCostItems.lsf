@@ -1,0 +1,172 @@
+MODULE DimensCostItems;
+
+REQUIRE TaskTune,Dimens;
+
+NAMESPACE Dimens;
+ 
+CLASS DimCostItems 'Статьи затрат' ;
+TABLE dimCostItems(DimCostItems);
+
+FORM formDimCostItemsGroup 'Статьи затрат'; 
+FORM formDimCostItemslist 'Статьи затрат';
+ 
+FORM formDimCostItemsTreeList 'Статьи затрат'; 
+@configDimWO (DimCostItems){
+pos 'Порядок' = DATA INTEGER  (DimCostItems) IN base CHARWIDTH 5;
+code 'Код' = DATA STRING[15] (DimCostItems) IN id;
+name 'Наименование' = DATA ISTRING[254] (DimCostItems) IN id INDEXED ;
+isGroup 'Группа' = DATA BOOLEAN (DimCostItems);
+parent 'Родитель' = DATA DimCostItems(DimCostItems);
+isRoot 'корень' = DATA BOOLEAN (DimCostItems);
+
+level 'Уровень' (DimCostItems child, DimCostItems parent) =
+   RECURSION 1l IF child IS DimCostItems AND parent = child
+        STEP 2l IF parent = parent($parent) MATERIALIZED;
+
+isParent 'Родитель' (DimCostItems child, DimCostItems parent) = TRUE IF level(child, parent);
+        
+canonicalName 'Каноническое имя' (DimCostItems group) =  GROUP CONCAT name(DimCostItems parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
+levelNum 'levelNum' (DimCostItems group) =   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+backgroundColor(DimCostItems s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;   
+tabName 'имя' (DimCostItems group) =  (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
+getRootDimCostItems()  = GROUP MAX DimCostItems c IF isRoot(c) AND NOT isGroup(c);
+getEmptyDimCostItems() = GROUP MAX DimCostItems c IF isRoot(c) AND isGroup(c);
+WHEN LOCAL CHANGED(isRoot(DimCostItems sd))  AND ( (GROUP SUM(1) IF (isRoot(DimCostItems all) AND NOT isGroup(all)  AND all IS DimCostItems)) > 1 ) DO {
+   isRoot(sd)<-NULL ;
+   MESSAGE 'только один элемент может представлять корень';
+};
+// список для выбора группы 
+EXTEND FORM formDimCostItemsGroup  
+OBJECTS d = DimCostItems 
+PROPERTIES(d) READONLY pos, code, canonicalName
+ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+
+selectGroup(DimCostItems r) {
+ DIALOG formDimCostItemsGroup OBJECTS d = parent(r) CHANGE;
+};
+     
+EXTEND  FORM  formDimCostItemsTreeList  
+TREE treeDimCostItems t = DimCostItems  PARENT parent(t)
+PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
+,pos
+// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+FILTERS NOT isRoot(t)
+ORDERS  pos(t),tabName(t) 
+LIST DimCostItems OBJECT t;
+DESIGN   formDimCostItemsTreeList { 
+    PROPERTY (tabName(t)) { charWidth='100'; }
+} ;
+         
+                         
+FORM formDimCostItemsSelectlist  
+    OBJECTS  d = DimCostItems  
+    PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
+    ,pos  ,canonicalName
+    PROPERTIES(d) NEWEDIT,EDIT 
+     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+    FILTERS NOT isRoot(d)
+    ORDERS  pos(d), canonicalName(d)
+    ;
+
+DESIGN   formDimCostItemsSelectlist { 
+   PROPERTY  (tabName(d))   { charWidth='40'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (pos(d))   { hide = TRUE ; }
+   PROPERTY (canonicalName(d)) { hide = TRUE ;  }
+  BOX { size = (1200,600);}
+} ;      
+
+delAllDimCostItems 'удалить все'() {
+ DELETE DimCostItems a WHERE a IS DimCostItems ;
+};
+
+     
+      // форма для редактирования списка - открывается только из меню
+       EXTEND FORM  formDimCostItemslist  
+       OBJECTS d = DimCostItems 
+       PROPERTIES delAllDimCostItems()
+       PROPERTIES(d)   isRoot,NEW ,DELETE, 
+                       isGroup BACKGROUND backgroundColor(d),
+                       levelNum BACKGROUND backgroundColor(d), 
+                       pos BACKGROUND backgroundColor(d), 
+                       tabName BACKGROUND backgroundColor(d), 
+                       name BACKGROUND backgroundColor(d) 
+                       
+   
+       PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
+                       canonicalName(d) BACKGROUND backgroundColor(d)
+       ORDERS  pos(d),canonicalName(d) 
+       ; 
+       
+       NAVIGATOR {
+                   dimCatalogs   {
+                    NEW formDimCostItemslist;
+                   }
+                 }
+        
+        
+
+currentDimCostItems = DATA LOCAL DimCostItems ();
+
+newByNameDimCostItems(name) {
+ IF name AND NOT (name == '') THEN {
+    currentDimCostItems() <- GROUP MAX DimCostItems d IF name(d) == name;
+    IF (NOT currentDimCostItems())   THEN {
+              NEW  new =  DimCostItems  {
+                  name(new) <- name;
+                  currentDimCostItems() <- new;
+           }
+    }  
+ }
+ ELSE currentDimCostItems() <- NULL;
+}
+        
+        
+        
+};
+
+// добавление списка в CalcComposition
+TABLE dimCostTask(Task,DimCostItems);
+checkedCostItems 'выбрано' = DATA BOOLEAN  (Task,DimCostItems) TABLE dimCostTask;
+@configDim2TaskTune(DimCostItems,checkedCostItems,vCostItems){ 
+    EXTEND FORM  taskTune
+    OBJECTS vCostItems = DimCostItems
+    PROPERTIES  checkedCostItems(f,vCostItems) BACKGROUND IF isGroup(vCostItems) THEN Budget.groupBackColor(3) // #f2f2f2
+    PROPERTIES READONLY pos(vCostItems),name(vCostItems),tabName(vCostItems),canonicalName(vCostItems)
+    ORDERS pos(vCostItems),canonicalName(vCostItems)
+   // FILTERS NOT isRoot(var)
+    ;
+    
+    DESIGN taskTune { // расширяем дизайн формы Item
+        PROPERTY (name(vCostItems)) { hide = TRUE; }
+        PROPERTY (canonicalName(vCostItems)) { hide = TRUE; } 
+        PROPERTY (pos(vCostItems)) { charWidth = 5; flex = FALSE; } 
+        details {
+            MOVE BOX(vCostItems){
+                  showIf = NOT isGroup(f);
+            }
+        }
+    };
+    
+};
+
+refKey 'Ref_Key' = DATA STRING[36] (DimCostItems) IN id INDEXED;
+
+// type = DATA LOCAL BPISTRING[100] (INTEGER);
+ 
+//TABLE dimCostItemsCalcComposition(CalcComposition,DimCostItems);
+//checkedCostItems  'выбрано' = DATA BOOLEAN  (CalcComposition,DimCostItems) TABLE dimCostItemsCalcComposition;
+//
+//EXTEND FORM  calcCompositionTune 
+//OBJECTS nom=DimCostItems 
+//PROPERTIES  checkedCostItems(f,nom),pos(nom),name(nom)
+//ORDERS pos(nom)
+//;
+//
+//
+//DESIGN calcCompositionTune { 
+//    details {
+//        MOVE BOX(nom) { showIf = NOT isGroup(f);}; // делаем контейнер,
+//    }
+//};
+//  
+ 

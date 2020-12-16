@@ -1,0 +1,27 @@
+MODULE ExtFormRequestList;
+
+REQUIRE ExtRequest;
+
+NAMESPACE ExtSystem; 
+
+
+// форма для выбора подходящих действий (импортов)
+// сами импорты описываем в формах расчетов - вызываем оттуда же
+FORM extRequestSelectList 'Операции'
+OBJECTS sr = SectionRequest   
+OBJECTS er = ExtRequest  GRID 
+PROPERTIES READONLY staticCaption(sr) 
+PROPERTIES READONLY name(er),
+                  // typeEr =  staticCaption(type(er)),
+           nameExtSrc = name(extSource(er)) 
+FILTERS sr = section(er);
+
+ 
+DESIGN extRequestSelectList{
+   size  = (650,250); 
+   TOOLBARSYSTEM (er) { visible = NULL ;}
+   PROPERTY (staticCaption(sr)) { hide = TRUE; }
+   PROPERTY (nameExtSrc) {charWidth = 8;}
+   PROPERTY (name(er)) {charWidth = 40;}
+ //  PROPERTY (typeEr) {charWidth = 30;}
+}

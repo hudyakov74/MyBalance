@@ -1,0 +1,18 @@
+MODULE CoreMenu;
+
+NAMESPACE Budget;
+
+NAVIGATOR {
+  NEW FOLDER catalogsMB 'Классификаторы' FIRST WINDOW toolbar {
+    NEW FOLDER dimCatalogs 'Измерения' {
+    
+    }
+  }
+      
+ NEW FOLDER reports 'Данные отчетов'  WINDOW toolbar {
+     NEW FOLDER  report1 'Отчеты 1' {}    
+   }
+}
+    
+    
+    

@@ -1,0 +1,11 @@
+MODULE ExtTypeRequest;
+
+NAMESPACE ExtSystem; 
+
+CLASS TypeRequest 'Типы импортов' {
+     
+}
+FORM TypeRequestList 'Типы импортов' 
+OBJECTS s = TypeRequest PROPERTIES(s) READONLY staticCaption
+LIST TypeRequest OBJECT s;
+

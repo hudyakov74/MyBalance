@@ -1,0 +1,18 @@
+MODULE TypeTask;
+
+NAMESPACE Calc;
+
+// --- Типы расчетных задач -------------------------------------------
+CLASS TypeTask 'Тип задач' {}
+
+nameCalcBook 'Типы задач' (TypeTask g) = staticCaption(g) IF g IS TypeTask;
+
+FORM typeTask 'Типы задач'
+OBJECTS g = TypeTask
+PROPERTIES READONLY nameCalcBook(g)
+LIST TypeTask OBJECT g;
+
+DESIGN typeTask {
+    
+}
+

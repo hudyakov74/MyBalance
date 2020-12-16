@@ -1,0 +1,120 @@
+MODULE Form001CfoCost;
+
+REQUIRE  Form,Cube001CostCfo,PeriodCalendar;
+
+NAMESPACE Forms;
+ 
+// viewGroupFolding 'СвернутыеГруппы' = DATA LOCAL BOOLEAN (DimCFO);
+ 
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+       cost 'Затраты' 
+}
+ 
+ 
+FORM form001CfoCost 'Затраты подразделений'
+   
+    OBJECTS  calcP 'расчет' = Calc  PANEL
+    OBJECTS  task = Task       
+    OBJECTS  firm 'Организация' = DimFirm  PANEL 
+    PROPERTIES READONLY name(calcP)  , nameTask(task)  
+   // fff = GROUP SUM 1 IF checkedCostItems(task,DimCostItems cost_) PANEL
+    PROPERTIES name(firm) PANEL SELECTOR 
+    // статьи затрат,  cp = CalcPeriod, 
+    OBJECTS    periodCp = (period =  Period, cp = PeriodCalendar),
+    // измерения
+    rows = ( taskTable = Task,  calcTable = Calc, firmRow = DimFirm , cfo = DimCFO, cost =  DimCostItems )
+    PROPERTIES   
+        nameTask(taskTable) READONLY, 
+        name(calcTable) READONLY,pos(cfo),pos(cost),canonicalName(cfo),canonicalName(cost),
+        name(cfo)   
+    PROPERTIES   // видимые    
+        tabNameCfo 'Подразделения' = tabName(cfo) READONLY  BACKGROUND groupColor(levelNum(cfo),levelNum(cost),isRoot(cost),isGroup(cost)) , 
+        tabNameCost 'Статьи затрат' = tabName(cost) READONLY BACKGROUND groupColor(levelNum(cfo),levelNum(cost),isRoot(cost),isGroup(cost)), 
+        sum 'Итог' = sumByRow(calcTable,taskTable,firmRow,cfo,cost, period)
+            BACKGROUND groupColor(levelNum(cfo),levelNum(cost),isRoot(cost),isGroup(cost))
+            READONLY,
+        valueCost =  valueCostCfoNum(calcTable,taskTable,firmRow,cfo,cost, period ) 
+            BACKGROUND groupColor(levelNum(cfo),levelNum(cost),isRoot(cost),isGroup(cost))
+            READONLYIF isGroup(cfo) OR isGroup(cost) OR isRoot(cfo) OR isRoot(cost) 
+    COLUMNS (periodCp) HEADER 
+            namePeriod(period) 
+       
+        FILTERS   task = taskTable   // calc = calcTable AND 
+        FILTERS   firm = firmRow   
+        FILTERS   NOT ((isGroup(cfo) OR isRoot(cfo)) AND (NOT isRoot(cost))) //если ЦФО это группа|корень - то ее показывать только 1 раз 
+        FILTERS   checkedCFO(taskTable,cfo) // только выбранные ЦФО
+                  OR NOT (GROUP SUM 1 IF checkedCFO(task,DimCFO cfo_)) // или ничего не отмечено
+                  OR  valueCostCfoNum(calcTable,taskTable,firmRow,cfo,cost,period)
+        FILTERS   checkedCostItems(taskTable,cost) // только выбранные затраты
+                  OR NOT (GROUP SUM 1 IF checkedCostItems(task,DimCostItems cost_)) // или ничего не отмечено
+                  OR  valueCostCfoNum(calcTable,taskTable,firmRow,cfo,cost,period)
+                     // или есть значения
+        FILTERS  period( cp ) == period
+                AND calcDateBegin(calcP) <= dateBegin(cp) 
+                AND calcDateEnd(calcP) >= dateEnd(cp)
+            
+        ORDERS pos(cfo),tabNameCfo, pos(cost),canonicalName(cost)//, posC  
+       ;
+
+DESIGN  form001CfoCost {
+    PROPERTY (sum) { fontStyle='bold'; pattern = '#,##0.00';}
+    PROPERTY( name(calcP) ) { charWidth='100'; }
+   
+    PROPERTY(nameTask(task) ) { hide = TRUE ; charWidth='100'; }
+    PROPERTY( tabNameCfo ) { charWidth='12'; }
+    PROPERTY( tabNameCost ) { charWidth='12'; }   
+    PROPERTY( nameTask(taskTable) ) { hide = TRUE ; }
+    PROPERTY( name(calcTable) ) {  hide = TRUE ; }
+    PROPERTY( pos(cfo) ) { hide = TRUE ; }  
+    PROPERTY( pos(cost) ) { hide = TRUE ; } 
+    PROPERTY( name(cfo)) { hide = TRUE ; }   
+    PROPERTY( canonicalName(cfo)) { hide = TRUE ; }   
+    PROPERTY( canonicalName(cost)) { hide = TRUE ; }  
+    PROPERTY( valueCost ) { pattern = '#,##0.00';}
+}
+
+
+//ON GLOBAL FORMS form001CfoCost GOAFTER  valueCostCfoNum {
+//ON GLOBAL FORMS form001CfoCost GOAFTER  valueCostCfoNum {
+ // valueCostCfoNum(Calc c,CalcComposition cc,DimCFO cfo,DimCostItems ci,Period p)  <-  0 IF valueCostCfoNum(Calc c,CalcComposition cc,DimCFO cfo,DimCostItems ci,Period p)
+ // DELETE valueCostCfoNum(Calc c,CalcComposition cc,DimCFO cfo,DimCostItems ci,Period p) WHERE valueCostCfoNum(  c,  cc,  cfo,  ci,  p) = 0;
+//}
+
+//
+//FORM form001CfoCostPrint 'Затраты подразделений'
+//    OBJECTS  task = CalcComposition    
+//    OBJECTS  calcP 'расчет' = Calc   
+//    // статьи затрат,  cp = CalcPeriod, 
+//    OBJECTS    periodCp = (period =  Period, cp = PeriodCalendar),
+//    // измерения
+//    rows = ( taskTable = CalcComposition,  calcTable = Calc , cfo = DimCFO, cost =  DimCostItems )
+//    PROPERTIES   
+//        nameCalcComposition(taskTable) READONLY, 
+//        name(calcTable) READONLY,pos(cfo),pos(cost),canonicalName(cfo),canonicalName(cost),
+//        name(cfo)  
+//    PROPERTIES   // видимые    
+//        tabName(cfo) READONLY  BACKGROUND IF isGroup(cfo) OR isGroup(cost) OR isRoot(cfo) OR isRoot(cost)   THEN group2BackColor(), 
+//        tabName(cost) READONLY BACKGROUND IF isGroup(cfo) OR isGroup(cost) OR isRoot(cfo) OR isRoot(cost)  THEN group2BackColor(), 
+//        valueCost =  valueCostCfoNum(calcTable,taskTable,cfo,cost, period ) 
+//            BACKGROUND IF isGroup(cfo) OR isGroup(cost) OR isRoot(cfo) OR isRoot(cost)  THEN group2BackColor()
+//            READONLYIF isGroup(cfo) OR isGroup(cost) OR isRoot(cfo) OR isRoot(cost) 
+//    COLUMNS (periodCp) HEADER 
+//            //textColumnName(
+//            namePeriod(period) //, 
+//           // fullSumm(calcTable,taskTable,period))
+//
+//        FILTERS   task = taskTable   // calc = calcTable AND 
+//        FILTERS   NOT ((isGroup(cfo) OR isRoot(cfo)) AND (NOT isRoot(cost))) //если ЦФО это группа|корень - то ее показывать только 1 раз 
+//
+//        AND checkedCFO(taskTable,cfo) // только выбранные ЦФО
+//        FILTERS  calcPeriod( cp ) == period 
+//        ORDERS pos(cfo),tabName(cfo), pos(cost),canonicalName(cost)//, posC  
+//       ;
+//
+//
+//print(task,calcP) {
+//     PRINT form001CfoCostPrint OBJECTS  task=task, calcP =calcP  XLSX SHEET 'Страница моя'; 
+//}
+//EXTEND FORM form001CfoCost
+//PROPERTIES print(task,calcP);

@@ -1,0 +1,48 @@
+// убрал - упростил генерацию
+MODULE Cube;
+
+REQUIRE CalcCore,Calc,DimensCFO,DimensCostItems,PeriodCalendar;
+
+NAMESPACE Cube;
+
+META createCubeReqDim(ObjectDim,tableName)
+TABLE tableName(ObjectDim);
+task   'задача' = DATA Task(ObjectDim) INDEXED IN id;
+period 'Период' = DATA Period(ObjectDim) INDEXED IN id; // для плоских списков 
+calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
+END
+
+META createCubeReqDimTable(ObjectDim,tableName)
+TABLE tableName(ObjectDim);
+TABLE tableName##Period(ObjectDim,Period);
+task   'задача' = DATA Task(ObjectDim)  INDEXED IN id;
+calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
+END
+
+// PeriodType (Calc);
+// добавить версия расчета - наслаивание сценария
+
+//
+//CLASS Cube 'Измерение';
+//TABLE cube001CostCfo(Cube);
+//date 'Дата' = DATA DATE (Cube);
+//dateBeg 'Дата начала периода' = DATA DATE (Cube);
+//scenario 'Сценарий' = DATA Scenario (Cube);
+//calcVariant 'Вид расчета' = DATA CalcVariant(Cube);
+//periodType 'Используемые периоды'  =  DATA PeriodType (Calc);
+
+// 
+//META configCubeRecord(ObjectCube) 
+//    @configCubeRecordMain(ObjectCube);
+//    @configCubeRecordDate(ObjectCube);
+//END
+//
+//META configCubeRecordMain(ObjectCube) 
+//    calc 'расчет' = DATA Calc(ObjectCube);
+//    calcComposition 'задача' = DATA CalcComposition(ObjectCube);
+//END
+//META configCubeRecordDate(ObjectCube) 
+//   calc 'расчет' = DATA Calc(ObjectCube);
+//   calcComposition 'задача' = DATA CalcComposition(ObjectCube);
+//   period 'Период' = DATA Period(ObjectCube);
+//END

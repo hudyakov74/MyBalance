@@ -1,0 +1,114 @@
+MODULE FormBfProductBalance;
+
+REQUIRE  Form, CubeProductBalance,PeriodCalendar,CalcTask;
+
+NAMESPACE Forms;
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+     BfProductBalance 'Расчет закупа у бф'
+}
+//
+//newBfProductBalance(calcTask){
+//    NEW nC = CubeProductBalanceCalc1 {
+//        task(nC) <- Calc.task(calcTask); 
+//        calc(nC) <- Calc.calc(calcTask); 
+//    }
+//}
+//deleteBfProductBalance(calcTask){
+//    DELETE   CubeProductBalanceCalc1 nC 
+//    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
+//}
+
+
+
+FORM  formBfProductBalance 'Задача: Расчет закупа';
+@createFormReqPropertysBeforeOBJ(bfProductBalance, CubeProductBalanceCalc1){
+newBfProductBalance 'Добавить' (calcTask){
+    NEW nC = CubeProductBalanceCalc1 {
+        task(nC) <- Calc.task(calcTask); 
+        calc(nC) <- Calc.calc(calcTask); 
+     //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
+    }
+}
+deleteBfProductBalance(calcTask){
+    DELETE   CubeProductBalanceCalc1 nC 
+    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
+}
+
+EXTEND FORM formBfProductBalance
+OBJECTS calcTask = CalcTask  PANEL;
+};
+EXTEND FORM formBfProductBalance OBJECTS prod = CubeProductBalanceCalc1 ;
+@createFormReqPropertyAfterOBJ(formBfProductBalance,prod,calc,task){
+EXTEND FORM formBfProductBalance
+PROPERTIES  taskChecked(calcTask), 
+            nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY 
+PROPERTIES  task(prod),calc(prod) 
+FILTERS     (task(calcTask) = task(prod) OR NOT task(prod) )
+        AND calc(calcTask) = calc(prod);
+
+DESIGN formBfProductBalance {
+   OBJECTS { 
+   MOVE PROPERTY (nameB) FIRST; 
+   MOVE PROPERTY (taskChecked(calcTask)) FIRST;
+   }
+   PROPERTY(task(prod)){hide = TRUE;} 
+   PROPERTY(calc(prod)){hide = TRUE;} 
+ }    
+};
+EXTEND FORM formBfProductBalance
+PROPERTIES nameProd  'продукт'  = name(product(prod)),
+           new '+ Добавить'= newBfProductBalance(calcTask),
+           delAll 'Удалить все' = deleteBfProductBalance(calcTask)
+           
+PROPERTIES(prod) DELETE,
+                 balansStore,
+                 balansStoreSum,
+                 required,
+                 purchase READONLY,
+                 purchasePrice READONLY,
+                 purchaseSum READONLY
+;
+DESIGN formBfProductBalance {
+ TOOLBAR(prod) {
+ MOVE PROPERTY (new) FIRST ;
+ MOVE PROPERTY (delAll);
+ }
+}
+ 
+ 
+ 
+ 
+// ДЕЙСТВИЯ ФОРМЫ 
+
+///1 МЕНЮ
+// меню функции загрузка данных
+EXTEND CLASS SectionRequest {
+    sectionBfProductBalance  'Торговый баланс. форма 1'
+}
+
+///2 ФУНКЦИИ
+functionsRepComReport ABSTRACT (CalcTask,ExtRequest);
+
+runActions(CalcTask calcTask) {
+  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.sectionBfProductBalance, er INPUT extReq FLOAT CANCEL DO {
+            functionsRepComReport(calcTask,extReq);
+     }  
+}; 
+
+///3 ОФОРМЛЕНИЕ
+EXTEND FORM formBfProductBalance 
+PROPERTIES exec 'Импорт/экспорт...' = runActions(calcTask);
+ 
+ 
+// ДИЗАЙН
+DESIGN formBfProductBalance {
+ OBJECTS {
+    NEW horizPanel FIRST {
+      type = CONTAINERH;
+      
+      MOVE PROPERTY (exec) FIRST;
+      }
+    };
+ }

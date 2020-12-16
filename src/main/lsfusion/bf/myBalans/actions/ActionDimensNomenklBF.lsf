@@ -1,0 +1,137 @@
+MODULE ActionDimensNomenklBF;
+REQUIRE  DimensNomenklBF,DimensNomenklSpec,Utils;
+
+headers = DATA LOCAL STRING (STRING);
+findNomenklByName(STRING name) =   GROUP MAX DimNomenkl inBase IF name(inBase) = name;
+lenTrimStr(STRING s) = FORMULA INTEGER 'LENGTH(TRIM(from $1))';
+imported1 = DATA LOCAL BOOLEAN (INTEGER);
+
+nameColor = DATA LOCAL STRING (INTEGER); 
+nameSize  = DATA LOCAL STRING (INTEGER);
+nameSizeUni  = GROUP  MAX nameSize(i)  BY nameSize(i);
+nameColorUni = GROUP  MAX nameColor(i)  BY nameColor(i); 
+
+
+
+functionsDimensNomenklBF(ExtRequest extR) + {
+ LOCAL localConst = STRING[100] (STRING[20]);
+// источник - список штрих кодов начинающихся с 46 
+// ключевые поля 1 - номенклатура:  Наименование  -> RefKeyN // Артикул +" "+
+// ключевые поля 2 - Характеристика: Наименование // Цвет +" "+ Размер -> RefKeyX 
+// имена типов полей цвет =  ИмяХаркЦвет размер =  ИмяХаркРазмер
+// штрих кода читаем сразу все, номенклатуру/характеристику по одной 
+ localConst('Color') <- 'ИмяХаркЦвет';
+ localConst('Size')  <- 'ИмяХаркРазмер';
+ headers('Authorization') <- password(extSource(extR)); // odataMain1cAuth();
+ 
+ LOCAL result = FILE();
+ 
+ LOCAL bBarcode  = STRING[200] (INTEGER);
+ LOCAL bRef_KeyN = BPSTRING[36] (INTEGER);
+ LOCAL bRef_KeyX = BPSTRING[36] (INTEGER);
+ LOCAL bRef_KeyNlink = BPSTRING[512] (INTEGER);
+ LOCAL bRef_KeyXlink = BPSTRING[512] (INTEGER);
+  
+// все номенклатуры
+ LOCAL nRef_KeyN = BPSTRING[36] (INTEGER);
+ LOCAL nArtikle  = BPSTRING[50] (INTEGER);
+ LOCAL nCode = BPSTRING[11] (INTEGER);
+ LOCAL nDescription = BPSTRING[100] (INTEGER);
+ 
+EXTERNAL HTTP GET conectString(extSource(extR)) + 
+'Catalog_Номенклатура?$filter=IsFolder%20eq%20false%20and%20DeletionMark%20eq%20false%20and%20Артикул%20ne%20\'\'&$format=json&$select=Ref_Key,Артикул,Code,Description' 
+    HEADERS headers TO result;
+IMPORT JSON FROM result()  TO   nRef_KeyN = 'Ref_Key',
+                                 nArtikle = 'Артикул',
+                                 nCode = 'Code',
+                                 nDescription ='Description';    
+                            
+// все характеристики
+ LOCAL xRef_Key = BPSTRING[36] (INTEGER);
+ LOCAL xDescription = BPSTRING[100] (INTEGER);
+ 
+EXTERNAL HTTP GET conectString(extSource(extR)) + 
+    'Catalog_ХарактеристикиНоменклатуры?$filter=DeletionMark%20eq%20false&$format=json&$'+
+    'select=Ref_Key,Description' 
+    HEADERS headers TO result;
+IMPORT JSON FROM result()  TO   xRef_Key     = 'Ref_Key',
+                                 xDescription = 'Description';
+// типы характеристик
+ LOCAL cRef_Key = BPSTRING[36] (INTEGER);
+ LOCAL cDescription = BPSTRING[100] (INTEGER);
+ LOCAL cName = BPSTRING[100] (INTEGER);
+EXTERNAL HTTP GET conectString(extSource(extR)) +  'ChartOfCharacteristicTypes_ДополнительныеРеквизитыИСведения?$'+
+    'select=Ref_Key,Description,Имя&$format=json' 
+    HEADERS headers TO result;
+IMPORT JSON FROM result()  TO   cRef_Key = 'Ref_Key',cDescription='Description',cName='Имя';    
+ 
+    
+// значение доп свойств 
+ LOCAL vRef_Key = BPSTRING[36] (INTEGER);
+ LOCAL vDescription = BPSTRING[100] (INTEGER);
+EXTERNAL HTTP GET conectString(extSource(extR)) +  'Catalog_ЗначенияСвойствОбъектов?$'+
+    'select=Ref_Key,Description&$format=json' 
+    HEADERS headers TO result;
+IMPORT JSON FROM result()  TO   vRef_Key = 'Ref_Key',vDescription='Description';
+
+
+//дополнительные реквизиты характеристик
+// Catalog_ХарактеристикиНоменклатуры_ДополнительныеРеквизиты?$format=json&$select=Свойство_Key,Ref_Key,Значение
+LOCAL xdRef_Key = BPSTRING[36] (INTEGER);
+LOCAL xdPropRef_Key = BPSTRING[36] (INTEGER);
+LOCAL xdValueRef_Key = BPSTRING[36] (INTEGER);
+EXTERNAL HTTP GET conectString(extSource(extR)) + 
+ 'Catalog_ХарактеристикиНоменклатуры_ДополнительныеРеквизиты?$format=json&$select=Свойство_Key,Ref_Key,Значение' 
+ HEADERS headers TO result;
+ IMPORT JSON FROM result()  TO   xdRef_Key = 'Ref_Key',xdPropRef_Key='Свойство_Key',xdValueRef_Key = 'Значение';
+
+localConst('ColorKey')  <- cRef_Key(GROUP MAX imp IF cName(imp) = localConst('Color'));
+localConst('SizeKey')   <- cRef_Key(GROUP MAX imp IF cName(imp) = localConst('Size'));
+  
+// штрих коды
+EXTERNAL HTTP GET conectString(extSource(extR)) + 
+    'InformationRegister_ШтрихкодыНоменклатуры?$format=json&$filter=startswith(Штрихкод,\'46\')' 
+    HEADERS headers TO result;
+IMPORT JSON FROM result()  TO   bBarcode = 'Штрихкод',
+                                bRef_KeyN = 'Номенклатура_Key',
+                                bRef_KeyX = 'Характеристика_Key',
+                                bRef_KeyNlink ='Номенклатура@navigationLinkUrl', 
+                                bRef_KeyXlink ='Характеристика@navigationLinkUrl';    
+ 
+LOCAL nameM = STRING[200](INTEGER);
+FOR imported(INTEGER n) DO {
+    nameM(n) <- GROUP MAX  nDescription(INTEGER m) IF nRef_KeyN(m) == bRef_KeyN(n);
+}
+FOR imported(INTEGER n) DO {
+    nameM(n) <-  CONCAT ' ',nameM(n),GROUP MAX xDescription(INTEGER p) IF xRef_Key(p)  == bRef_KeyX(n);
+}
+LOCAL nArtikleM = STRING[200](INTEGER);
+FOR imported(INTEGER n) DO {
+    nArtikleM(n) <- GROUP MAX  nArtikle(INTEGER m) IF nRef_KeyN(m) == bRef_KeyN(n);
+} 
+      LOCAL numColorMn = INTEGER (INTEGER); 
+      LOCAL numColorMo = DimColor (INTEGER);
+      LOCAL numSizeMn = INTEGER (INTEGER); 
+      LOCAL numSizeMo = DimSize (INTEGER); 
+                   
+      numColorMn(INTEGER i) <-  GROUP MAX n IF xdPropRef_Key(n) == localConst('ColorKey') AND xdRef_Key(n)== bRef_KeyX(i);         
+      nameColor(INTEGER i)  <- vDescription(GROUP MAX imp IF vRef_Key(imp)  = (xdValueRef_Key( numColorMn(i)  )));;  
+      numSizeMn(INTEGER i)  <-  GROUP MAX n IF xdPropRef_Key(n) == localConst('SizeKey')  AND xdRef_Key(n)== bRef_KeyX(i);         
+      nameSize(INTEGER i)   <- vDescription(GROUP MAX imp IF vRef_Key(imp)  = (xdValueRef_Key( numSizeMn(i)  )));;  
+ 
+     FOR nameSizeUni(str)   AND (NOT (getDimSize(str)))  DO newDimSize(str);  
+     FOR nameColorUni (str) AND (NOT (getDimColor(str))) DO newDimColor(str);  
+  
+      numColorMo(i) <- getDimColor(nameColor(i));
+      numSizeMo(i) <- getDimSize (nameSize(i));
+       
+      FOR imported(INTEGER i) AND NOT findNomenklByName(nameM(i))  NEW n = DimNomenkl DO {  
+               barCode(n) <- bBarcode(i);       
+               name(n)    <- nameM(i);
+               article(n) <- nArtikleM(i);
+               color(n) <- numColorMo(i) ;
+               size(n)  <- numSizeMo(i) ; 
+               Ref_KeyNom(n)   <- bRef_KeyN(i);
+               Ref_KeySpec(n)  <- bRef_KeyX(i);
+ }
+}

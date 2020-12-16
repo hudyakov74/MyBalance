@@ -1,0 +1,41 @@
+MODULE PeriodCalendar;
+
+REQUIRE PeriodType,Period;
+
+NAMESPACE Budget;
+
+CLASS PeriodCalendar  'Календарь периода';
+TABLE periodCalendar (PeriodCalendar);
+period = DATA Period (PeriodCalendar) NONULL;
+periodType = DATA PeriodType (PeriodCalendar) NONULL;
+dateBegin 'Дата начала' = DATA DATE (PeriodCalendar) IN id;
+dateEnd 'Дата окончания' = DATA DATE (PeriodCalendar) IN id;
+
+EXTEND FORM periodForm
+OBJECTS pCalendar = PeriodCalendar
+
+PROPERTIES (pCalendar)  dateBegin, dateEnd, NEW ,DELETE 
+PROPERTIES nameP 'период' = namePeriod(period(pCalendar))
+ORDERS dateBegin(pCalendar)
+FILTERS periodType(pCalendar) = g
+;
+
+DESIGN periodForm {
+OBJECTS {
+NEW panel  {
+         fill = 1; 
+         align  = STRETCH;
+         type = SPLITV ;
+         MOVE   BOX (g); 
+            
+         NEW calendarPeriod  {        
+            type = TABBED;
+            fill = 1; 
+            align  = STRETCH;
+            MOVE   BOX (p); 
+            MOVE   BOX (pCalendar);
+         }
+     } 
+     }
+
+}

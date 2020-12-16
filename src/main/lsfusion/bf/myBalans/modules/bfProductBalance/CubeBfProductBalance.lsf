@@ -1,0 +1,31 @@
+MODULE CubeProductBalance;
+
+REQUIRE  Cube,DimensRawNomenkl,Utils;
+
+NAMESPACE Cube;
+
+CLASS CubeProductBalanceCalc1 'бюджет - расчет объема закупа';
+@createCubeReqDim(CubeProductBalanceCalc1,cubeProductBalanceCalc1){
+TABLE cubeProductBalanceCalc1(CubeProductBalanceCalc1);
+task   'задача' = DATA Task(CubeProductBalanceCalc1) INDEXED IN id;
+period 'Период' = DATA Period(CubeProductBalanceCalc1) INDEXED IN id; // для плоских списков 
+calc   'расчет' = DATA Calc(CubeProductBalanceCalc1) INDEXED IN id NONULL;
+};
+
+product     'продукт' = DATA DimRawNomenkl(CubeProductBalanceCalc1) NONULL;
+balansStore 'Остаток склада' = DATA NUMERIC[18,2](CubeProductBalanceCalc1);
+balansStoreSum 'Остаток склада сумма' = DATA NUMERIC[18,2](CubeProductBalanceCalc1);
+
+
+required    'требуется' = DATA NUMERIC[18,2](CubeProductBalanceCalc1);
+purchase    'к заказу'(CubeProductBalanceCalc1 req) = 
+    IF (balansStore(req)(-)required(req))>0 THEN (required(req)(+)0) ELSE (balansStore(req)(+)0); 
+    
+purchasePrice 'к заказу цена'(CubeProductBalanceCalc1 req) =
+  IF purchase(req) != 0 AND   balansStore(req) != 0  THEN  
+  round((balansStoreSum(req)*purchase(req)/balansStore(req))/purchase(req),0);
+
+purchaseSum 'к заказу сумма'(CubeProductBalanceCalc1 req)  =  purchasePrice(req) * purchase(req);
+ 
+
+

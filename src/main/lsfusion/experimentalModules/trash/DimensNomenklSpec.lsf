@@ -1,0 +1,92 @@
+MODULE DimensNomenklSpec;
+
+REQUIRE CalcCore,Dimens,ExtFormRequestList;
+
+NAMESPACE   Dimens; 
+
+CLASS DimNomenklSpec 'Характеристики':Dim;
+TABLE dimNomenklSpec(DimNomenklSpec);
+FORM formDimNomenklSpecGroup 'Группы характеристик'; 
+FORM formDimNomenklSpeclist 'Характеристики'; 
+FORM formDimNomenklSpecTreeList 'Характеристики'; 
+@configDim(DimNomenklSpec){ 
+ // элемент root - представляет собой элемент множества подставляющийся вместо всего множества
+ // в формах списков можно не показывать 
+     getRootDimNomenklSpec()  = GROUP MAX DimNomenklSpec c IF isRoot(c) AND NOT isGroup(c);
+     getEmptyDimNomenklSpec()  = GROUP MAX DimNomenklSpec c IF isRoot(c) AND isGroup(c);
+     WHEN LOCAL CHANGED(isRoot(DimNomenklSpec sd))  AND ( (GROUP SUM(1) IF (isRoot(DimNomenklSpec all) AND NOT isGroup(all) AND all IS DimNomenklSpec)) > 1 ) DO {
+        isRoot(sd)<-NULL ;
+        MESSAGE 'только один элемент может представлять корень';
+     };
+     // список для выбора группы 
+      EXTEND FORM formDimNomenklSpecGroup  
+      OBJECTS d = DimNomenklSpec 
+      PROPERTIES(d) READONLY pos, code, canonicalName
+      ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+     
+      selectGroup(DimNomenklSpec r) {
+          DIALOG formDimNomenklSpecGroup OBJECTS d = parent(r) CHANGE;
+      };
+     
+  
+    EXTEND  FORM  formDimNomenklSpecTreeList  
+    TREE treeDimNomenklSpec t = DimNomenklSpec  PARENT parent(t)
+    PROPERTIES (t) tabName BACKGROUND color(t), name BACKGROUND color(t),pos
+    EVENTS ON INIT { EXPAND ALL TOP formDimNomenklSpecTreeList.t; }
+    FILTERS NOT isRoot(t)
+    ORDERS  pos(t),name(t)
+    LIST DimNomenklSpec OBJECT t;
+  
+   // форма для редактирования списка - открывается только из меню
+    EXTEND FORM  formDimNomenklSpeclist  
+    OBJECTS d = DimNomenklSpec 
+    PROPERTIES(d)   isRoot,NEW ,DELETE,
+                    isGroup BACKGROUND color(d),
+                    levelNum BACKGROUND color(d), 
+                    pos BACKGROUND color(d), 
+                    tabName BACKGROUND color(d), 
+                    name BACKGROUND color(d) 
+                    
+
+    PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND color(d),
+                    canonicalName(d) BACKGROUND color(d)
+    ORDERS  pos(d),canonicalName(d) 
+    ; 
+ };
+
+// МЕСТО для доп. свойств
+refKey 'Ref_Key' = DATA STRING[36] (DimNomenklSpec) IN id INDEXED;
+color 'Цвет' = DATA ISTRING[254] (DimNomenklSpec);
+size 'Размер' = DATA ISTRING[254] (DimNomenklSpec);
+colorR '' = DATA LOCAL ISTRING[36] (DimNomenklSpec);
+sizeR '' = DATA LOCAL ISTRING[36] (DimNomenklSpec);
+nameFull 'ПолноеНаименование' = DATA ISTRING (DimNomenklSpec) IN id;
+ 
+ 
+// добавление списка в CalcComposition
+
+//TABLE dimDimNomenklCalcComposition(CalcComposition,DimNomenklSpec);
+//checkedDimNomenkl 'выбрано' = DATA BOOLEAN  (CalcComposition,DimNomenkl) TABLE dimDimNomenklCalcComposition;
+//@configDim2calcCompositionTune(DimNomenkl,checkedDimNomenkl,vDimNomenkl);
+
+// добавление операций над задачей
+// операции Расчетов
+
+
+FORM dimNomenkSpeclist 'Характеристики продукции'
+OBJECTS d = DimNomenklSpec   
+PROPERTIES(d)  refKey READONLY, code, name ,color,size, nameFull,colorR,sizeR
+LIST DimNomenklSpec OBJECT d;
+
+
+DESIGN dimNomenkSpeclist {
+    PROPERTY(refKey(d)) { charWidth='15'; } 
+    PROPERTY(code(d)) { charWidth='15'; } 
+    PROPERTY(nameFull(d)) { charWidth='15'; } 
+    PROPERTY(name(d)) { charWidth='15'; } 
+    PROPERTY(color(d)) { charWidth='15'; } 
+    PROPERTY(size(d)) { charWidth='15'; } 
+    PROPERTY(colorR(d)) { charWidth='1'; } 
+    PROPERTY(sizeR(d)) { charWidth='1'; } 
+    }
+    

@@ -1,0 +1,47 @@
+MODULE ExtRequest;
+
+REQUIRE ExtSource,ExtSectionRequest,ExtTypeRequest;
+
+NAMESPACE ExtSystem; 
+
+CLASS  ExtRequest 'Процедуры импорта';
+TABLE extRequest(ExtRequest);
+section 'Секция' = DATA SectionRequest(ExtRequest)  CHARWIDTH 10;
+type 'Тип импорта' = DATA TypeRequest(ExtRequest) CHARWIDTH 10;
+name 'Наименование' = DATA STRING[150](ExtRequest) IN id CHARWIDTH 20;
+extSource 'Источник' = DATA ExtSource (ExtRequest)   CHARWIDTH 10;
+
+CLASS  ExtRequestParam 'Процедуры импорта';
+TABLE extRequestPAram(ExtRequestParam);
+extRequest    = DATA ExtRequest(ExtRequestParam) NONULL IN id CHARWIDTH 1;
+name 'Наименование' = DATA STRING[150](ExtRequestParam) IN id CHARWIDTH 20;
+param 'Имя параметра'  = DATA STRING[150](ExtRequestParam) CHARWIDTH 20;
+valueStr 'Параметр строка' = DATA STRING[150](ExtRequestParam) CHARWIDTH 20;
+ValueDate 'Параметр дата' = DATA DATE(ExtRequestParam) CHARWIDTH 20;
+ValueInt 'Параметр целое' = DATA INTEGER (ExtRequestParam) CHARWIDTH 20;
+ValueNum 'Параметр число' = DATA NUMERIC[18,4](ExtRequestParam) CHARWIDTH 20;
+
+FORM extRequestList 'Процедуры и операции'
+OBJECTS er = ExtRequest
+PROPERTIES (er) NEW,DELETE
+PROPERTIES section 'Раздел' = staticCaption(section(er)),
+           type 'Вид операции' = staticCaption(type(er)),
+           nameOp 'Наименование операции' = name(er),
+           nameExtSrc 'Внешний источник' =  name(extSource(er))
+OBJECTS param = ExtRequestParam
+PROPERTIES (param) NEW,DELETE,
+name,param,valueStr,ValueDate,ValueInt,ValueNum,extRequest        
+FILTERS   extRequest(param) = er        
+LIST ExtRequest OBJECT er
+; 
+
+
+
+
+DESIGN extRequestList {
+    PROPERTY (section) { charWidth = 5; }
+    PROPERTY (type) { charWidth = 5; }
+    PROPERTY (nameExtSrc) { charWidth = 5; }
+    PROPERTY (nameOp) { charWidth = 25; }
+    //PROPERTY (section) { charWidth = 5; }
+}

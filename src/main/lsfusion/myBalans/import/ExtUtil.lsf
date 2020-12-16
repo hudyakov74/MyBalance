@@ -1,0 +1,27 @@
+MODULE ExtUtil;
+ 
+REQUIRE Utils;
+
+NAMESPACE ExtSystem;
+ 
+
+
+
+to1cDate0000(DATE d) = toChar(d,'YYYY-MM-DD')+'T00:00:00';
+to1cDate2359(DATE d) = toChar(d,'YYYY-MM-DD')+'T23:59:59';
+    
+date1cToDateTime(STRING s) = toDateTimeFormat(s,'YYYY-MM-DDTHH24:MI:SS');
+date1cToDate(STRING s) = DATE(date1cToDateTime(s));
+
+textValue2JsonFile(TEXT t) = IF  left(t,1) == '['  THEN   FILE(CSVFILE ('\{ "value":' + t + ' \}')) ELSE  FILE(CSVFILE ('\{ "value":[' + t + '] \}')) ;
+
+
+//CLASS ExtImportDataTmp;
+//description = DATA LOCAL BPSTRING[100] (ExtImportDataTmp) DEFAULTCOMPARE 'CONTAINS' IN id;
+extDataDescription = DATA LOCAL ISTRING[100] (INTEGER) DEFAULTCOMPARE 'CONTAINS' IN id;
+
+FORM formExtDataSelect 'Выбор элемента' 
+OBJECTS  o = INTEGER 
+PROPERTIES READONLY extDataDescription(o)
+FILTERS extDataDescription(o);
+

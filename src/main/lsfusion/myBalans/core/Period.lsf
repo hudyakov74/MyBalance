@@ -1,0 +1,36 @@
+MODULE Period;
+
+REQUIRE PeriodType;
+
+NAMESPACE Budget;
+
+
+CLASS Period  'Период'  ;
+TABLE period (Period);
+namePeriod 'Наименование' = DATA ISTRING[30] (Period) DEFAULTCOMPARE 'CONTAINS' IN id ;
+pos 'Порядок' = DATA INTEGER  (Period) IN base ;
+periodType = DATA PeriodType(Period)  IN base NONULL  ; 
+
+FORM periodForm 'Периоды' 
+OBJECTS  g = PeriodType
+PROPERTIES (g) nameType ,NEW, DELETE 
+
+OBJECTS p = Period 
+PROPERTIES (p) //periodType, 
+pos, namePeriod, NEW ,DELETE
+FILTERS periodType(p) == g
+ORDERS pos(p);
+ 
+ 
+FORM periodList 'Периоды' 
+OBJECTS p = Period 
+PROPERTIES   namePeriod(p) READONLY,
+             pt  'Тип периода' =  nameType(periodType(p)) READONLY,
+             pos(p) READONLY
+ORDERS pt, pos(p) 
+LIST Period OBJECT p;
+DESIGN periodList {
+PROPERTY  (pos(p)) {hide=TRUE;}
+PROPERTY  (pt) {charWidth=4;}
+PROPERTY  (namePeriod(p)) {charWidth=20;}
+}
