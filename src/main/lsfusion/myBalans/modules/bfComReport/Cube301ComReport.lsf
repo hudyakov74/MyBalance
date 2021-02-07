@@ -4,7 +4,7 @@ REQUIRE CalcCore,Calc,DimensCFO,DimensCostItems,Cube,DimensFirm,DimensPartner,Di
 
 NAMESPACE Cube;
 
-CLASS CubeValueComReportTitle 'Отчеты коммисионеров';
+CLASS CubeValueComReportTitle '';
 @createCubeReqDim(CubeValueComReportTitle,cubeValueComReportTitle){
 TABLE cubeValueComReportTitle(CubeValueComReportTitle);
 task   'задача' = DATA Task(CubeValueComReportTitle) INDEXED IN id;
@@ -12,7 +12,7 @@ period 'Период' = DATA Period(CubeValueComReportTitle) INDEXED IN id; // �
 calc   'расчет' = DATA Calc(CubeValueComReportTitle) INDEXED IN id NONULL;
 };
 
-CLASS CubeValueComReport 'Отчеты коммисионеров';
+CLASS CubeValueComReport '';
 TABLE cubeValueComReport(CubeValueComReport);
 
 reportName 'Номер отчета' = DATA ISTRING[15] (CubeValueComReportTitle);

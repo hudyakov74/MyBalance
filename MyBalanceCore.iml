@@ -10,7 +10,15 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="$USER_HOME$/lsfusion/lsfusion-server-4.0-beta3.jar" level="application" />
     <orderEntry type="library" name="Olingo" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/lsfusion/lsfusion4/lsfusion-server-4.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>

@@ -1,23 +1,23 @@
 MODULE Main;
-REQUIRE  PeriodType, Period, Scenario, CalcCore, Calc, ExtSource, ExtRequest
+REQUIRE  MainMenu,PeriodType, Period, Scenario, CalcCore, Calc, ExtSource, ExtRequest, CalcSequence   
  
 ;
 
 NAVIGATOR {
-    NEW FOLDER catalogs 'Настройки' FIRST WINDOW toolbar {
-        NEW FOLDER cat1 'Справочники' {
+     catalogs  {
+        cat1  {
             NEW periodForm;
             NEW scenarioList;
         }
-        NEW FOLDER tune 'Настройки бюджетов' {
+     tune   {
             NEW calcVariantList;
+            NEW calcSequenceItems;
         }
-        NEW FOLDER extSource 'Операции'   {
+     extSource  {
             NEW extSourceList;
-            NEW extRequestList;     
+            NEW extRequestList;   
+            
         }
     }
- 
-    NEW  calcList  BEFORE catalogs ; 
- 
+            NEW  calcList  BEFORE catalogs IMAGE 'table_96649.png'; 
 }

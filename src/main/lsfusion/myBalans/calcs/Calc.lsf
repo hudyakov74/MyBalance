@@ -1,18 +1,26 @@
 MODULE Calc;
 
-REQUIRE TaskTune,Utils,PeriodCalendar;
+REQUIRE TaskTune,Utils,Time,PeriodCalendar  ;
 
 NAMESPACE Calc;
-
 
 
 // --- шапка расчета объединяющая книги --------------------
 CLASS Calc  'Расчет';
 TABLE calc(Calc);
 
+// 1. ссылка на родительский расчет... 
+// расчет  = что если... в принципе это копия расчета с полным пересчетом
+// копия расчета - имеет номер копии с одной стороны. 
+//       ветвится от расчета - основной расчет = родитель /
+// карта - дерево расчета - последовательность расчета
+// пометка -  изменение данных -  необходимость считать копию
+// 
+parentCalc '' = DATA Calc(Calc);
+caclVersionNum = DATA INTEGER (Calc);
 
 calcDate 'Дата расчета' = DATA DATE (Calc) IN base NONULL ; 
-calcDateBegin 'начало' = DATA DATE (Calc) IN base NONULL; 
+calcDateBegin 'начало'  = DATA DATE (Calc) IN base NONULL; 
 calcDateEnd 'окончание' = DATA DATE (Calc) IN base NONULL; 
 
 
@@ -20,6 +28,7 @@ description 'Комментарий' = DATA STRING[1000] (Calc) IN base;
 periodType 'Используемые периоды'  =  DATA PeriodType (Calc) NONULL;
 scenario 'Сценарий' = DATA Scenario(Calc ) NONULL;
 calcVariant 'Вид расчета'  = DATA CalcVariant(Calc) NONULL;
+
 name 'Наименование' (c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
                                         nameScenario(scenario(c)),   
                                         nameType(periodType(c)),
@@ -37,18 +46,21 @@ getPeriodByDate(Calc c,DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodTy
                                                                                 AND d >= dateBegin(p) 
                                                                                 AND d<= dateEnd(p);
  
- 
+openCalcCard ABSTRACT (Calc) ;
  
 FORM calcList 'Реестр расчетов' 
 OBJECTS c = Calc
-PROPERTIES  n01 'Дата' = calcDate(c) READONLY,
-            n03 'Сценарий' = nameScenario(scenario(c)) READONLY,
-            nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c)) READONLY,
+PROPERTIES  ON CHANGE {openCalcCard(c);}
+            opn 'Открыть' = openCalcCard(c) GRID,
+            n01 'Дата' = calcDate(c),
+            n03 'Сценарий' = nameScenario(scenario(c))  ,
+            nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
             begDate 'с'  = calcDateBegin(c), 
             endDate 'по' = calcDateEnd(c),
-            n02 'Комментарий' = description(c) READONLY 
+            n02 'Комментарий' = description(c)   
 PROPERTIES(c) NEW,DELETE
-ORDERS n01,n03;
+ORDERS n01,n03
+LIST Calc OBJECT c;
 
 DESIGN calcList {
       PROPERTY(n01) { charWidth='14'; } 
@@ -68,6 +80,7 @@ OBJECTS curCalc = Calc PANEL
 //OBJECTS p = CalcPeriod
 OBJECTS task = Task 
 PROPERTIES 
+         
            n01 'Дата' = calcDate (curCalc) , 
            n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) ,
            n03 'Сценарий' = nameScenario(scenario(curCalc)),
@@ -76,9 +89,10 @@ PROPERTIES
            begDate 'с'  = calcDateBegin(curCalc),  
            endDate 'по' = calcDateEnd(curCalc),
            
+           
            n02 'Комментарий' = description(curCalc) 
-PROPERTIES openTask(curCalc, task) GRID READONLYIF isGroup(task)  
-PROPERTIES READONLY  
+PROPERTIES  ON CHANGE { openTask(curCalc, task); }
+            openTask(curCalc, task) GRID READONLYIF isGroup(task),  
             nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor() ,
             nameCol 'тип' = nameCalcBook(type(task)), 
             canonicalName(task), pos(task) // hide
@@ -89,13 +103,15 @@ ORDERS  pos(task), canonicalName(task)
   
   
 // открываем форму расчета с деревом задач
-openCalcCard(Calc c_) {
+openCalcCard (Calc c_) + {
    SHOW calcCard OBJECTS  curCalc = c_ DOCKED NOWAIT MANAGESESSION;
 } 
  
-EXTEND FORM calcList PROPERTIES opn 'Открыть' = openCalcCard(c)  BEFORE n01 GRID;
+ 
+
   
 DESIGN calcCard   {
+caption =   nameScenario(scenario(curCalc)) + ': ' + staticCaption(month(extractMonthNumber(calcDate(curCalc))))+' '+ extractYear(calcDate(curCalc)) ;
 PROPERTY (pos(task)) {hide =TRUE;}
 PROPERTY (canonicalName(task)){hide=TRUE;}
 PROPERTY (pos(task)){hide=TRUE;}

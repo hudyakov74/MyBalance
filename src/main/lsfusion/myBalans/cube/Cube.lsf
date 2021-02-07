@@ -21,28 +21,9 @@ END
 
 // PeriodType (Calc);
 // добавить версия расчета - наслаивание сценария
-
-//
-//CLASS Cube 'Измерение';
-//TABLE cube001CostCfo(Cube);
-//date 'Дата' = DATA DATE (Cube);
-//dateBeg 'Дата начала периода' = DATA DATE (Cube);
-//scenario 'Сценарий' = DATA Scenario (Cube);
-//calcVariant 'Вид расчета' = DATA CalcVariant(Cube);
-//periodType 'Используемые периоды'  =  DATA PeriodType (Calc);
-
-// 
-//META configCubeRecord(ObjectCube) 
-//    @configCubeRecordMain(ObjectCube);
-//    @configCubeRecordDate(ObjectCube);
-//END
-//
-//META configCubeRecordMain(ObjectCube) 
-//    calc 'расчет' = DATA Calc(ObjectCube);
-//    calcComposition 'задача' = DATA CalcComposition(ObjectCube);
-//END
-//META configCubeRecordDate(ObjectCube) 
-//   calc 'расчет' = DATA Calc(ObjectCube);
-//   calcComposition 'задача' = DATA CalcComposition(ObjectCube);
-//   period 'Период' = DATA Period(ObjectCube);
-//END
+ // слои делаем с помощью calc 
+ // в модулях с данными главное
+ // 1. копирование
+ // 2. стирание всех данных
+ // ???
+ 

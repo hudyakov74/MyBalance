@@ -10,3 +10,6 @@ NAMESPACE Budget;
  FORM scenarioList 'Сценарии'
  OBJECTS sc = Scenario
  PROPERTIES(sc) mainScenario, nameScenario, NEW, DELETE ;
+ 
+ 
+ getMainScenario() = GROUP MAX Scenario sc IF mainScenario(sc);

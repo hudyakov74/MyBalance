@@ -1,11 +1,12 @@
 MODULE ExtUtil;
  
-REQUIRE Utils;
+REQUIRE Utils,Time;
 
 NAMESPACE ExtSystem;
  
-
-
+ 
+mb_daysInclBetweenDates(DATE dateMax, DATE dateMin) = daysBetweenDates(dateMax, dateMin) +1;
+//DATE_PART('day', end - start)
 
 to1cDate0000(DATE d) = toChar(d,'YYYY-MM-DD')+'T00:00:00';
 to1cDate2359(DATE d) = toChar(d,'YYYY-MM-DD')+'T23:59:59';

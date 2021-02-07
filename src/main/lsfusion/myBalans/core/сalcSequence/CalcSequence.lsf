@@ -1,0 +1,59 @@
+MODULE CalcSequence;
+ 
+REQUIRE  Calc,ExtRequest;
+
+NAMESPACE Budget;
+CLASS  CalcSequence 'Последовательность расчета';
+TABLE  calcSequence(CalcSequence);
+name 'Наименование' = DATA STRING[100] (CalcSequence) CHARWIDTH 10 IN id;
+calcVariant 'Вариант расчета' = DATA CalcVariant(CalcSequence);
+default 'по умолчанию' = DATA BOOLEAN (CalcSequence);
+
+FORM calcSequence
+OBJECTS s = CalcSequence
+PROPERTIES(s)NEW, DELETE, name
+LIST CalcSequence OBJECT s;
+
+// расширим форму расчета
+calcSequence 'Порядок расчета' = DATA CalcSequence(Calc);
+EXTEND FORM calcCard
+PROPERTIES calcSequence 'Последовательность расчета задач' 
+             = name(calcSequence(curCalc))
+                ON CHANGE {DIALOG calcSequence  
+                             OBJECTS s = calcSequence(curCalc) 
+                             INPUT val NULL  
+                             FILTERS  calcVariant(s) = calcVariant(curCalc) 
+                             DO calcSequence(curCalc) <- val;
+                          }
+;
+
+CLASS  CalcSequenceItems 'Последовательность расчета';
+TABLE  calcSequenceItems(CalcSequenceItems);
+
+
+calcSequence     'Последовательность' = DATA CalcSequence(CalcSequenceItems);
+pos              'Порядок'         = DATA INTEGER    (CalcSequenceItems)  CHARWIDTH 5;
+task             'Задача'          = DATA Task       (CalcSequenceItems);
+taskOperation     'Задание, расчет идентификатор' = DATA STRING     (CalcSequenceItems);
+taskOperationName 'Задание, расчет' = DATA STRING     (CalcSequenceItems);
+extRequest       'Импорт данных'   = DATA ExtRequest (CalcSequenceItems);
+
+taskDependence 'Зависит от задач' = DATA BOOLEAN (CalcVariant, CalcSequenceItems , Task);
+ 
+ 
+ 
+ 
+FORM  calcSequenceItems 'Последовательность заданий в расчете'
+// для каждого варианта расчета
+OBJECTS cv = CalcVariant
+
+OBJECTS csm = CalcSequence
+FILTERS calcVariant(csm) == cv
+// последовательность задач
+OBJECTS  cs = CalcSequenceItems
+FILTERS  csm == calcSequence(cs)
+// ЗАвисимость от..
+OBJECTS tasks = Task
+FILTERS calcVariant(tasks) = cv AND NOT isGroup(tasks) 
+;
+ 

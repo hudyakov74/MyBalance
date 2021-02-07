@@ -10,11 +10,12 @@ period = DATA Period (PeriodCalendar) NONULL;
 periodType = DATA PeriodType (PeriodCalendar) NONULL;
 dateBegin 'Дата начала' = DATA DATE (PeriodCalendar) IN id;
 dateEnd 'Дата окончания' = DATA DATE (PeriodCalendar) IN id;
+workingDays 'Количество рабочих дней' = DATA INTEGER(PeriodCalendar);
 
 EXTEND FORM periodForm
 OBJECTS pCalendar = PeriodCalendar
 
-PROPERTIES (pCalendar)  dateBegin, dateEnd, NEW ,DELETE 
+PROPERTIES (pCalendar)  dateBegin, dateEnd, workingDays, NEW ,DELETE 
 PROPERTIES nameP 'период' = namePeriod(period(pCalendar))
 ORDERS dateBegin(pCalendar)
 FILTERS periodType(pCalendar) = g

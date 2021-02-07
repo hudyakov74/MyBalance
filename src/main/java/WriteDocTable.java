@@ -1,4 +1,5 @@
 import lsfusion.server.data.sql.exception.SQLHandledException;
+import lsfusion.server.language.ScriptingErrorLog;
 import lsfusion.server.language.ScriptingLogicsModule;
 import lsfusion.server.logics.action.controller.context.ExecutionContext;
 import lsfusion.server.logics.classes.ValueClass;

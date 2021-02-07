@@ -1,0 +1,9 @@
+MODULE MainMenu;
+
+NAVIGATOR {
+    NEW FOLDER catalogs 'Настройки' FIRST WINDOW toolbar {
+        NEW FOLDER cat1 'Справочники' {}
+        NEW FOLDER tune 'Настройки бюджетов' {}
+        NEW FOLDER extSource 'Операции' {}
+    }
+}

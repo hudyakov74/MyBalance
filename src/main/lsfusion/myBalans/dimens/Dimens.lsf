@@ -190,13 +190,19 @@ EXTEND  FORM  form##ObjectDim##TreeList
 TREE tree##ObjectDim t = ObjectDim  PARENT parent(t)
 PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
 ,pos
-// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
 FILTERS NOT isRoot(t)
 ORDERS  pos(t),tabName(t) 
 LIST ObjectDim OBJECT t;
 DESIGN   form##ObjectDim##TreeList { 
     PROPERTY (tabName(t)) { charWidth='100'; }
 } ;
+
+FORM  form##ObjectDim##Card
+OBJECTS c = ObjectDim PANEL
+PROPERTIES (c) parent,name
+
+EDIT ObjectDim OBJECT c;
          
                          
 FORM form##ObjectDim##Selectlist  
@@ -204,7 +210,6 @@ FORM form##ObjectDim##Selectlist
     PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
     ,pos  ,canonicalName
     PROPERTIES(d) NEWEDIT,EDIT 
-     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(d)
     ORDERS  pos(d), canonicalName(d)
     ;

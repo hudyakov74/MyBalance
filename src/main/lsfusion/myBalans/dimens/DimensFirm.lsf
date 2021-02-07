@@ -48,13 +48,19 @@ EXTEND  FORM  formDimFirmTreeList
 TREE treeDimFirm t = DimFirm  PARENT parent(t)
 PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
 ,pos
-// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+EVENTS ON INIT { EXPAND ALL TOP formDimFirmTreeList.t; }
 FILTERS NOT isRoot(t)
 ORDERS  pos(t),tabName(t) 
 LIST DimFirm OBJECT t;
 DESIGN   formDimFirmTreeList { 
     PROPERTY (tabName(t)) { charWidth='100'; }
 } ;
+
+FORM  formDimFirmCard
+OBJECTS c = DimFirm PANEL
+PROPERTIES (c) parent,name
+
+EDIT DimFirm OBJECT c;
          
                          
 FORM formDimFirmSelectlist  
@@ -62,7 +68,6 @@ FORM formDimFirmSelectlist
     PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
     ,pos  ,canonicalName
     PROPERTIES(d) NEWEDIT,EDIT 
-     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(d)
     ORDERS  pos(d), canonicalName(d)
     ;

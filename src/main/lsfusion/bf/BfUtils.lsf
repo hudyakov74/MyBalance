@@ -1,5 +1,0 @@
-MODULE BfUtils;
-
-NAMESPACE BfUtils;
-
-writeDoc 'записать' INTERNAL 'WriteDocTable'  (  CSVFILE ,STRING[100],STRING[100],STRING[100],DATE ) ;

@@ -1,0 +1,14 @@
+MODULE TypeCFO;
+
+CLASS TypeCFO{
+    supportUnits 'Вспомогательные подразделения',
+    productionUnits 'Производственные подразделения',
+    commercialUnits 'Коммерческие подразделения'
+} 
+name(TypeCFO td) =  staticCaption(td) ;
+ 
+
+FORM formTypePriceList
+OBJECTS l = TypeCFO
+PROPERTIES READONLY name 'Наименование' = name(l)
+LIST TypeCFO OBJECT l;

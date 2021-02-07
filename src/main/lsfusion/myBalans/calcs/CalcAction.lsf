@@ -1,0 +1,7 @@
+MODULE CalcAction;
+ 
+REQUIRE Calc;
+
+NAMESPACE Calc;
+
+// копирование...

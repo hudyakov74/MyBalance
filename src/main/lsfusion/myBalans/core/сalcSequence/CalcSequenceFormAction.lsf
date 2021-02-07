@@ -1,0 +1,39 @@
+MODULE CalcSequenceFormAction;
+ 
+REQUIRE  CalcSequence;
+
+NAMESPACE Budget;
+
+ 
+//EXTEND CLASS TypeTaskOperList{
+//     KhpDeliveryCalc 'MenuOperationsKhpDeliveryCalc' 
+//}
+//EXTEND CLASS TypeTaskOperProc{
+//     KhpDeliveryCalc 'operationKhpDeliveryCalc'
+//} 
+
+//   IF type(cc) THEN
+//            EVAL ACTION  'SHOW  form' + regexpReplace(staticName(type(cc)),'.*[.]','','')+ ' OBJECTS calcTask = getCalcTask($1,$2) DOCKED NOWAIT MANAGESESSION ' PARAMS  c, cc ;
+//          }
+
+// показать форму для выбора имени операции
+//    staticName(KhpDeliveryCalc. " staticName(type(cc)) " )
+//  list
+nameOperationList = DATA LOCAL  STRING ();
+getListMenuOperationsForTypeTask(CalcSequenceItems  s) {
+   // taskOperation(s) <- 'wr';
+   // type(task(s)) - тип задачи KhpDeliveryCalc
+   
+   EVAL ACTION 
+   // 'LOCAL nameOperationList = STRING ();'+
+    'nameOperationList() <-  staticCaption(TypeTaskOperList.'+regexpReplace(staticName(type(task(s)))  ,'.*[.]','','') + ')';
+
+   EVAL ACTION  'DIALOG ' + lower(substr(nameOperationList(),1,1)) + substrFrom(nameOperationList(),2) + 'List OBJECTS op INPUT retValue DO '
+   + '\{ taskOperation(s) <- regexpReplace(staticName(retValue),\'.*[.]\',\'\',\'\'); '
+   + '  taskOperationName(s) <- staticCaption(retValue); '
+    + '\}'
+   
+   ;
+    
+
+}

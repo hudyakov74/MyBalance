@@ -3,7 +3,9 @@ MODULE TypeTask;
 NAMESPACE Calc;
 
 // --- Типы расчетных задач -------------------------------------------
-CLASS TypeTask 'Тип задач' {}
+CLASS TypeTask 'Тип задач' {
+   
+}
 
 nameCalcBook 'Типы задач' (TypeTask g) = staticCaption(g) IF g IS TypeTask;
 
@@ -16,3 +18,7 @@ DESIGN typeTask {
     
 }
 
+// --- Список операций задачи -------------------------------------------
+CLASS TypeTaskOperList 'Тип со списком задач' {}
+// --  Процедура запуска задачи
+CLASS TypeTaskOperProc 'Тип с процедурой запуска' {}

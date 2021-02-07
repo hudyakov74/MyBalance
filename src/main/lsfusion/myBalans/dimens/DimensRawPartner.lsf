@@ -48,13 +48,19 @@ EXTEND  FORM  formDimRawPartnerTreeList
 TREE treeDimRawPartner t = DimRawPartner  PARENT parent(t)
 PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
 ,pos
-// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+EVENTS ON INIT { EXPAND ALL TOP formDimRawPartnerTreeList.t; }
 FILTERS NOT isRoot(t)
 ORDERS  pos(t),tabName(t) 
 LIST DimRawPartner OBJECT t;
 DESIGN   formDimRawPartnerTreeList { 
     PROPERTY (tabName(t)) { charWidth='100'; }
 } ;
+
+FORM  formDimRawPartnerCard
+OBJECTS c = DimRawPartner PANEL
+PROPERTIES (c) parent,name
+
+EDIT DimRawPartner OBJECT c;
          
                          
 FORM formDimRawPartnerSelectlist  
@@ -62,7 +68,6 @@ FORM formDimRawPartnerSelectlist
     PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
     ,pos  ,canonicalName
     PROPERTIES(d) NEWEDIT,EDIT 
-     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(d)
     ORDERS  pos(d), canonicalName(d)
     ;

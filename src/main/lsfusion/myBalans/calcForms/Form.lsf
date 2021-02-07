@@ -1,12 +1,35 @@
 MODULE Form;
 
+
 NAMESPACE Forms; //<br>
 
+ 
+formDateBeg = DATA LOCAL DATE( ); 
+formDateEnd = DATA LOCAL DATE( ); 
 strAInt_(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\'<br> <b>\' ||  TO_CHAR($2,\'FM999G999G999G999D00\') || \'</b>\' ';
 strAInt(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\' 2 \' ||  TO_CHAR($2,\'FM999G999G999G999D00\')';
 
 formatNum(NUMERIC n) = FORMULA 'TO_CHAR($1,\'FM999G999G999G990D00\')';
 textColumnName(STRING s, NUMERIC[18,2] n) =  IF strAInt(s,n) THEN strAInt(s,n) ELSE s; 
+
+//currentTimeText() =  [FORMULA TEXT 'to_char(now(),($1))']('YYYYMMDDHH24MISSMS'); 
+//
+//toDateFormat = FORMULA DATE 'to_date($1,$2)';
+//toDateTimeFormat = FORMULA DATETIME PG 'to_timestamp($1,$2)';
+//
+//toDateISO = FORMULA STRING[10] 'to_char(($1),\'YYYY-MM-DD\')';
+//
+//toDateDDMMYY = FORMULA STRING[8] 'to_char(($1),\'DD.MM.YY\')';DD.MM.YYYY 
+FORM dialogDateForm 'Ввод даты'
+    OBJECTS d = DATE PANEL
+    PROPERTIES(d) objValue = VALUE
+;
+ 
+
+toTimeHMS (DATETIME dt) = FORMULA STRING[10] 'to_char(($1),\'HH24:MI:SS\')';
+
+
+
 
 META createFormReqPropertysBeforeOBJ(formname,MainCubeClass)
 new###formname 'Добавить' (calcTask){
@@ -16,7 +39,7 @@ new###formname 'Добавить' (calcTask){
      //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
     }
 }
-delete###formname(calcTask){
+delete###formname 'Удалить все' (calcTask){
     DELETE   MainCubeClass nC 
     WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
 }
@@ -25,18 +48,26 @@ EXTEND FORM form###formname
 OBJECTS calcTask = CalcTask  PANEL;
 END
 
-META createFormReqPropertyAfterOBJ(formname,cubeObject,namePropertyCalc,namePropertyTask)
+META createFormReqPropertyAfterOBJ(formname,cubeObject,namePropertyCalc,namePropertyTask,caption_form)
 EXTEND FORM formname
 PROPERTIES  taskChecked(calcTask), 
             nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY 
 PROPERTIES  namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
 FILTERS     (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )
-        AND calc(calcTask) = namePropertyCalc(cubeObject);
-
+        AND calc(calcTask) = namePropertyCalc(cubeObject)
+PROPERTIES   showReportList 'Отчеты'= {SHOW reportListExec OBJECTS  tt =  type(namePropertyTask(calcTask)),calcTask = calcTask  WAIT FLOAT;};    // FILTERS  typeTask(rv) = type(namePropertyTask(cubeObject));     
+        ;
+ 
 DESIGN formname {
+   caption =  CONCAT ' / ',caption_form,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDate(calc(calcTask)))))+' '+ extractYear(calcDate(calc(calcTask))) ;
    OBJECTS { 
-   MOVE PROPERTY (nameB) FIRST; 
-   MOVE PROPERTY (taskChecked(calcTask)) FIRST;
+        NEW panelFirstHorizontal BEFORE BOX (calcTask) {
+               type = CONTAINERH;
+               columns = 15;
+               MOVE PROPERTY (showReportList) FIRST;
+               MOVE PROPERTY (nameB) AFTER PROPERTY (showReportList); 
+               MOVE PROPERTY (taskChecked(calcTask));
+            }
    }
    PROPERTY(namePropertyTask(cubeObject)){hide = TRUE;} 
    PROPERTY(namePropertyCalc(cubeObject)){hide = TRUE;} 
@@ -52,7 +83,7 @@ META createLocalMenuOperation(menuName,extendedForm)
    copy  'Скопировать...'
  } 
    
- FORM menuOperations##menuName##list 
+ FORM menuOperations##menuName##List 
  OBJECTS op = MenuOperations##menuName 
  PROPERTIES staticCaption(op)
  LIST MenuOperations##menuName OBJECT op;
@@ -60,7 +91,7 @@ META createLocalMenuOperation(menuName,extendedForm)
  operation##menuName ABSTRACT (CalcTask,  MenuOperations##menuName);
  //====================== 
  runOperation##menuName(CalcTask ct , s) {
-   DIALOG menuOperations##menuName##list OBJECTS op INPUT z FLOAT CANCEL DO {
+   DIALOG menuOperations##menuName##List OBJECTS op INPUT z FLOAT CANCEL DO {
              operation##menuName(ct, z);
       }  
  };
@@ -71,12 +102,12 @@ META createLocalMenuOperation(menuName,extendedForm)
     
    // ДИЗАЙН
    DESIGN extendedForm {
-    OBJECTS {
-       NEW horizPanel FIRST {
-         type = CONTAINERH;
-         MOVE PROPERTY (execLocal) ;
-         }
-       };
+    
+       panelFirstHorizontal {
+       //  type = CONTAINERH;
+         MOVE PROPERTY (execLocal) BEFORE PROPERTY (nameB) ;
+         };
+        
     }
  END
  

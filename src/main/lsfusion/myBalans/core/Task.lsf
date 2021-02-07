@@ -4,31 +4,33 @@ REQUIRE CalcCore;
 
 NAMESPACE Budget;
 
-
 // --- Задачи расчета -------------------------------------------
 CLASS  Task 'Задачи расчета';
 TABLE task(Task);
-pos 'Порядок' = DATA INTEGER  (Task) IN base CHARWIDTH 5;
-nameTask 'Наименование задачи' = DATA STRING[1000] (Task) IN id;
-type 'тип' = DATA TypeTask (Task);
-calcVariant 'вид расчета' = DATA CalcVariant (Task) NONULL;
-isGroup 'Это группа' = DATA BOOLEAN (Task);
-parent 'В группе' = DATA Task(Task);
-level 'Уровень'  (Task child,Task parent) = 
+pos         'Порядок'               = DATA INTEGER  (Task) IN base CHARWIDTH 5;
+nameTask    'Наименование задачи'   = DATA STRING[1000] (Task) IN id;
+type        'Тип'                   = DATA TypeTask (Task);
+calcVariant 'Вид расчета'           = DATA CalcVariant (Task) NONULL;
+isGroup     'Это группа'            = DATA BOOLEAN (Task);
+parent      'В группе'              = DATA Task(Task);
+
+level       'Уровень'  (Task child,Task parent) = 
     RECURSION 1l IF child IS Task AND parent = child
     STEP 2l IF parent = parent($parent) MATERIALIZED;
     
 nameTaskTab 'Наименование задачи' (Task group)=
-  (GROUP CONCAT '  ','  ' ORDER DESC level(group, Task parent)) + nameTask(group) CHARWIDTH 15;
+ ( GROUP CONCAT '    ','.   '  ORDER DESC level(group, Task parent)  ) + nameTask(group) CHARWIDTH 15;
  
+
 canonicalName 'Каноническое имя' (Task group) =
    GROUP CONCAT nameTask(Task parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
-//levelNum 'levelNum' (DimCFO group) =
-//   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
-//tabName 'имя' (DimCFO group) =
-//   (GROUP CONCAT '  ','  ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
+ 
 
-FORM taskList 'Список задач расчета';
+FORM taskList 'Список задач расчета'
+OBJECTS  f = Task
+PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
+LIST Task OBJECT f
+;
 
 FORM taskListGroup 'Группы задач расчета'
 OBJECTS  calcVariant = CalcVariant PANEL 

@@ -1,37 +1,15 @@
 MODULE FormsDriverExt;
 
-REQUIRE FormsDriver,FormBf001ComReport,FormBfProductBalance,CalcTask,FormBfProductDayBalance,Utils;
+REQUIRE   CalcTask,Utils;
 
 NAMESPACE Forms;
 
 openTask(Calc c, Task cc)+{
-// проверка !!! на типы - для каждого типа своя форма
- 
-CASE EXCLUSIVE 
-
-  // отсюда пробное - 
-    WHEN type(cc) == TypeTask.sale THEN {
-        NEWSESSION {
-            SHOW form002Sale OBJECTS calcP = c, task = cc DOCKED NOWAIT MANAGESESSION;
-        }
-    }
-    WHEN type(cc) == TypeTask.cost THEN {
-        NEWSESSION {
-            SHOW form001CfoCost OBJECTS calcP = c, task = cc DOCKED NOWAIT MANAGESESSION;
-        }
-    }
-    WHEN type(cc) == TypeTask.Bf001ComReport THEN {
-       NEWSESSION {
-               SHOW  formBf001ComReport  OBJECTS calcP = c, task = cc DOCKED NOWAIT MANAGESESSION;
-            }
-        }
-   //  досюда
-    
-    ELSE { // все новые варианты
          checkOrCreateCalcTask(c,cc);
           NEWSESSION {
            // regexpReplace - убираем namespace с точкой слева
-           EVAL ACTION  'SHOW  form' + regexpReplace(staticName(type(cc)),'.*[.]','','')+ ' OBJECTS calcTask = getCalcTask($1,$2) DOCKED NOWAIT MANAGESESSION ' PARAMS  c, cc ;
-          }
+           IF type(cc) THEN
+            EVAL ACTION  'SHOW  form' + regexpReplace(staticName(type(cc)),'.*[.]','','')+ ' OBJECTS calcTask = getCalcTask($1,$2) DOCKED NOWAIT MANAGESESSION ' PARAMS  c, cc ;
         }
 }  
+ 

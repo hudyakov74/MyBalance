@@ -9,14 +9,15 @@ FORM taskTune 'Настройка задач расчета'
 OBJECTS cv = CalcVariant  PANEL
 TREE taskTree f = Task PARENT parent(f) 
 PROPERTIES nameCalcVariant(cv) READONLY PANEL  
-PROPERTIES 
-pos(f),
-nameTaskTab(f) 
-                FOREGROUND  IF isGroup(f) THEN Budget.groupFontColor() 
-                ON  CONTEXTMENU 'Редактировать' {SHOW taskListCard;} SELECTOR,
-nameCol 'тип' = nameCalcBook(type(f)) READONLY,
-parentCol 'в группе' = nameTask(parent(f)),
-isGroup(f)
+PROPERTIES  ON CHANGE {SHOW taskListCard;} 
+            pos(f),
+            nameTaskTab(f)  
+                FOREGROUND  IF isGroup(f) THEN Budget.groupFontColor(), 
+                
+                
+            nameCol 'тип' = nameCalcBook(type(f))  ,
+            parentCol 'в группе' = nameTask(parent(f))  ,
+            isGroup(f)
 
 PROPERTIES  stButN 'Новый элемент' = NEW(f), stButD 'Удалить' = DELETE(f)
 
@@ -38,13 +39,9 @@ EXTEND FORM taskTune
 PROPERTIES newGroup '+ Новая группа' = newGroupTask(cv);
 
 // открытие формы настроек сделаем из списка расчетов
-openTaskList(CalcVariant calcV) {
-    SHOW taskTune OBJECTS  cv = calcV DOCKED NOWAIT MANAGESESSION 
-    ;
+openTaskList(CalcVariant calcV) + {
+    SHOW taskTune OBJECTS  cv = calcV DOCKED NOWAIT MANAGESESSION;
 }
-// добавим в форму слева
-EXTEND FORM calcVariantList
-PROPERTIES    openTaskList(c)  BEFORE nameCalcVariant(c)  GRID;
 
 
 DESIGN  taskTune {

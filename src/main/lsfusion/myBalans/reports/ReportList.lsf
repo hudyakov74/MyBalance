@@ -1,0 +1,111 @@
+MODULE ReportList;
+
+REQUIRE CalcTask,ReportClassList,TypeTask,MainMenu;
+ 
+NAMESPACE Reports;
+fileXLS = DATA EXCELFILE();
+xlsCreateRowOutline 'Проверка jpg по сигнатуре' INTERNAL 'XlsCreateRowOutline' (EXCELFILE);
+
+// СПИСОК ОТЧЕТОВ
+CLASS ReportList;
+TABLE reportList(ReportList);
+
+name    'Наименование отчета'            = DATA STRING[100](ReportList) IN id;
+report  'Отчет'                          = DATA ReportClassList (ReportList) IN id;
+reportExecString 'Строка запуска отчета' = DATA STRING(ReportList);
+calc1 '' =  DATA LOCAL Calc(ReportList);
+calc2 '' =  DATA LOCAL Calc(ReportList); 
+date1 '' =  DATA LOCAL DATE (ReportList);
+date2 '' =  DATA LOCAL DATE (ReportList); 
+date3 '' =  DATA LOCAL DATE (ReportList);
+date4 '' =  DATA LOCAL DATE (ReportList); 
+
+// ВИДИМОСТЬ ОТЧЕТА В ЗАДАЧАХ
+CLASS ReportListVisible;
+TABLE reportListVisible(ReportListVisible);
+report   = DATA ReportList(ReportListVisible);
+typeTask = DATA TypeTask(ReportListVisible);
+ 
+ 
+// ФОРМА СПИСКА ОТЧЕТОВ
+FORM  reportList 'Список отчетов'
+OBJECTS c = ReportList
+PROPERTIES name(c),
+           nameReport 'Отчет'  = name(report(c)),
+           NEW(c),DELETE(c)
+   
+OBJECTS rv =  ReportListVisible 
+PROPERTIES    typeTask 'Видимость в задаче' = nameCalcBook(typeTask(rv)),
+NEW(rv),DELETE(rv) 
+FILTERS  report(rv) == c
+;
+DESIGN reportList {
+      NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
+        // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
+            type = TABBED;
+            fill = 1; // пусть расширяется на всю форму
+            MOVE BOX(rv) {}
+       }
+}
+
+META reportListAddTabFilter(nameObject,namePropertyFunction,namePropertyClass) 
+EXTEND FORM reportList 
+OBJECTS nameObject = namePropertyClass
+PROPERTIES     namePropertyFunction(c,nameObject) 
+PROPERTIES READONLY pos(nameObject),name(nameObject)
+;
+DESIGN reportList {
+    details {
+          MOVE BOX(nameObject) {}
+    }
+}
+END
+
+
+
+FORM  reportListRo 'Список отчетов'
+OBJECTS c = ReportList
+PROPERTIES READONLY 
+           name(c),
+           nameReport 'Отчет'  = name(report(c)) 
+LIST ReportList OBJECT c;
+
+
+FORM  reportListExec 'Список отчетов'
+OBJECTS tt = TypeTask PANEL, calcTask = CalcTask  PANEL
+OBJECTS  list = (c = ReportList, rv =  ReportListVisible) 
+PROPERTIES READONLY 
+           name(c)  
+    //     ,nameReport 'Отчет'  = name(report(c)) 
+LIST ReportList OBJECT c
+FILTERS tt == typeTask(rv) 
+FILTERS report(rv) == c AND report(c)
+EVENTS
+      ON OK {
+        EVAL ACTION  'SHOW  form' + regexpReplace(staticName(report(c)),'.*[.]','','')
+                   + 'Exec  OBJECTS reportList = $1 DOCKED NOWAIT MANAGESESSION NEWSESSION' 
+        PARAMS  c; //OBJECTS mainCalcTask = getCalcTask(calc($1  AS CalcTask),task($2  AS CalcTask))
+     //   SHOW  formReport1_1BDRExec OBJECTS mainCalcTask = getCalcTask(calc(calcTask AS CalcTask), task(calcTask)) DOCKED NOWAIT MANAGESESSION;
+      
+      }
+; 
+
+FORM  reportListCard 'Отчет'
+OBJECTS c = ReportList PANEL 
+PROPERTIES READONLY 
+           name(c),
+           nameReport 'Отчет'  = name(report(c)),
+           reportExecString(c)
+EDIT ReportList OBJECT c;           
+           
+// регистрация отчета в меню настроек
+
+NAVIGATOR {
+      catalogs{
+        NEW reportList;
+        
+        }  
+ }
+                 
+           
+            

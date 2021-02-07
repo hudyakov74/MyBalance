@@ -9,10 +9,18 @@ CLASS CalcVariant 'Реестр видов расчетов';
 TABLE calcVariant(CalcVariant);
 nameCalcVariant 'Расчет' = DATA STRING[500] (CalcVariant);
 
+openTaskList ABSTRACT (CalcVariant);
+
 FORM calcVariantList 'Виды расчетов'
 OBJECTS c = CalcVariant
-PROPERTIES(c) nameCalcVariant, NEW, DELETE 
+PROPERTIES  ON CHANGE {openTaskList(c);}
+openTaskList(c) GRID,
+nameCalcVariant(c), 
+NEW(c), DELETE(c)
 LIST CalcVariant OBJECT c;
 
 
-
+//// добавим в форму слева
+//EXTEND FORM calcVariantList openTaskList(CalcVariant calcV) + {
+//PROPERTIES    openTaskList(c)  BEFORE nameCalcVariant(c)  GRID;
+//

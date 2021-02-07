@@ -4,6 +4,9 @@ MODULE CoreReport;
 
 NAMESPACE Budget;
 
+
+
+
 META repDimenObj(fname, d1,d1T, d1N,   d2, d2T, d2N,  d3, d3T, d3N,  d4, d4T, d4N)
    CLASS ###fname;
    TABLE tmp###fname(###fname);
@@ -57,11 +60,11 @@ META repDimenObj(fname, d1,d1T, d1N,   d2, d2T, d2N,  d3, d3T, d3N,  d4, d4T, d4
    
    OBJECTS  sc = (plan 'Сценарий 1' = Scenario, fact 'Сценарий 2' = Scenario) PANEL
    PROPERTIES nameScenario(plan) SELECTOR , nameScenario(fact) SELECTOR 
-   OBJECTS  date = (date1 'Дата начала' = DATE, date2 'Дата окончания' = DATE, fname##ExtendDate '' = BOOLEAN, date3 'Дата начала(доп)' = DATE, date4 'Дата окончания(доп)' = DATE,currentDate 'Пропорция по дату' = DATE) PANEL
+   OBJECTS  date = (date1 'Дата начала' = DATE, date2 'Дата окончания' = DATE, fname##ExtendDate '' = BOOLEAN, dayProp 'дней' =  NUMERIC[4,0] , dayAllProp 'из' = NUMERIC[4,0] , date3 'Дата начала(доп)' = DATE, date4 'Дата окончания(доп)' = DATE,currentDate 'Пропорция по дату' = DATE) PANEL
    PROPERTIES 
     VALUE (date1), 
-    VALUE (date2), 
-    VALUE (currentDate),
+    VALUE (date2), VALUE(dayProp), VALUE(dayAllProp),
+   // VALUE (currentDate),
     fname##ExtendDate 'доп.период' = fname##ExtendDate, 
     VALUE (date3) SHOWIF fname##ExtendDate, 
     VALUE (date4) SHOWIF fname##ExtendDate 

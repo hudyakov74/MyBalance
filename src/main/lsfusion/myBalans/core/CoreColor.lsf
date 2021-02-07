@@ -2,7 +2,8 @@ MODULE CoreColor;
 
 NAMESPACE Budget;
  
-groupBackColor(INTEGER n) = CASE WHEN n==1 THEN #ececc3
+ 
+groupBackColor(INTEGER n) = CASE WHEN n==1 THEN #ececc3 //желтый
                                           WHEN n==2 THEN #f4f1c7
                                           WHEN n==3 THEN #fffcd0
                                           ELSE #ffffff;

@@ -1,0 +1,62 @@
+MODULE CalcSequenceFormDetail;
+ 
+REQUIRE  CalcSequenceFormAction;
+
+NAMESPACE Budget;
+
+
+
+EXTEND FORM  calcSequenceItems  
+// левое окно 
+PROPERTIES(cv) nameCalcVariant READONLY 
+
+PROPERTIES (csm) NEW ,DELETE ,default, name
+// правое верхнее 
+PROPERTIES NEW(cs), DELETE(cs),
+    pos(cs),
+    task       'задача'  = nameTask(task(cs)) ON CHANGE {  DIALOG taskList  OBJECTS f = task(cs) INPUT val NULL  FILTERS  calcVariant(f) = cv DO task(cs) <- val;},
+    extRequest 'Импорт'  = name(extRequest(cs)),
+    taskOperationName   'задание' =   taskOperationName(cs) ON CHANGE {getListMenuOperationsForTypeTask(cs);}
+// правое нижнее
+PROPERTIES    
+   taskDependence 'Задание зависит от задач' = taskDependence(cv,  cs ,tasks),
+   nameTask(tasks) SHOWIF cs;
+
+;
+
+DESIGN calcSequenceItems {
+    PROPERTY (nameCalcVariant(cv)){charWidth = 10;};
+    PROPERTY (task){charWidth = 15;};
+    PROPERTY (taskOperationName){charWidth = 15;}; 
+    OBJECTS {
+        NEW panelTwoColumn {
+            type =   SPLITH;
+            fill = 1;
+            align  = STRETCH;
+            NEW panelRTwoRow { 
+               type =   CONTAINERV;
+              //  fill = 1;
+              // align  = STRETCH;
+              //  NEW panelRTwoRow2 { 
+               height = 400;                
+                  // fill = 1;
+              //   type =  CONTAINERV;
+                   
+                MOVE BOX (cv) {};
+                MOVE BOX (csm){};
+               // }
+            }
+            NEW panelLeftTwoRow { 
+                 width = 300;
+                 type = SPLITV;
+                 fill = 1;
+                 align  = STRETCH;
+                
+                 MOVE BOX (cs);
+                 MOVE BOX (tasks); 
+            }
+            ;
+        }
+    }
+}
+;

@@ -1,0 +1,9 @@
+MODULE ReportGroupTable;
+
+// REQUIRE  ;
+ 
+NAMESPACE Reports;
+
+CLASS ReportGroupTable;
+
+

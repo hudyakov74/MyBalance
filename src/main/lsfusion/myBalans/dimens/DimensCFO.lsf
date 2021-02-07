@@ -1,6 +1,6 @@
 MODULE DimensCFO;
  
-REQUIRE TaskTune,Dimens,ExtFormRequestList;
+REQUIRE TaskTune,Dimens,ExtFormRequestList,TypeCFO;
 
 NAMESPACE   Dimens; 
 
@@ -48,13 +48,19 @@ EXTEND  FORM  formDimCFOTreeList
 TREE treeDimCFO t = DimCFO  PARENT parent(t)
 PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
 ,pos
-// EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+EVENTS ON INIT { EXPAND ALL TOP formDimCFOTreeList.t; }
 FILTERS NOT isRoot(t)
 ORDERS  pos(t),tabName(t) 
 LIST DimCFO OBJECT t;
 DESIGN   formDimCFOTreeList { 
     PROPERTY (tabName(t)) { charWidth='100'; }
 } ;
+
+FORM  formDimCFOCard
+OBJECTS c = DimCFO PANEL
+PROPERTIES (c) parent,name
+
+EDIT DimCFO OBJECT c;
          
                          
 FORM formDimCFOSelectlist  
@@ -62,7 +68,6 @@ FORM formDimCFOSelectlist
     PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
     ,pos  ,canonicalName
     PROPERTIES(d) NEWEDIT,EDIT 
-     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(d)
     ORDERS  pos(d), canonicalName(d)
     ;
@@ -124,7 +129,12 @@ newByNameDimCFO(name) {
 };
 
 // МЕСТО для доп. свойств
- 
+typeCFO 'Тип подразделения' = DATA TypeCFO(DimCFO);
+EXTEND FORM formDimCFOlist
+PROPERTIES typeCFO 'Тип подразделения' = name(typeCFO(d)) AFTER name(d)
+;
+
+
 // добавление списка в CalcComposition
 TABLE dimCfoTask(Task,DimCFO);
 checkedCFO 'выбрано' = DATA BOOLEAN  (Task,DimCFO) TABLE dimCfoTask;
