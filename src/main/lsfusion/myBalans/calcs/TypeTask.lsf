@@ -4,7 +4,7 @@ NAMESPACE Calc;
 
 // --- Типы расчетных задач -------------------------------------------
 CLASS TypeTask 'Тип задач' {
-   
+  empty 'пустая позиция'
 }
 
 nameCalcBook 'Типы задач' (TypeTask g) = staticCaption(g) IF g IS TypeTask;

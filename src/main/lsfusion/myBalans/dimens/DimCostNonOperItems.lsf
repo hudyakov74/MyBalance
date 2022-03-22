@@ -1,0 +1,28 @@
+MODULE DimCostNonOperItems;
+        
+REQUIRE TaskTune,Dimens;
+
+NAMESPACE Dimens;
+ 
+CLASS DimCostNonOperItems 'Статьи внереализационных доходов/расходов' ;
+TABLE dimCostNonOperItems(DimCostNonOperItems);
+
+FORM formDimCostNonOperItemsGroup 'Статьи внереализационных доходов/расходов'; 
+FORM formDimCostNonOperItemslist 'Статьи внереализационных доходов/расходов';
+ 
+FORM formDimCostNonOperItemsTreeList 'Статьи внереализационных доходов/расходов'; 
+@configDimWO (DimCostNonOperItems);
+
+doNotDistributeItem 'Не распределять статью на основную деятельность' = DATA BOOLEAN (DimCostNonOperItems);
+doNotDeductItem     'Не принимаемые для налога на прибыль'            = DATA BOOLEAN (DimCostNonOperItems);
+EXTEND FORM formDimCostNonOperItemslist 
+PROPERTIES doNotDistributeItem(d),
+doNotDeductItem(d)
+;
+ //добавление списка в CalcComposition
+TABLE dimCostNonOperItemsTask(Task,DimCostNonOperItems);
+checkedCostNonOperItems 'выбрано' = DATA BOOLEAN  (Task,DimCostNonOperItems) TABLE dimCostNonOperItemsTask;
+@configDim2TaskTune(DimCostNonOperItems,checkedCostNonOperItems,vCostNonOperItems);
+
+
+ 

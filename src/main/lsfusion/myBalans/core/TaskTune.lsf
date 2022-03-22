@@ -1,6 +1,6 @@
 MODULE TaskTune;
 
-REQUIRE Task;
+REQUIRE Task, TaskPermission;
 
 NAMESPACE Budget;
 
@@ -23,7 +23,12 @@ PROPERTIES  stButN 'Новый элемент' = NEW(f), stButD 'Удалить'
 
 EVENTS ON INIT {EXPAND ALL TOP taskTune.f;}
 // EVENTS ON CHANGE f {EXPAND ALL calcCompositionTune.f;}
-FILTERS cv = calcVariant(f);
+FILTERS cv = calcVariant(f)
+
+OBJECTS ur = UserRole
+PROPERTIES taskPermission(f , ur)
+PROPERTIES(ur) READONLY sid,name
+;
 
 
 //
@@ -40,26 +45,42 @@ PROPERTIES newGroup '+ Новая группа' = newGroupTask(cv);
 
 // открытие формы настроек сделаем из списка расчетов
 openTaskList(CalcVariant calcV) + {
-    SHOW taskTune OBJECTS  cv = calcV DOCKED NOWAIT MANAGESESSION;
+    SHOW taskTune OBJECTS  cv = calcV DOCKED NOWAIT MANAGESESSION 
+    ;
 }
 
 
 DESIGN  taskTune {
- PROPERTY (isGroup(f)){ hide = TRUE; }
+    PROPERTY (isGroup(f)){ hide = TRUE; }
     PROPERTY (nameTaskTab(f)) { charWidth ='20'; } 
     PROPERTY (parentCol) {charWidth = 20; } 
     PROPERTY (nameCalcVariant(cv) ) { fontStyle = 'bold'; } 
      
-  TOOLBAR ( TREE taskTree) {
+   TOOLBAR ( TREE taskTree) {
         MOVE PROPERTY (newGroup)  BEFORE PROPERTY (stButN);
-  }
-     
-     
-    NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
-    // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
-        type = TABBED;
-        fill = 1; // пусть расширяется на всю форму
+   }
+   OBJECTS {
+    NEW mainPanel{
+        fill = 1;
+        type = SPLITV;
+        MOVE  BOX(TREE taskTree) {fill = 2;};
+        NEW panelBt{
+            fill = 1;
+            type = SPLITH;
+            
+            MOVE BOX (ur) {fill =1;}
+            
+            NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
+        // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
+            type = TABBED;
+            fill = 3;  
+            }
+            
+            
+      }
     }
+  }     
+   
 };
 
 

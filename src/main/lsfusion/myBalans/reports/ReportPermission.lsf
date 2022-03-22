@@ -1,0 +1,6 @@
+MODULE ReportPermission;
+
+REQUIRE ReportList,Security;
+
+NAMESPACE Reports;
+

@@ -1,8 +1,7 @@
 MODULE Form;
-
+ 
 
 NAMESPACE Forms; //<br>
-
  
 formDateBeg = DATA LOCAL DATE( ); 
 formDateEnd = DATA LOCAL DATE( ); 
@@ -44,22 +43,38 @@ delete###formname 'Удалить все' (calcTask){
     WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
 }
 
+//form###formname###HelpExist = DATA BOOLEAN();
+//form###formname###checkHelpFile() {
+//  readResource('/doc/'###formname##'Hlp.docx');
+//  IF resourceFile() THEN  form###formname###HelpExist() <- TRUE;
+//}
+
+form###formname###OpenHlp(){
+    readResource('/doc/'###formname##'Hlp.docx');
+    IF NOT resourceFile() THEN readResource('/doc/ШаблонHlp.docx');
+    open(resourceFile(), ''###formname##'Hlp'); 
+}
+
 EXTEND FORM form###formname
 OBJECTS calcTask = CalcTask  PANEL;
+ 
+
 END
 
 META createFormReqPropertyAfterOBJ(formname,cubeObject,namePropertyCalc,namePropertyTask,caption_form)
 EXTEND FORM formname
-PROPERTIES  taskChecked(calcTask), 
-            nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY 
-PROPERTIES  namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
+PROPERTIES  taskChecked(calcTask) READONLYIF readOnlyIfCheked(calcTask), 
+            nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY,
+            hlp '?' = formname###OpenHlp() //SHOWIF formname###HelpExist()
+PROPERTIES  READONLYIF readOnlyIfCheked(calcTask) namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
 FILTERS     (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )
         AND calc(calcTask) = namePropertyCalc(cubeObject)
+// кнопка отчеты
 PROPERTIES   showReportList 'Отчеты'= {SHOW reportListExec OBJECTS  tt =  type(namePropertyTask(calcTask)),calcTask = calcTask  WAIT FLOAT;};    // FILTERS  typeTask(rv) = type(namePropertyTask(cubeObject));     
         ;
  
 DESIGN formname {
-   caption =  CONCAT ' / ',caption_form,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDate(calc(calcTask)))))+' '+ extractYear(calcDate(calc(calcTask))) ;
+   caption =  CONCAT ' / ',nameTask(task(calcTask)) ,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDateBegin(calc(calcTask)))))+' '+ extractYear(calcDate(calc(calcTask))) ;
    OBJECTS { 
         NEW panelFirstHorizontal BEFORE BOX (calcTask) {
                type = CONTAINERH;
@@ -67,6 +82,7 @@ DESIGN formname {
                MOVE PROPERTY (showReportList) FIRST;
                MOVE PROPERTY (nameB) AFTER PROPERTY (showReportList); 
                MOVE PROPERTY (taskChecked(calcTask));
+               MOVE PROPERTY (hlp);
             }
    }
    PROPERTY(namePropertyTask(cubeObject)){hide = TRUE;} 

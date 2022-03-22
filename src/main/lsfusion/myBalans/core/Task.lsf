@@ -11,7 +11,7 @@ pos         'Порядок'               = DATA INTEGER  (Task) IN base CHARWI
 nameTask    'Наименование задачи'   = DATA STRING[1000] (Task) IN id;
 type        'Тип'                   = DATA TypeTask (Task);
 calcVariant 'Вид расчета'           = DATA CalcVariant (Task) NONULL;
-isGroup     'Это группа'            = DATA BOOLEAN (Task);
+isGroup     'Это группа'            = DATA BOOLEAN (Task); 
 parent      'В группе'              = DATA Task(Task);
 
 level       'Уровень'  (Task child,Task parent) = 

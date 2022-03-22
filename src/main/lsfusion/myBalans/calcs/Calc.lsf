@@ -29,6 +29,10 @@ periodType 'Используемые периоды'  =  DATA PeriodType (Calc) 
 scenario 'Сценарий' = DATA Scenario(Calc ) NONULL;
 calcVariant 'Вид расчета'  = DATA CalcVariant(Calc) NONULL;
 
+// Характеристики бюджета используемые между ордерами
+paramProportionPart     'Доля в днях'                         = DATA INTEGER (Calc);
+paramProportionWhole    'Полная доля (рабочих дней)'          = DATA INTEGER (Calc);
+
 name 'Наименование' (c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
                                         nameScenario(scenario(c)),   
                                         nameType(periodType(c)),
@@ -46,10 +50,10 @@ getPeriodByDate(Calc c,DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodTy
                                                                                 AND d >= dateBegin(p) 
                                                                                 AND d<= dateEnd(p);
  
-openCalcCard ABSTRACT (Calc) ;
+openCalcCard ABSTRACT (Calc);
  
 FORM calcList 'Реестр расчетов' 
-OBJECTS c = Calc
+OBJECTS c = Calc LAST 
 PROPERTIES  ON CHANGE {openCalcCard(c);}
             opn 'Открыть' = openCalcCard(c) GRID,
             n01 'Дата' = calcDate(c),
@@ -74,6 +78,9 @@ DESIGN calcList {
   
  openTask ABSTRACT (Calc, Task);
  
+FORM  reportListExecCalc 'Список отчетов'
+OBJECTS  calc = Calc PANEL; // предварительное объявление формы выбора отчета
+
 // ================ОСНОВНАЯ ФОРМА================================================
 FORM calcCard 'Расчет' 
 OBJECTS curCalc = Calc PANEL 
@@ -88,9 +95,11 @@ PROPERTIES
            n1 'Периодичность' = nameType(periodType(curCalc)),
            begDate 'с'  = calcDateBegin(curCalc),  
            endDate 'по' = calcDateEnd(curCalc),
+           n02 'Комментарий' = description(curCalc), 
+           showReportList 'Отчеты'= {SHOW reportListExecCalc OBJECTS calc = curCalc
+                                     WAIT FLOAT;}        
+            
            
-           
-           n02 'Комментарий' = description(curCalc) 
 PROPERTIES  ON CHANGE { openTask(curCalc, task); }
             openTask(curCalc, task) GRID READONLYIF isGroup(task),  
             nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor() ,
@@ -98,6 +107,7 @@ PROPERTIES  ON CHANGE { openTask(curCalc, task); }
             canonicalName(task), pos(task) // hide
 
 FILTERS calcVariant(curCalc) == calcVariant(task)
+FILTERS hasCurrentUserTaskPermission(task)  
 ORDERS  pos(task), canonicalName(task)
 ;
   
@@ -110,8 +120,11 @@ openCalcCard (Calc c_) + {
  
 
   
-DESIGN calcCard   {
-caption =   nameScenario(scenario(curCalc)) + ': ' + staticCaption(month(extractMonthNumber(calcDate(curCalc))))+' '+ extractYear(calcDate(curCalc)) ;
+DESIGN calcCard   { //nameTask
+
+
+
+caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBegin(curCalc)) ;
 PROPERTY (pos(task)) {hide =TRUE;}
 PROPERTY (canonicalName(task)){hide=TRUE;}
 PROPERTY (pos(task)){hide=TRUE;}
@@ -131,11 +144,16 @@ PROPERTY (pos(task)){hide=TRUE;}
             MOVE PROPERTY(endDate) { charWidth='14'; align = STRETCH;} 
             MOVE PROPERTY(n1) { charWidth='14'; align = STRETCH;}
         } 
-        MOVE PROPERTY(n02) { charWidth='50'; align = STRETCH;} 
+        NEW panelComment{
+            type = CONTAINERH;
+            MOVE PROPERTY (showReportList) {background = #edfffc;}; 
+            MOVE PROPERTY(n02) { charWidth='50'; align = STRETCH;} 
+        }
+        
   }
    OBJECTS {
       NEW tabPanelcalc {
-                 type = TABBED ;
+                 type = CONTAINERH; //TABBED ;
                  flex = 1; 
                  align  = STRETCH;
                  MOVE   BOX (task); 

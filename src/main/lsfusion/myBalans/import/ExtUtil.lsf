@@ -25,4 +25,14 @@ FORM formExtDataSelect 'Выбор элемента'
 OBJECTS  o = INTEGER 
 PROPERTIES READONLY extDataDescription(o)
 FILTERS extDataDescription(o);
-
+ 
+ 
+FORM formDateFromTo 'Выбор периода'
+OBJECTS d = (d1 = DATE , d2 = DATE) PANEL 
+PROPERTIES 
+d1 'Дата с' = VALUE (d1),
+d2 'по' = VALUE (d2)
+; 
+ 
+ 
+ 

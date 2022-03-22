@@ -10,126 +10,14 @@ FORM formDimRawPartnerGroup 'Группы контрагентов';
 FORM formDimRawPartnerlist 'Контрагенты загрузка' ; 
  
 FORM formDimRawPartnerTreeList 'Контрагенты загрузка'; 
-@configDimWO(DimRawPartner){
-pos 'Порядок' = DATA INTEGER  (DimRawPartner) IN base CHARWIDTH 5;
-code 'Код' = DATA STRING[15] (DimRawPartner) IN id;
-name 'Наименование' = DATA ISTRING[254] (DimRawPartner) IN id INDEXED ;
-isGroup 'Группа' = DATA BOOLEAN (DimRawPartner);
-parent 'Родитель' = DATA DimRawPartner(DimRawPartner);
-isRoot 'корень' = DATA BOOLEAN (DimRawPartner);
-
-level 'Уровень' (DimRawPartner child, DimRawPartner parent) =
-   RECURSION 1l IF child IS DimRawPartner AND parent = child
-        STEP 2l IF parent = parent($parent) MATERIALIZED;
-
-isParent 'Родитель' (DimRawPartner child, DimRawPartner parent) = TRUE IF level(child, parent);
-        
-canonicalName 'Каноническое имя' (DimRawPartner group) =  GROUP CONCAT name(DimRawPartner parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
-levelNum 'levelNum' (DimRawPartner group) =   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
-backgroundColor(DimRawPartner s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;   
-tabName 'имя' (DimRawPartner group) =  (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
-getRootDimRawPartner()  = GROUP MAX DimRawPartner c IF isRoot(c) AND NOT isGroup(c);
-getEmptyDimRawPartner() = GROUP MAX DimRawPartner c IF isRoot(c) AND isGroup(c);
-WHEN LOCAL CHANGED(isRoot(DimRawPartner sd))  AND ( (GROUP SUM(1) IF (isRoot(DimRawPartner all) AND NOT isGroup(all)  AND all IS DimRawPartner)) > 1 ) DO {
-   isRoot(sd)<-NULL ;
-   MESSAGE 'только один элемент может представлять корень';
-};
-// список для выбора группы 
-EXTEND FORM formDimRawPartnerGroup  
-OBJECTS d = DimRawPartner 
-PROPERTIES(d) READONLY pos, code, canonicalName
-ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
-
-selectGroup(DimRawPartner r) {
- DIALOG formDimRawPartnerGroup OBJECTS d = parent(r) CHANGE;
-};
-     
-EXTEND  FORM  formDimRawPartnerTreeList  
-TREE treeDimRawPartner t = DimRawPartner  PARENT parent(t)
-PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
-,pos
-EVENTS ON INIT { EXPAND ALL TOP formDimRawPartnerTreeList.t; }
-FILTERS NOT isRoot(t)
-ORDERS  pos(t),tabName(t) 
-LIST DimRawPartner OBJECT t;
-DESIGN   formDimRawPartnerTreeList { 
-    PROPERTY (tabName(t)) { charWidth='100'; }
-} ;
-
-FORM  formDimRawPartnerCard
-OBJECTS c = DimRawPartner PANEL
-PROPERTIES (c) parent,name
-
-EDIT DimRawPartner OBJECT c;
-         
-                         
-FORM formDimRawPartnerSelectlist  
-    OBJECTS  d = DimRawPartner  
-    PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
-    ,pos  ,canonicalName
-    PROPERTIES(d) NEWEDIT,EDIT 
-    FILTERS NOT isRoot(d)
-    ORDERS  pos(d), canonicalName(d)
-    ;
-
-DESIGN   formDimRawPartnerSelectlist { 
-   PROPERTY  (tabName(d))   { charWidth='40'; defaultCompare =  'CONTAINS';}
-   PROPERTY  (pos(d))   { hide = TRUE ; }
-   PROPERTY (canonicalName(d)) { hide = TRUE ;  }
-  BOX { size = (1200,600);}
-} ;      
-
-delAllDimRawPartner 'удалить все'() {
- DELETE DimRawPartner a WHERE a IS DimRawPartner ;
-};
-
-     
-      // форма для редактирования списка - открывается только из меню
-       EXTEND FORM  formDimRawPartnerlist  
-       OBJECTS d = DimRawPartner 
-       PROPERTIES delAllDimRawPartner()
-       PROPERTIES(d)   isRoot,NEW ,DELETE, 
-                       isGroup BACKGROUND backgroundColor(d),
-                       levelNum BACKGROUND backgroundColor(d), 
-                       pos BACKGROUND backgroundColor(d), 
-                       tabName BACKGROUND backgroundColor(d), 
-                       name BACKGROUND backgroundColor(d) 
-                       
-   
-       PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
-                       canonicalName(d) BACKGROUND backgroundColor(d)
-       ORDERS  pos(d),canonicalName(d) 
-       ; 
-       
-       NAVIGATOR {
-                   dimCatalogs   {
-                    NEW formDimRawPartnerlist;
-                   }
-                 }
-        
-        
-
-currentDimRawPartner = DATA LOCAL DimRawPartner ();
-
-newByNameDimRawPartner(name) {
- IF name AND NOT (name == '') THEN {
-    currentDimRawPartner() <- GROUP MAX DimRawPartner d IF name(d) == name;
-    IF (NOT currentDimRawPartner())   THEN {
-              NEW  new =  DimRawPartner  {
-                  name(new) <- name;
-                  currentDimRawPartner() <- new;
-           }
-    }  
- }
- ELSE currentDimRawPartner() <- NULL;
-}
-        
-        
-        
-};
+@configDimWO(DimRawPartner);
 
 
 dimPartner = DATA DimPartner(DimRawPartner);
+
+EXTEND FORM formDimRawPartnerlist
+PROPERTIES nameMain 'Контрагент основной' = name(dimPartner(d)) AFTER name(d); //ON CHANGE formDimRawNomenkllistSelectNom(d);
+ 
 // МЕСТО для доп. свойств
 // 
 //// добавление списка в CalcComposition

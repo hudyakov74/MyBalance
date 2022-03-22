@@ -1,0 +1,18 @@
+MODULE DimensRawCFO;
+
+REQUIRE TaskTune,Dimens,ExtFormRequestList,TypeCFO,DimensCFO;
+
+NAMESPACE   Dimens; 
+
+CLASS DimRawCFO 'Центры финансовой ответственности, загрузка';
+TABLE dimRawCFO(DimRawCFO);
+FORM formDimRawCFOGroup 'Группы ЦФО, загрузка'; 
+FORM formDimRawCFOlist 'Центры финансовой ответственности, загрузка'; 
+ 
+FORM formDimRawCFOTreeList 'Центры финансовой ответственности, загрузка'; 
+@configDimWO(DimRawCFO);
+
+dimCFO = DATA DimCFO(DimRawCFO); 
+EXTEND FORM formDimRawCFOlist
+PROPERTIES dimCFO 'ЦФО' = name(dimCFO(d)) AFTER name(d)
+;

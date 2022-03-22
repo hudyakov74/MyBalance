@@ -1,0 +1,43 @@
+MODULE CalendarDate;
+
+REQUIRE  Time,Utils;
+
+NAMESPACE Budget;
+
+CLASS CalendarDate;
+TABLE calendarDate(CalendarDate);
+date        'Дата'           =  DATA DATE(CalendarDate);
+nonWorking  'Нерабочий день' =  DATA BOOLEAN (CalendarDate);
+
+
+
+fillCalendar(DATE begDate){
+      FOR iterate(DATE d, begDate , toDateFormat((CONCAT '.', toChar(extractYear(begDate),'9999') ,'12.31'),'YYYY.MM.DD'))
+          AND NOT (GROUP MAX CalendarDate dt AS CalendarDate IF date(dt) == d)
+          NEW new = CalendarDate  DO {
+                 date(new)       <- d;
+                 nonWorking(new) <- IF extractDOWNumber(d)=6 OR extractDOWNumber(d)=0 THEN TRUE; // byDef
+            
+      }
+}
+
+
+FORM calendarDateList 'Календарь рабочих дат'
+OBJECTS d = CalendarDate
+PROPERTIES NEW(d), 
+date(d),
+nonWorking(d),
+month 'Месяц' =  extractMonthName(date(d)),
+dow 'День недели' = extractDOWName(date(d)),
+fill 'Заполнить год от текущей даты' = {  fillCalendar(date(d));}
+ORDERS date(d)
+;
+
+DESIGN calendarDateList {
+    PROPERTY (month){charWidth = 13;}
+  //  PROPERTY (dow){charWidth = 13;}
+
+}
+
+
+monthWorkingDaysCount(DATE day) =  GROUP SUM 1 IF firstDayOfMonth(day) == firstDayOfMonth(date(CalendarDate d));

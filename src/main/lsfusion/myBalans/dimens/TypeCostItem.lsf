@@ -1,0 +1,18 @@
+MODULE TypeCostItem;
+
+CLASS TypeCostItem 'Группа затрат' {
+    any         'any',
+    raw         'Сырье',
+    amortizing  'Амортизация',
+    packing     'ТУМ',
+    makingWoAmz     'Изготовление без амортизации',
+    advertising  'Реклама',
+    correction 'коррекция с/с реализ'
+} 
+name(TypeCostItem td) =  staticCaption(td) ;
+ 
+
+FORM formTypeCostItem
+OBJECTS l = TypeCostItem
+PROPERTIES READONLY name 'Наименование' = name(l)
+LIST TypeCostItem OBJECT l;

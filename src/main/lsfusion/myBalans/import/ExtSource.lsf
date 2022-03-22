@@ -8,11 +8,11 @@ CLASS ExtSource 'Внешние источники';
 TABLE extSource(ExtSource);
 
 codeSource = DATA STRING[10] (ExtSource);
-defaultSource 'Основной источник справочников' = BOOLEAN (ExtSource);
+defaultSource 'Основной источник справочников' = DATA BOOLEAN (ExtSource);
 name 'Имя источника' = DATA STRING[100] (ExtSource) IN id;
 conectString 'Строка подключения' = DATA STRING[1000] (ExtSource) CHARWIDTH 15;
 user 'User' = DATA STRING[25] (ExtSource);
-password 'Password' =  DATA STRING[50] (ExtSource);
+password 'Password' =  DATA STRING[250] (ExtSource);
 passwordBasicAuth   =  DATA STRING[200] (ExtSource);
 
 WHEN  CHANGED(user(ExtSource es)) OR CHANGED(password(es) ) DO {  

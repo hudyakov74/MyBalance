@@ -1,0 +1,24 @@
+MODULE DimensRawCostItems;
+//
+
+REQUIRE TaskTune,Dimens, DimensCostItems, DimCostNonOperItems;
+
+NAMESPACE Dimens;
+ 
+CLASS DimRawCostItems 'Статьи затрат, загрузка' ;
+TABLE dimRawCostItems(DimRawCostItems);
+
+FORM formDimRawCostItemsGroup 'Статьи затрат, загрузка'; 
+FORM formDimRawCostItemslist 'Статьи затрат, загрузка';
+ 
+FORM formDimRawCostItemsTreeList 'Статьи затрат, загрузка'; 
+@configDimWO (DimRawCostItems);
+
+dimCostItems = DATA DimCostItems(DimRawCostItems);
+dimCostNonOperItems   = DATA DimCostNonOperItems(DimRawCostItems);
+EXTEND FORM formDimRawCostItemslist
+PROPERTIES 
+           dimCostNonOperItems  'Статья 91'          = name(dimCostNonOperItems(d)) AFTER name(d),
+            dimCostItems         'Статья затрат'     = name(dimCostItems(d)) AFTER name(d) 
+
+;

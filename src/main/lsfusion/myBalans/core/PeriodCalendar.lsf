@@ -12,6 +12,10 @@ dateBegin 'Дата начала' = DATA DATE (PeriodCalendar) IN id;
 dateEnd 'Дата окончания' = DATA DATE (PeriodCalendar) IN id;
 workingDays 'Количество рабочих дней' = DATA INTEGER(PeriodCalendar);
 
+
+periodGetByDate(Period p, DATE d) = GROUP MAX PeriodCalendar c AS PeriodCalendar 
+                                     IF d>=dateBegin(c) AND d<=dateEnd(c)  BY period(c);
+
 EXTEND FORM periodForm
 OBJECTS pCalendar = PeriodCalendar
 

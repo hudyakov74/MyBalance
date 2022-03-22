@@ -22,9 +22,10 @@
         import static java.lang.Math.abs;
         import static java.lang.Math.max;
 
-        //https://poi.apache.org/components/spreadsheet/quick-guide.html
-        public class XlsCreateRowOutline  extends InternalAction {
-    public XlsCreateRowOutline(ScriptingLogicsModule LM, ValueClass... classes) {
+        //https://poi.apache.org/components/spreadsheet/quick-guide.htm
+
+        public class XlsCreateRowOutlineV2  extends InternalAction {
+    public XlsCreateRowOutlineV2(ScriptingLogicsModule LM, ValueClass... classes) {
         super(LM, classes);
     }
     XSSFSheet sheet;
@@ -32,21 +33,22 @@
     @Override
     protected void executeInternal(ExecutionContext<ClassPropertyInterface> context) throws SQLException, SQLHandledException {
         // костыль - выполняте доформатирование документа эксель
+        // весия 2 - отказ от табуляторов в тексте отчета для смещений
         // 1. формирует иерархию отчета - создавая сворачиваемые группы/подгруппы
         // 2. выполняет фиксацию заголовка
         // 3. добавляет ко всем цифровым форматам - отрицательное красным
         // 4. удаляет специально помеченные строки из отчета - актуально для crosstab
-        RawFileData f =  (RawFileData)getParam(0, context); // файл экселя
+        RawFileData f =  (RawFileData)getParam(0, context);  // файл экселя
         Integer negativeRed = (Integer)getParam(1, context); //1 - отрицательное красным
-        Integer fixRow = (Integer)getParam(3, context); // если >0 фиксирует строки
-        Integer fixColumn = (Integer)getParam(2, context); // если больше 0 фиксирует столбцы
+        Integer fixRow = (Integer)getParam(3, context);      // если >0 фиксирует строки
+        Integer fixColumn = (Integer)getParam(2, context);   // если больше 0 фиксирует столбцы
         Integer columnTreeIndex = (Integer)getParam(4, context); // колонка в которой находится число - уровень иерархии строки
                                                                    // если уровень сделать отрицательным - строка будет удалена
                                                                    // сам уровень берется как abs от числа в ячейке
         Integer allLevelsRequired = (Integer)getParam(5, context); // инициация всех уровне согласно порядковому номеру уровня, или можно пропускать
+        Integer columnForTab = (Integer)getParam(6, context); //  колонка стиль которой будем оформлять со смещением
 
-
-        Map<Integer,Map<Integer,Integer>> ol = new HashMap<>();
+        Map<Integer, Map<Integer,Integer>> ol = new HashMap<>();
         for (int i =0;i<20;i++)  ol.put(i,new HashMap<>());
         int currentLevel=0;
         int rowLevel=0;
@@ -116,22 +118,24 @@
             cell = cellIterator.next();
             cellXSSF = (XSSFCell)cell;
             if (cellXSSF.getCellType() == CellType.STRING
-                    && StringUtils.countMatches(cellXSSF.getStringCellValue(), "\t") > 0) {
-
-                String str = cellXSSF.getStringCellValue();
-                if (cellXSSF.getCellStyle().getIndention() == (short) 0) {
-                    cellXSSF.getCellStyle().setIndention((short) (StringUtils.countMatches(str, "\t")));
+                    &&
+                    cellXSSF.getColumnIndex() == columnForTab
+                    &&
+                    cellXSSF.getCellStyle().getIndention() == (short) 0
+                    &&
+                    sheet.getRow(rowIndex).getCell(columnTreeIndex).getCellType() == CellType.NUMERIC
+                    &&
+                    abs(sheet.getRow(rowIndex).getCell(columnTreeIndex).getNumericCellValue()) >= 0
+                )
+                {
+                    cellXSSF.getCellStyle().setIndention((short) ( abs(sheet.getRow(rowIndex).getCell(columnTreeIndex).getNumericCellValue()))  ) ;
                 }
-               // cellXSSF.setCellFormula();
-                // cellXSSF.setCellType(CellType.STRING);
-                // cellXSSF.setCellValue( StringUtils.replace(str, "\t", ""));
-                //  ms office и так удаляет табуляторы в начале. open office не удаляет
-                //  но setCellType ломает документ для ms office а без setCellType в open office - пустые поля
-            } else if (cellXSSF.getCellType() == CellType.FORMULA) {
+
+             else if (cellXSSF.getCellType() == CellType.FORMULA) {
 
 
               //       cellXSSF.setCellFormula(cellXSSF.getStringCellValue());
-            } else   if (negativeRed == 1 && cellXSSF.getCellType() == CellType.NUMERIC) {
+            } else if (negativeRed == 1 && cellXSSF.getCellType() == CellType.NUMERIC) {
                 int s = 1;
                 String format = cellXSSF.getCellStyle().getDataFormatString();
                 if (format.contains("#,##0") && !format.contains("RED")) {
@@ -162,13 +166,3 @@
         }
     }
 }
-//
-//XSSFCellStyle cellStyle = workbook.createCellStyle();
-//   cellStyle.setFillForegroundColor(color);
-//   cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-//   cellStyle.setAlignment(HorizontalAlignment.RIGHT);
-//
-//   XSSFSheet sheet = workbook.createSheet();
-//   XSSFCell cell = sheet.createRow(0).createCell(0);
-//   cell.setCellValue("A1");
-//   cell.setCellStyle(cellStyle);

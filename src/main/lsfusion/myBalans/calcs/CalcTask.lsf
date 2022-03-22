@@ -10,9 +10,16 @@ calc 'Расчет' = DATA Calc(CalcTask) INDEXED NONULL;
 task 'Задача' = DATA Task(CalcTask) INDEXED NONULL;
 taskChecked 'Проверен'  = DATA BOOLEAN  (CalcTask);
 taskCompletedTime       = DATA DATETIME (CalcTask);
+paramInt1     ''          = DATA INTEGER (CalcTask);
+paramInt2     ''          = DATA INTEGER (CalcTask);
+
+param1                  = DATA LOCAL INTEGER (CalcTask);
+ 
+ 
  
 taskCompletedTime(d) <- currentDateTime() WHEN SET(taskChecked(d));
  
+readOnlyIfCheked(CalcTask ct) = has(currentUser(),userRoleSID('readonlyIfCheked')) AND taskChecked(ct);
  
 getCalcTask(Calc calcL,Task taskL) = GROUP MAX CalcTask c IF calc(c) == calcL AND task(c) == taskL;
 checkOrCreateCalcTask (Calc calcL,Task taskL)
@@ -41,3 +48,10 @@ DESIGN calcCard {
     PROPERTY (taskChecked){charWidth = 8;}
 }
 
+
+FORM  calcTaskSelectParamNnn 'Выбор пропорции'
+OBJECTS calc = Calc PANEL 
+PROPERTIES 
+param_n     'дней' = paramProportionPart(calc),
+param_nn    'из'   = paramProportionWhole(calc) 
+; 

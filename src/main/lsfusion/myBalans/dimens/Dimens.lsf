@@ -1,5 +1,5 @@
 MODULE Dimens;
-REQUIRE CoreColor,CoreMenu;
+REQUIRE CoreColor,CoreMenu,Utils;
 NAMESPACE   Dimens;
 
 CLASS Dim  'Измерения';
@@ -8,10 +8,14 @@ pos 'Порядок' = DATA INTEGER  (Dim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (Dim) IN id;
 name 'Наименование' = DATA STRING[254] (Dim) IN id INDEXED;
 isGroup 'Группа' = DATA BOOLEAN (Dim);
+isHide 'Скрыть' = DATA BOOLEAN (Dim);
 parent 'Родитель' = DATA Dim(Dim);
 isRoot 'корень' = DATA BOOLEAN (Dim);
  
-
+levelInt 'Уровень'  (Dim child, Dim parent) =
+   RECURSION 1 IF child IS Dim AND parent = child
+        STEP 1 IF parent = parent($parent) MATERIALIZED;
+       
  
 level 'Уровень' (Dim child, Dim parent) =
    RECURSION 1l IF child IS Dim AND parent = child
@@ -25,6 +29,7 @@ canonicalName 'Каноническое имя' (Dim group) =
    GROUP CONCAT name(Dim parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
 levelNum 'levelNum' (Dim group) =
    (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+ 
    
 tabName 'имя' (Dim group) =
    (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
@@ -44,8 +49,12 @@ META configDim(ObjectDim)
      // список для выбора группы 
       EXTEND FORM form##ObjectDim##Group  
       OBJECTS d = ObjectDim 
-      PROPERTIES(d) READONLY pos, code, canonicalName
-      ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+      PROPERTIES(d) READONLY 
+      ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
+      BACKGROUND  #e3e3e3 IF isHide(d)
+      pos, code, canonicalName
+      ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d)
+      FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT;
      
       selectGroup(ObjectDim r) {
           DIALOG form##ObjectDim##Group OBJECTS d = parent(r) CHANGE;
@@ -54,18 +63,31 @@ META configDim(ObjectDim)
   
     EXTEND  FORM  form##ObjectDim##TreeList  
     TREE tree##ObjectDim t = ObjectDim  PARENT parent(t)
-    PROPERTIES (t) tabName BACKGROUND color(t), name BACKGROUND color(t),pos
+    PROPERTIES (t) 
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(t) <- NOT isHide(t);}
+    BACKGROUND  #e3e3e3 IF isHide(t)
+            tabName BACKGROUND color(t),
+            name    BACKGROUND color(t),
+            pos
     EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(t)
     ORDERS  pos(t),name(t)
+    FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(t) DEFAULT
     LIST ObjectDim OBJECT t;
+    DESIGN   form##ObjectDim##TreeList { 
+        PROPERTY (tabName(t)) { charWidth='100'; }
+    };
   
    // форма для редактирования списка - открывается только из меню
     EXTEND FORM  form##ObjectDim##list  
     OBJECTS d = ObjectDim 
-    PROPERTIES(d)   isRoot,NEW ,DELETE,
+    PROPERTIES(d)   
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
+    BACKGROUND  #e3e3e3 IF isHide(d)
+    isRoot,NEW ,DELETE,
                     isGroup BACKGROUND color(d),
                     levelNum BACKGROUND color(d), 
+                   
                     pos BACKGROUND color(d), 
                     tabName BACKGROUND color(d), 
                     name BACKGROUND color(d) 
@@ -74,6 +96,7 @@ META configDim(ObjectDim)
     PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND color(d),
                     canonicalName(d) BACKGROUND color(d)
     ORDERS  pos(d),canonicalName(d) 
+    FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT
     ; 
  END
 
@@ -106,6 +129,7 @@ pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id;
 name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
 isRoot 'корень' = DATA BOOLEAN (ObjectDim);
+isHide 'Скрыт' = DATA BOOLEAN (ObjectDim);
 isGroup 'Е' = DATA BOOLEAN (ObjectDim);
 getRoot##ObjectDim()   = GROUP MAX ObjectDim c IF isRoot(c) AND  NOT isGroup(c);
 getEmpty##ObjectDim() = GROUP MAX ObjectDim c IF isRoot(c) AND isGroup(c);
@@ -116,14 +140,18 @@ WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectD
    MESSAGE 'только один элемент может представлять корень';
 };
      
-FORM form##ObjectDim##Selectlist  
+FORM  form##ObjectDim##Selectlist  'Выбор элемента'
     OBJECTS  d = ObjectDim  
-    PROPERTIES(d)  READONLY   
+    PROPERTIES(d)  READONLY  
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
+    BACKGROUND  #e3e3e3 IF isHide(d) 
     pos ,name 
     PROPERTIES(d) NEWEDIT,EDIT 
+    
      // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
     FILTERS NOT isRoot(d)
     ORDERS  pos(d)
+    FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT
     ;
 
 DESIGN   form##ObjectDim##Selectlist { 
@@ -139,7 +167,7 @@ delAll##ObjectDim 'удалить все'() {
 EXTEND FORM  form##ObjectDim##list  
 OBJECTS d = ObjectDim 
 PROPERTIES delAll##ObjectDim()
-PROPERTIES(d)   isRoot,isGroup,NEW ,DELETE, 
+PROPERTIES(d)   isRoot,isGroup,isHide, NEW ,DELETE, 
                pos, name 
 ORDERS  pos(d) 
 ; 
@@ -148,7 +176,22 @@ dimCatalogs   {
                  NEW form##ObjectDim##list;
               }
 }  
-       
+
+
+current##ObjectDim = DATA LOCAL ObjectDim ();
+
+newByName##ObjectDim(STRING name) {
+ IF name AND NOT (name == '') THEN {
+    current##ObjectDim() <- GROUP MAX ObjectDim d IF name(d) == name;
+    IF (NOT current##ObjectDim())   THEN {
+              NEW  new =  ObjectDim  {
+                  name(new) <- name;
+                  current##ObjectDim() <- new;
+           }
+    }  
+ }
+ ELSE current##ObjectDim() <- NULL;
+}       
        
 END
 
@@ -156,20 +199,42 @@ META configDimWO(ObjectDim)
 pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id;
 name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
+nameWoDuble(ObjectDim s) =  regexpReplace(name(s),'"','','g'); 
 isGroup 'Группа' = DATA BOOLEAN (ObjectDim);
+isHide 'Скрыт' = DATA BOOLEAN (ObjectDim);
 parent 'Родитель' = DATA ObjectDim(ObjectDim);
 isRoot 'корень' = DATA BOOLEAN (ObjectDim);
 
 level 'Уровень' (ObjectDim child, ObjectDim parent) =
    RECURSION 1l IF child IS ObjectDim AND parent = child
         STEP 2l IF parent = parent($parent) MATERIALIZED;
-
+        
+levelInt 'Уровень' (ObjectDim child, ObjectDim parent) =
+   RECURSION 1l IF child IS ObjectDim AND parent = child
+        STEP 1l IF parent = parent($parent) MATERIALIZED;   
+        
 isParent 'Родитель' (ObjectDim child, ObjectDim parent) = TRUE IF level(child, parent);
         
 canonicalName 'Каноническое имя' (ObjectDim group) =  GROUP CONCAT name(ObjectDim parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
-levelNum 'levelNum' (ObjectDim group) =   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+
+mainOrder 'Основной порядок сортировки'  (ObjectDim group) = //GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)
+STRING[9](
+ltrim(toChar( (GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)),'000000000'))
+) 
+MATERIALIZED 
+CHARWIDTH 9;
+
+levelNum 'levelNum' (ObjectDim group) =            (GROUP  MAX level(group, parent))  CHARWIDTH 2;
+levelNumInt 'levelNumInt' (ObjectDim group) = LONG (GROUP  SUM levelInt(group, parent))-1  CHARWIDTH 2; // от 0 
+maxLevelInt 'Максимальный уровень' (ObjectDim c, INTEGER maxLevel) = IF maxLevel > 0 THEN maxLevel ELSE (GROUP MAX levelNumInt(ObjectDim all_))+1;     
+
+getLevelObj(ObjectDim ch, INTEGER lvl ) =  (GROUP MAX ObjectDim parent AS  ObjectDim IF  levelInt(ch,parent) AND levelNumInt(parent) == lvl);
+     
+ 
+
 backgroundColor(ObjectDim s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;   
 tabName 'имя' (ObjectDim group) =  (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
+tabNameTabbed 'имя' (ObjectDim group) =  (GROUP CONCAT '\t','\t' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
 getRoot##ObjectDim()  = GROUP MAX ObjectDim c IF isRoot(c) AND NOT isGroup(c);
 getEmpty##ObjectDim() = GROUP MAX ObjectDim c IF isRoot(c) AND isGroup(c);
 WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectDim all) AND NOT isGroup(all)  AND all IS ObjectDim)) > 1 ) DO {
@@ -179,8 +244,12 @@ WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectD
 // список для выбора группы 
 EXTEND FORM form##ObjectDim##Group  
 OBJECTS d = ObjectDim 
-PROPERTIES(d) READONLY pos, code, canonicalName
-ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d);
+PROPERTIES(d) 
+ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
+BACKGROUND  #e3e3e3 IF isHide(d)
+READONLY pos, code, canonicalName
+ORDERS pos(d),canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d)
+FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT;
 
 selectGroup(ObjectDim r) {
  DIALOG form##ObjectDim##Group OBJECTS d = parent(r) CHANGE;
@@ -188,13 +257,19 @@ selectGroup(ObjectDim r) {
      
 EXTEND  FORM  form##ObjectDim##TreeList  
 TREE tree##ObjectDim t = ObjectDim  PARENT parent(t)
-PROPERTIES (t) tabName  BACKGROUND backgroundColor(t)  
-,pos
+PROPERTIES (t)     
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(t) <- NOT isHide(t);}
+    BACKGROUND  #e3e3e3 IF isHide(t)
+       
+        tabName  BACKGROUND backgroundColor(t)  
+        ,pos
 EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
-FILTERS NOT isRoot(t)
+FILTERS NOT (isRoot(t) AND isGroup(t)) 
 ORDERS  pos(t),tabName(t) 
+FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(t) DEFAULT
 LIST ObjectDim OBJECT t;
 DESIGN   form##ObjectDim##TreeList { 
+   
     PROPERTY (tabName(t)) { charWidth='100'; }
 } ;
 
@@ -205,19 +280,23 @@ PROPERTIES (c) parent,name
 EDIT ObjectDim OBJECT c;
          
                          
-FORM form##ObjectDim##Selectlist  
+FORM form##ObjectDim##Selectlist 'Выбор элемента' 
     OBJECTS  d = ObjectDim  
-    PROPERTIES(d)  READONLY tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
+    PROPERTIES(d)  READONLY 
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
+    BACKGROUND  #e3e3e3 IF isHide(d)
+    tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
     ,pos  ,canonicalName
     PROPERTIES(d) NEWEDIT,EDIT 
-    FILTERS NOT isRoot(d)
+    FILTERS   NOT (isRoot(d) AND isGroup(d)) 
     ORDERS  pos(d), canonicalName(d)
+    FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT
     ;
 
 DESIGN   form##ObjectDim##Selectlist { 
-   PROPERTY  (tabName(d))   { charWidth='40'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (tabName(d))   { charWidth='60'; defaultCompare =  'CONTAINS';}
    PROPERTY  (pos(d))   { hide = TRUE ; }
-   PROPERTY (canonicalName(d)) { hide = TRUE ;  }
+   PROPERTY (canonicalName(d)) {charWidth='20'; defaultCompare =  'CONTAINS'; }
   BOX { size = (1200,600);}
 } ;      
 
@@ -230,9 +309,12 @@ delAll##ObjectDim 'удалить все'() {
        EXTEND FORM  form##ObjectDim##list  
        OBJECTS d = ObjectDim 
        PROPERTIES delAll##ObjectDim()
+       PROPERTIES mainOrder(d),levelNumInt(d) 
        PROPERTIES(d)   isRoot,NEW ,DELETE, 
                        isGroup BACKGROUND backgroundColor(d),
+                       isHide BACKGROUND backgroundColor(d),
                        levelNum BACKGROUND backgroundColor(d), 
+                       
                        pos BACKGROUND backgroundColor(d), 
                        tabName BACKGROUND backgroundColor(d), 
                        name BACKGROUND backgroundColor(d) 
@@ -253,7 +335,7 @@ delAll##ObjectDim 'удалить все'() {
 
 current##ObjectDim = DATA LOCAL ObjectDim ();
 
-newByName##ObjectDim(name) {
+newByName##ObjectDim(STRING name) {
  IF name AND NOT (name == '') THEN {
     current##ObjectDim() <- GROUP MAX ObjectDim d IF name(d) == name;
     IF (NOT current##ObjectDim())   THEN {
@@ -269,3 +351,6 @@ newByName##ObjectDim(name) {
         
         
 END 
+
+
+ 

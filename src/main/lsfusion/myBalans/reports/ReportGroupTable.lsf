@@ -4,6 +4,11 @@ MODULE ReportGroupTable;
  
 NAMESPACE Reports;
 
-CLASS ReportGroupTable;
+CLASS ReportGroup{
+    group 'Итог по группе',
+    data  'Данные отчета',
+    group1 'Итог по группе 1',
+    group2 'Итог по группе 2'
+};
 
 

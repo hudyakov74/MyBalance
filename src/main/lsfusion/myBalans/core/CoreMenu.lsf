@@ -15,4 +15,35 @@ NAVIGATOR {
 }
     
     
-    
+CLASS LocalMenu 'Выбор';
+num 'Позиция' = DATA LOCAL INTEGER (LocalMenu);  
+name 'Наименование' = DATA LOCAL STRING (LocalMenu);  
+
+FORM formLocalMenu 'Выбор'
+OBJECTS s = LocalMenu
+PROPERTIES READONLY 
+num(s), name(s)
+ORDERS num(s) FILTERS num(s)
+LIST LocalMenu OBJECT s;
+
+DESIGN formLocalMenu {
+    PROPERTY (num(s)){charWidth = '3';}
+    PROPERTY (name(s)){charWidth = '20';}
+}
+
+//
+//printT5FormXlsx 'Формы XLSX' ( CalcTask ct) {
+//    NEW n = LocalMenu {num(n) <- 1; name(n) <- 'Форма БДР';}
+//    NEW n = LocalMenu {num(n) <- 2; name(n) <- 'Цены по уровням рентабельности';}
+//
+//    DIALOG formLocalMenu  OBJECTS s INPUT retValue NULL DO{ 
+//    //  param1(ct) <- num(retValue);  
+//      PRINT formBdr5Calc  
+//      OBJECTS   calcTask = ct                   
+//                XLSX SHEET 'Sheet1'   TO fileXLS; 
+//               
+//      xlsCreateRowOutline(fileXLS(), 1, 0, 0, 1, 0);
+//      open(fileXLS());    
+//    }    
+//    CANCEL NESTED LOCAL;
+//}

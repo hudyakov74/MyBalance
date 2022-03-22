@@ -1,0 +1,10 @@
+MODULE DimCurrency;
+
+REQUIRE TaskTune,ExtFormRequestList,Dimens;
+
+NAMESPACE   Dimens; 
+
+CLASS DimCurrency 'Валюты';
+TABLE dimCurrency(DimCurrency);
+FORM formDimCurrencylist 'Вариант транспортной упаковки'; 
+@configDimWOGroup(DimCurrency);

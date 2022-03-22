@@ -11,5 +11,10 @@ NAMESPACE Budget;
  OBJECTS sc = Scenario
  PROPERTIES(sc) mainScenario, nameScenario, NEW, DELETE ;
  
+ FORM scenarioListSelect 'Сценарии'
+ OBJECTS sc = Scenario
+ PROPERTIES(sc) READONLY mainScenario, nameScenario
+ LIST Scenario OBJECT sc;
  
+ name(Scenario s) = nameScenario(s);
  getMainScenario() = GROUP MAX Scenario sc IF mainScenario(sc);
