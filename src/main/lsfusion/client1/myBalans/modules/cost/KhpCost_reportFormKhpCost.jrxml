@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="KhpCost.reportFormKhpCost" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="30" bottomMargin="30" uuid="3ac6bf86-0b13-4568-8e6e-4ff7cc7b5497">
+	<property name="net.sf.jasperreports.export.xls.print.page.width" value="842"/>
+	<property name="net.sf.jasperreports.export.xls.print.page.height" value="595"/>
+	<style name="DefaultStyle" isDefault="true" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle2" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle1" mode="Opaque" backcolor="#DFDFDF" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle0" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="StyleGroupNom" mode="Transparent" backcolor="#FFFFFF" fontSize="10" isBold="true"/>
+	<style name="StyleGroup1" mode="Opaque" backcolor="#EFFFE8" fontSize="9" isBold="true"/>
+	<style name="StyleGroup2" mode="Opaque" backcolor="#F8FFF5" fontSize="9" isBold="false"/>
+	<style name="StyleGroup3" mode="Opaque" backcolor="#FFFFFF" fontSize="9" isBold="false"/>
+	<style name="StyleGroup4" mode="Transparent" backcolor="#FFFFFF" fontSize="8" isBold="false"/>
+	<field name="calcTask.object" class="java.lang.Long"/>
+	<field name="s.object" class="java.lang.Long"/>
+	<field name="dimCFO" class="java.lang.String"/>
+	<field name="dimCostItems" class="java.lang.String"/>
+	<field name="value" class="java.math.BigDecimal"/>
+	<field name="dimensCostItems1" class="java.lang.String"/>
+	<field name="dimensCostItems1pos" class="java.lang.Integer"/>
+	<field name="dimensCostItems2" class="java.lang.String"/>
+	<field name="dimensCostItems2pos" class="java.lang.Integer"/>
+	<field name="dimensCostItems3" class="java.lang.String"/>
+	<field name="dimensCostItems3pos" class="java.lang.Integer"/>
+	<field name="dimensCostItems4" class="java.lang.String"/>
+	<field name="dimensCostItems4pos" class="java.lang.Integer"/>
+	<field name="repotName" class="java.lang.String"/>
+	<variable name="value1" class="java.math.BigDecimal" resetType="Group" resetGroup="GroupCfO" calculation="Sum">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<variable name="value2" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<variable name="value3" class="java.math.BigDecimal" resetType="Group" resetGroup="Group2" calculation="Sum">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<variable name="value4" class="java.math.BigDecimal" resetType="Group" resetGroup="Group3" calculation="Sum">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<variable name="value5" class="java.math.BigDecimal" resetType="Group" resetGroup="Group4" calculation="Sum">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<group name="designGroup11024">
+		<groupExpression><![CDATA[String.valueOf($F{calcTask.object})]]></groupExpression>
+		<groupHeader>
+			<band height="39">
+				<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+					<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="5" y="21" width="275" height="18" uuid="bbea63b6-3c9b-46c3-9653-6815852b3213"/>
+					<textElement textAlignment="Center"/>
+					<textFieldExpression><![CDATA["Подразделение / Статья затрат"]]></textFieldExpression>
+				</textField>
+				<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+					<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="280" y="21" width="100" height="18" uuid="4671e46b-b009-41d8-b0fc-7a7e33a447af"/>
+					<textElement textAlignment="Center"/>
+					<textFieldExpression><![CDATA["Сумма, руб"]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="5" y="0" width="375" height="20" uuid="87039d29-75bd-47b4-be19-59bee997827b"/>
+					<box>
+						<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Center">
+						<font size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{repotName}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="GroupCfO">
+		<groupExpression><![CDATA[$F{dimCFO}]]></groupExpression>
+		<groupHeader>
+			<band height="18">
+				<textField pattern="#,##0.00">
+					<reportElement style="StyleGroupNom" x="5" y="0" width="275" height="18" uuid="aed8cd75-c218-494e-abcd-71b166ea48db">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textElement>
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{dimCFO}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="GroupCfO" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement style="StyleGroupNom" x="280" y="0" width="100" height="18" uuid="53fff2b8-a2c9-4e61-924b-ef369923451c"/>
+					<textElement textAlignment="Right">
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{value1}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{dimensCostItems1}]]></groupExpression>
+		<groupHeader>
+			<band height="18">
+				<printWhenExpression><![CDATA[$F{dimensCostItems1} !=null]]></printWhenExpression>
+				<textField>
+					<reportElement style="StyleGroup1" x="5" y="0" width="275" height="18" uuid="93df424e-3192-4d29-bc24-628eb8d2703c">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textFieldExpression><![CDATA["    "+$F{dimensCostItems1}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="Group1" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement style="StyleGroup1" x="280" y="0" width="100" height="18" uuid="6ede93df-5055-4efc-bc8b-d697676dfdcf"/>
+					<textElement textAlignment="Right"/>
+					<textFieldExpression><![CDATA[$V{value2}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="5" height="18" forecolor="#FFFFFF" uuid="d0fbda5f-6fad-44bb-8a90-1e2910f321d0"/>
+					<box>
+						<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textFieldExpression><![CDATA[1]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="Group2">
+		<groupExpression><![CDATA[$F{dimensCostItems2}]]></groupExpression>
+		<groupHeader>
+			<band height="18">
+				<printWhenExpression><![CDATA[$F{dimensCostItems2} !=null]]></printWhenExpression>
+				<textField>
+					<reportElement style="StyleGroup2" x="5" y="0" width="275" height="18" uuid="1db6c616-11ab-4c9a-8e8c-9cd93147fd39">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textFieldExpression><![CDATA["        "+$F{dimensCostItems2}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="Group2" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement style="StyleGroup2" x="280" y="0" width="100" height="18" uuid="67a70ef2-71aa-4304-9297-79733f41c1d2"/>
+					<textElement textAlignment="Right"/>
+					<textFieldExpression><![CDATA[$V{value3}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="5" height="18" forecolor="#FFFFFF" uuid="4622f363-b712-456f-95d3-8e8cbcd5fd43"/>
+					<box>
+						<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textFieldExpression><![CDATA[2]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="Group3">
+		<groupExpression><![CDATA[$F{dimensCostItems3}]]></groupExpression>
+		<groupHeader>
+			<band height="18">
+				<printWhenExpression><![CDATA[$F{dimensCostItems3} !=null]]></printWhenExpression>
+				<textField>
+					<reportElement style="StyleGroup3" x="5" y="0" width="275" height="18" uuid="aab52bf9-2fc0-48e2-88c3-07f60ed8bea7">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textFieldExpression><![CDATA["            "+$F{dimensCostItems3}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="Group3" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement style="StyleGroup3" x="280" y="0" width="100" height="18" uuid="7bddf85d-163a-43ab-9942-98b51f9d658f"/>
+					<textElement textAlignment="Right"/>
+					<textFieldExpression><![CDATA[$V{value4}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="5" height="18" forecolor="#FFFFFF" uuid="37a87ab9-e1e1-4d10-a90d-efa8cc8a8804"/>
+					<box>
+						<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textFieldExpression><![CDATA[3]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="Group4">
+		<groupExpression><![CDATA[$F{dimensCostItems4}]]></groupExpression>
+		<groupHeader>
+			<band height="18">
+				<printWhenExpression><![CDATA[$F{dimensCostItems4} !=null]]></printWhenExpression>
+				<textField>
+					<reportElement style="StyleGroup4" x="5" y="0" width="275" height="18" uuid="3a9db942-59ee-4617-853e-a5e97fa5b460">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<textFieldExpression><![CDATA["                "+$F{dimensCostItems4}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="Group4" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement style="StyleGroup4" x="280" y="0" width="100" height="18" uuid="70ca8a27-425b-4555-b5b0-410dba6157c1"/>
+					<textElement textAlignment="Right"/>
+					<textFieldExpression><![CDATA[$V{value5}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="5" height="18" forecolor="#FFFFFF" uuid="2af0b48e-ecab-43cf-b754-9cf9fa6c660c"/>
+					<box>
+						<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textFieldExpression><![CDATA[4]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<pageHeader>
+		<band height="18">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="5" y="0" width="375" height="18" uuid="e0455765-5491-4478-a842-c041b00c3141"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center"/>
+				<textFieldExpression><![CDATA["Cмета затрат"]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+</jasperReport>
