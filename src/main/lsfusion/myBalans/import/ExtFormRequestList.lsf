@@ -8,6 +8,7 @@ NAMESPACE ExtSystem;
 // форма для выбора подходящих действий (импортов)
 // сами импорты описываем в формах расчетов - вызываем оттуда же
 FORM extRequestSelectList 'Операции'
+ 
 OBJECTS sr = SectionRequest   
 OBJECTS er = ExtRequest  GRID 
 PROPERTIES READONLY staticCaption(sr) 
@@ -19,9 +20,8 @@ FILTERS sr = section(er);
  
 DESIGN extRequestSelectList{
    size  = (650,250); 
-   TOOLBARSYSTEM (er) { visible = NULL ;}
+   TOOLBARSYSTEM (er) { visible = FALSE;}
    PROPERTY (staticCaption(sr)) { hide = TRUE; }
    PROPERTY (nameExtSrc) {charWidth = 8;}
    PROPERTY (name(er)) {charWidth = 40;}
- //  PROPERTY (typeEr) {charWidth = 30;}
 }

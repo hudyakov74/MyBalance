@@ -1,0 +1,144 @@
+MODULE odataReqBuilder;
+
+REQUIRE  ExtRequest, Utils;
+
+// NAMESPACE ;
+CLASS OdataRequest; 
+formScriptResult = DATA LOCAL STRING();
+getFormScriptFromJson 'Получить скрипт формы' INTERNAL 'GetFormScriptFromJson' (STRING,STRING); 
+
+
+name    = DATA STRING (OdataRequest);
+varPrefix 'Префикс переменных в скрипте'   = DATA STRING[5] (OdataRequest);
+reqText = DATA STRING[2048] (OdataRequest);
+source  = DATA ExtRequest (OdataRequest);
+filters = DATA STRING[2048] (OdataRequest);
+select  = DATA STRING[2048] (OdataRequest);
+expand  = DATA STRING[2048] (OdataRequest);
+resultReqText = DATA LOCAL TEXT (OdataRequest);
+result    = DATA LOCAL TEXT (OdataRequest);
+resultFull = DATA LOCAL TEXT (OdataRequest);
+
+runTest(OdataRequest r) {
+IF source(r) THEN {
+ headers('Authorization') <- passwordBasicAuth(extSource(source(r)));
+ LOCAL result = FILE();
+
+
+    TRY { 
+    EXTERNAL HTTP GET  (
+                      CONCAT '', 
+                      conectString(extSource(source(r))), 
+                      reqText(r),
+                      IF isSubstring(reqText(r),'?') THEN '&$format=json&$top=1' ELSE  '?$format=json&$top=1',
+                     // (IF select(r)  THEN '&$select='+select(r)),
+                      (IF expand(r)  THEN '&$expand='+expand(r)),
+                      (IF filters(r) THEN '&$filter='+filters(r))
+                      ) 
+                     HEADERS headers TO result;
+    fileToString(result());
+    result(r) <- resultString() ;
+    }
+    
+    
+     resultReqText(r) <- ( 
+                       CONCAT '', 
+                      conectString(extSource(source(r))), 
+                      reqText(r),
+                      IF isSubstring(reqText(r),'?') THEN '&$format=json' ELSE  '?$format=json',
+                      IF isSubstring(reqText(r),'$top=') THEN '' ELSE  '&$top=10',
+                         
+                      (IF expand(r)  THEN '&$expand='+expand(r)),
+                      (IF select(r)  THEN '&$select='+select(r)),
+                      (IF filters(r) THEN '&$filter='+filters(r))
+                     );
+    
+     TRY { 
+    EXTERNAL HTTP GET   resultReqText(r)
+                     HEADERS headers TO result;
+    fileToString(result());
+    resultFull(r) <- resultString() ;
+    }
+
+
+} 
+}
+
+
+
+
+FORM extRequestTestForm
+OBJECTS r = OdataRequest
+    
+    PROPERTIES(r) NEWEDIT, DELETE , EDIT,
+                  
+name,reqText,source,filters,select
+LIST OdataRequest OBJECT r
+;
+
+
+FORM extRequestTestFormCard
+OBJECTS r = OdataRequest PANEL
+PROPERTIES runTest(r) 
+PROPERTIES name(r),varPrefix(r),reqText(r),
+  source =  name(source(r)),filters(r),select(r),expand(r)
+PROPERTIES(r) 
+resultReqText, 
+result,
+resultFull
+PROPERTIES
+get1 'показать скрипт' = {
+    getFormScriptFromJson(result(r),varPrefix(r));
+    MESSAGE (formScriptResult());
+    
+},
+get2 'показать форму' = {
+    resultString() <- resultFull(r);
+    getFormScriptFromJson(resultString(),varPrefix(r));
+    formScriptResult() <- replace( formScriptResult(),'null\n','' ); 
+    formScriptResult() <- replace( formScriptResult(),'FORM generated','FORM test123' );
+    
+    formScriptResult() <- CONCAT '\n', formScriptResult() , 'run()\{';
+    formScriptResult() <- CONCAT '\n', formScriptResult() , 'stringToFile( resultString() );';
+    formScriptResult() <- CONCAT '\n', formScriptResult() , 'IMPORT test123 JSON FROM resultFile();';
+    formScriptResult() <- CONCAT '\n', formScriptResult() , 'SHOW test123 DOCKED NOWAIT;';
+    formScriptResult() <- CONCAT '\n', formScriptResult() , '\}';
+ //  MESSAGE (formScriptResult());
+   EVAL formScriptResult();
+     
+}      
+EDIT OdataRequest OBJECT r;
+
+
+DESIGN extRequestTestFormCard {
+    caption = CONCAT ' ','запр.',name(r);
+    PANEL (r) {
+      
+    NEW pan1  {
+        MOVE PROPERTY (source);
+        MOVE PROPERTY (reqText(r));
+        MOVE PROPERTY (select(r)){charHeight = 2;};
+        MOVE PROPERTY (expand(r));
+        MOVE PROPERTY (filters(r)){charHeight = 2;};
+    }
+     NEW pan2  {
+ 
+        MOVE PROPERTY (resultReqText(r)) { charWidth = 150;};
+        MOVE PROPERTY (result(r)){charHeight = 15;};
+        MOVE PROPERTY (resultFull(r)){charHeight = 15;};
+    }
+    }
+
+
+}
+
+EXTEND FORM extRequestList
+PROPERTIES 
+testOdata 'Тестовые запросы odata' = {SHOW extRequestTestForm NEWSESSION NOWAIT DOCKED;}
+ 
+;
+
+EXTEND FORM extRequestTestForm
+PROPERTIES 
+    open 'открыть' = {SHOW extRequestTestFormCard NEWSESSION NOWAIT DOCKED;}
+;

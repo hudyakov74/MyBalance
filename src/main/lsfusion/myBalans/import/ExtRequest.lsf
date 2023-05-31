@@ -10,11 +10,21 @@ section 'Секция' = DATA SectionRequest(ExtRequest)  CHARWIDTH 10;
 type 'Тип импорта' = DATA TypeRequest(ExtRequest) CHARWIDTH 10;
 name 'Наименование' = DATA STRING[150](ExtRequest) IN id CHARWIDTH 20;
 extSource 'Источник' = DATA ExtSource (ExtRequest)   CHARWIDTH 10;
+ 
+
+debugMode 'отладка' = DATA INTEGER (ExtRequest);
+
+CLASS  ExtRequestDebug 'отладка';
+extRequest    = DATA ExtRequest(ExtRequestDebug) NONULL IN id CHARWIDTH 1;
+name 'Имя'    =  DATA STRING (ExtRequestDebug);
+reqResult 'Данные ответа' = DATA STRING (ExtRequestDebug);
+
 
 CLASS  ExtRequestParam 'Процедуры импорта';
 TABLE extRequestPAram(ExtRequestParam);
 extRequest    = DATA ExtRequest(ExtRequestParam) NONULL IN id CHARWIDTH 1;
 name 'Наименование' = DATA STRING[150](ExtRequestParam) IN id CHARWIDTH 20;
+use 'Активн.'  = DATA BOOLEAN(ExtRequestParam);
 param 'Имя параметра'  = DATA STRING[150](ExtRequestParam) CHARWIDTH 20;
 valueStr 'Параметр строка' = DATA STRING[150](ExtRequestParam) CHARWIDTH 20;
 ValueDate 'Параметр дата' = DATA DATE(ExtRequestParam) CHARWIDTH 20;
@@ -27,13 +37,34 @@ PROPERTIES (er) NEW,DELETE
 PROPERTIES section 'Раздел' = staticCaption(section(er)),
            type 'Вид операции' = staticCaption(type(er)),
            nameOp 'Наименование операции' = name(er),
-           nameExtSrc 'Внешний источник' =  name(extSource(er))
+           nameExtSrc 'Внешний источник' =  name(extSource(er)), 
+           debugMode(er) 
+            
 OBJECTS param = ExtRequestParam
 PROPERTIES (param) NEW,DELETE,
-name,param,valueStr,ValueDate,ValueInt,ValueNum,extRequest        
+name,param,use,valueStr,ValueDate,ValueInt,ValueNum,extRequest        
 FILTERS   extRequest(param) = er        
+OBJECTS s = ExtRequestDebug  
+PROPERTIES  name(s), 
+    // reqResult(s),
+                loadFromFile = {
+                     INPUT f = FILE  DO {
+                         fileToString(f);
+                         reqResult(s) <- resultString();
+                     }
+                },
+    NEW (s), DELETE (s), EDIT (s)
+FILTERS   extRequest(s) = er   
+    
 LIST ExtRequest OBJECT er
 ; 
+
+FORM formExtRequestDebug 
+OBJECTS s = ExtRequestDebug PANEL 
+ PROPERTIES   reqResult(s)
+EDIT  ExtRequestDebug OBJECT s;
+DESIGN formExtRequestDebug {PROPERTY (reqResult(s)){charHeight=20;}}
+    
 
 
 
@@ -43,5 +74,35 @@ DESIGN extRequestList {
     PROPERTY (type) { charWidth = 5; }
     PROPERTY (nameExtSrc) { charWidth = 5; }
     PROPERTY (nameOp) { charWidth = 25; }
-    //PROPERTY (section) { charWidth = 5; }
+ 
+}
+
+
+odataGet(ExtRequest er, STRING req, STRING reqName) {
+    IF debugMode(er) == 2 THEN {
+        resultFile() <- NULL;
+        stringToFile(GROUP MAX reqResult(ExtRequestDebug ss) IF reqName == name(ss) AND extRequest(ss) == er);
+    }   
+    ELSE TRY {
+         EXTERNAL HTTP GET (CONCAT '',conectString(extSource(er)), req) HEADERS headers TO resultFile;
+        
+         IF debugMode(er) == 1 AND reqName != '' THEN {
+             fileToString(resultFile());
+             NEWSESSION NESTED (resultString) {
+                LOCAL d = ExtRequestDebug();
+                d() <- GROUP MAX ExtRequestDebug ss AS  ExtRequestDebug IF reqName == name(ss) AND extRequest(ss) == er;
+                IF NOT d() THEN NEW n = ExtRequestDebug {
+                    name(n) <- reqName;
+                    extRequest(n) <- er;
+                    d() <- n; 
+                } 
+                reqResult(d()) <- resultString();
+                APPLY;
+             }
+         }
+    }
+    CATCH {
+         printToLog(CONCAT ', ','http return', statusHttp(), req);
+    }
+    
 }

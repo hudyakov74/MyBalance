@@ -12,8 +12,9 @@ defaultSource 'Основной источник справочников' = DAT
 name 'Имя источника' = DATA STRING[100] (ExtSource) IN id;
 conectString 'Строка подключения' = DATA STRING[1000] (ExtSource) CHARWIDTH 15;
 user 'User' = DATA STRING[25] (ExtSource);
-password 'Password' =  DATA STRING[250] (ExtSource);
+password 'Password' =  DATA STRING[250] (ExtSource) ECHO;
 passwordBasicAuth   =  DATA STRING[200] (ExtSource);
+//dimFirm 'Организация' = DATA DimFirm(ExtSource);
 
 WHEN  CHANGED(user(ExtSource es)) OR CHANGED(password(es) ) DO {  
     encodeBase64(user(es) + ':' + password(es));
@@ -29,12 +30,15 @@ WHEN LOCAL DROPPED (password(es) ) DO {
 
 FORM extSourceList 'Внешние источники'
 OBJECTS l = ExtSource  
-PROPERTIES(l) name, user, password, conectString, defaultSource, NEW, DELETE
+PROPERTIES(l) name, user, password, 
+conectString, defaultSource, NEW, DELETE
+ 
 ;
 
 FORM extSourceSelect 'Внешние источники'
 OBJECTS l = ExtSource
 PROPERTIES(l) READONLY codeSource, name, user, password, conectString
+ 
 LIST ExtSource OBJECT l
 ;
 
@@ -50,7 +54,7 @@ DESIGN extSourceSelect{
     clearText = TRUE;
     }
 }
-//http://192.168.138.113/buhstyle/ru_RU/odata/standard.odata/
+ 
  
 
   

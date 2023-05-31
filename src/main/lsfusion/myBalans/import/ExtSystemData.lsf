@@ -1,27 +1,2 @@
 MODULE ExtSystemData;
-//  в таком виде внешние данные не нужны  - внешние данные это отдельное измерение и все
-
-//REQUIRE Dimens,TypeDimens;
-//
-//NAMESPACE   ExtSystem; 
-//
-//CLASS ExtSystemName;
-//TABLE extSystemName(ExtSystemName);
-//id 'Id внешней системы' = DATA STRING[10] (ExtSystemName) IN id;
-//name 'Наименование'= DATA STRING[200] (ExtSystemName) IN base;
-//
-//
-//CLASS ExtSysData 'Внешние аналитики';
-//TABLE extSysData(ExtSysData);
-//
-//// разделы
-//dim 'Владелец' = DATA TypeDimens (ExtSysData) INDEXED;
-//extSyst 'Идентификатор внешней системы' = DATA  ExtSystemName (ExtSysData) NONULL INDEXED;
-//
-//// данные
-//refKey 'Ref_Key' = DATA STRING[36] (ExtSysData) IN id INDEXED;
-//code 'код' = DATA STRING[20] (ExtSysData) IN base;
-//name 'Наименование' = DATA STRING[255] (ExtSysData) IN base;
-//
-//// привязка
-//value 'Значение'  = DATA Dim (ExtSysData);
+ 
