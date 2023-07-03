@@ -7,7 +7,7 @@ fileXLS = DATA EXCELFILE();
 // xlsCreateRowOutline(file,NegativeRed,fixColumn,fixRow)
 xlsCreateRowOutline 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutline' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
 xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
-
+xlsMergeCorrect 'Корректировка после mergeExcel' INTERNAL 'XlsMergeCorrect'  (EXCELFILE, EXCELFILE);
 // СПИСОК ОТЧЕТОВ
 CLASS ReportList;
 TABLE reportList(ReportList);
@@ -25,6 +25,7 @@ date2 '' =  DATA LOCAL DATE (ReportList);
 date3 '' =  DATA LOCAL DATE (ReportList);
 date4 '' =  DATA LOCAL DATE (ReportList); 
 param1    = DATA LOCAL INTEGER (ReportList);
+param2    = DATA LOCAL INTEGER (ReportList);
 paramBool1    = DATA LOCAL BOOLEAN (ReportList);
 paramBool2    = DATA LOCAL BOOLEAN (ReportList);
 paramBool3    = DATA LOCAL BOOLEAN (ReportList);
