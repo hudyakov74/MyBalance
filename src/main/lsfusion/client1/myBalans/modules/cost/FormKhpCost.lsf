@@ -10,7 +10,7 @@ EXTEND  CLASS TypeTask{
 }
 
 FORM  formKhpCost 'Затраты подразделений';
-@createFormReqPropertysBeforeOBJ(khpCost, CubeKhpCost);
+@createFormReqPropertysBeforeOBJ(khpCost);
 
 //getRootDimCostItems() 
 khpCostInTree(CalcTask calcTask, DimCFO cfo,DimCostItems ci) = GROUP MAX CubeKhpCost any AS CubeKhpCost IF cfo==dimCFO(any)  AND ci==parent(dimensCostItems(any))  AND calc(calcTask) == calc(any) AND task(calcTask) = task(any) ;
@@ -22,7 +22,7 @@ FILTERS   dimensCostItems(khpCostInTree(  calcTask,   root, g))
 FILTERS g    == parent(dimensCostItems(s))   
 EVENTS ON INIT { EXPAND ALL TOP formKhpCost.root; }
 ;
-@createFormReqPropertyAfterOBJ(formKhpCost,s,calc,task,'Затраты подразделений');
+@createFormReqPropertyAfterOBJ(CubeKhpCost, formKhpCost, s, calc, task, 'Затраты подразделений');
 
 newKhpCostTree 'Добавить/Добавить группу' (calcTask,root){
       
@@ -90,7 +90,7 @@ TOOLBARRIGHT (TREE tree) { MOVE PROPERTY (newKhpCostTree(calcTask,root));
 
 OBJECTS {
          NEW tabPanel {        
-            type = TABBED;
+            tabbed = TRUE;
             fill = 1; 
             align  = STRETCH;
             MOVE   BOX (TREE tree) {caption = 'Затраты'; }; 

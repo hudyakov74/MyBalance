@@ -30,25 +30,17 @@ DESIGN calcSequenceItems {
     PROPERTY (taskOperationName){charWidth = 15;}; 
     OBJECTS {
         NEW panelTwoColumn {
-            type =   SPLITH;
+            horizontal = TRUE;
             fill = 1;
             align  = STRETCH;
             NEW panelRTwoRow { 
-               type =   CONTAINERV;
-              //  fill = 1;
-              // align  = STRETCH;
-              //  NEW panelRTwoRow2 { 
                height = 400;                
-                  // fill = 1;
-              //   type =  CONTAINERV;
-                   
                 MOVE BOX (cv) {};
                 MOVE BOX (csm){};
                // }
             }
             NEW panelLeftTwoRow { 
                  width = 300;
-                 type = SPLITV;
                  fill = 1;
                  align  = STRETCH;
                 

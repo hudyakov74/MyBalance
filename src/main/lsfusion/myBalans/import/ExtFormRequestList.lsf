@@ -8,14 +8,14 @@ NAMESPACE ExtSystem;
 // форма для выбора подходящих действий (импортов)
 // сами импорты описываем в формах расчетов - вызываем оттуда же
 FORM extRequestSelectList 'Операции'
- 
+OBJECTS firm = DimFirm PANEL 
 OBJECTS sr = SectionRequest   
 OBJECTS er = ExtRequest  GRID 
 PROPERTIES READONLY staticCaption(sr) 
 PROPERTIES READONLY name(er),
                   // typeEr =  staticCaption(type(er)),
            nameExtSrc = name(extSource(er)) 
-FILTERS sr = section(er);
+FILTERS sr = section(er) AND  (dimFirm(er) == firm OR NOT firm);
 
  
 DESIGN extRequestSelectList{

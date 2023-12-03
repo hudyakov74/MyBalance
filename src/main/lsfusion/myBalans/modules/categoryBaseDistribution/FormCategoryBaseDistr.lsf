@@ -1,0 +1,36 @@
+MODULE FormCategoryBaseDistr;
+
+REQUIRE  Form, ReportList, CubeCategoryBaseDistr,  PeriodCalendar, CalcTask, Time, ExtUtil;
+
+NAMESPACE SaleTat;
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+    CategoryBaseDistr  'Базы распределения на категориях'
+}
+
+FORM  formCategoryBaseDistr  'Базы распределения на категориях';
+@createFormReqPropertysBeforeOBJ(CategoryBaseDistr);
+
+EXTEND FORM formCategoryBaseDistr 
+OBJECTS s = CubeCategoryBaseDistr;
+
+@createFormReqPropertyAfterOBJ(CubeCategoryBaseDistr,formCategoryBaseDistr,s,calc,task, 'Базы распределения на категориях');
+
+EXTEND FORM formCategoryBaseDistr
+PROPERTIES  DELETE (s),
+new 'Создать' = { NEW n = CubeCategoryBaseDistr {
+                   calc(n) <- calc(calcTask);     
+                   task(n) <- task(calcTask);
+                   num(n) <- 1 (+) (GROUP MAX num(CubeCategoryBaseDistr s_) IF calcTask(s_) == calcTask);
+                } 
+},               
+num  '№' = num(s),
+dimCategorySource        'Изменение источник' = nameCategory(dimCategorySource(s)) READONLY, 
+dimCategoryDestination1  'Изменение приемник' = categoryValueName(dimCategoryDestination1(s)) READONLY, 
+coeff(s);
+
+
+@createLocalMenuOperation(CubeCategoryBaseDistr,formCategoryBaseDistr);
+
+

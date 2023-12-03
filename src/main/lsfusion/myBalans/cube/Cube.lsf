@@ -10,6 +10,9 @@ TABLE tableName(ObjectDim);
 task   'задача' = DATA Task(ObjectDim) INDEXED IN id;
 period 'Период' = DATA Period(ObjectDim) INDEXED IN id; // для плоских списков 
 calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
+calcTask(ObjectDim d) = getCalcTask(calc(d),task(d)) MATERIALIZED;
+versionNum 'Номер версии данных' = DATA INTEGER (ObjectDim);
+INDEX calcTask(ObjectDim d), versionNum(d), d;
 END
 
 META createCubeReqDimTable(ObjectDim,tableName)

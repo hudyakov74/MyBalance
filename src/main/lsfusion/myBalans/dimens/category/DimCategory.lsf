@@ -1,0 +1,93 @@
+MODULE DimCategory;
+ 
+REQUIRE CoreMenu,  Utils;
+
+NAMESPACE Dimens; 
+//? === Категории === 
+// это справочник наименований категорий к которому можно привязать любой объект (сделано для справочников)
+// связку делаем через объявление композиции boolean??
+// категорию выводим в шапку списков справочников и от нее строим колонку для "взведения галочки"
+categoryValueName(Object p)  = ABSTRACT CASE EXCLUSIVE ISTRING[254];
+categoryValueClass(Object p) = ABSTRACT CASE EXCLUSIVE ISTRING[254];
+
+CLASS DimCategory 'Категории';
+TABLE dimCategory(DimCategory);
+posCt 'Порядок' = DATA INTEGER  (DimCategory) IN base CHARWIDTH 5;
+codeCt 'Код' = DATA STRING[15] (DimCategory) IN id NONULL;
+nameCategory 'Наименование' = DATA ISTRING[254] (DimCategory) IN id INDEXED ;
+commentary  'Комментарий'   = DATA ISTRING[254] (DimCategory);
+isHideCt 'Скрыт' = DATA BOOLEAN (DimCategory);
+
+name(DimCategory d) = nameCategory(d);
+
+CLASS  DimCategoryItemsNamed{
+  empty ''
+}
+ 
+
+name(DimCategoryItemsNamed n) = STRING[254](staticCaption(n));
+
+FORM formDimCategoryItemsNamedlist 'Категории константы'
+OBJECTS d = DimCategoryItemsNamed
+PROPERTIES(d) staticName, staticCaption
+LIST DimCategoryItemsNamed OBJECT d;
+
+//name(DimCategoryItemsNamed obj_) = staticCaption(obj_); 
+itemsCode 'Код элемента' (DimCategoryItemsNamed obj) =  regexpReplace(staticName(obj),'.*\\.','','');
+itemsName 'Имя для формул' = DATA DimCategoryItemsNamed(DimCategory); 
+getDimCostItemsByItem(DimCategoryItemsNamed obj) = GROUP MAX DimCategory d_ IF itemsName(d_) == obj;
+itemsCode 'Код элемента' (DimCategory obj) =  regexpReplace(staticName(itemsName(obj)),'.*\\.','','');
+
+
+
+CLASS DimCategoryList 'Категории';
+TABLE DimCategoryList(DimCategoryList);
+typeObject  'Тип объекта' = DATA STRING[15] (DimCategory) IN id;
+idObject  'id объекта бд' = DATA STRING[15] (DimCategory) IN id;
+ 
+categoryGroup = DATA BOOLEAN (DimCategory, System.Object);
+ 
+//INDEX categoryGroup(DimCategory c, System.Object s),c, s;
+
+FORM  formDimCategorySelectlist  'Выбор элемента'
+    OBJECTS  d = DimCategory  
+    PROPERTIES(d)  READONLY  
+    ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHideCt(d) <- NOT isHideCt(d);}
+    BACKGROUND  #e3e3e3 IF isHideCt(d) 
+    posCt, codeCt, nameCategory 
+    PROPERTIES(d) NEWEDIT,EDIT 
+    
+     // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+    ORDERS  posCt(d), codeCt(d)
+    FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHideCt(d) DEFAULT
+    LIST DimCategory OBJECT d
+    ;
+
+DESIGN   formDimCategorySelectlist { 
+   PROPERTY  (nameCategory(d))  { charWidth=40; defaultCompare='=*';}
+   PROPERTY  (posCt(d))   { hide = TRUE ; }
+   BOX { size = (1200,600);}
+} ;      
+
+delAllDimCategory 'удалить все'() {
+ DELETE DimCategory a WHERE a IS DimCategory ;
+};
+
+
+// форма для редактирования списка - открывается только из меню
+FORM  formDimCategorylist   'Категории'
+OBJECTS d = DimCategory 
+PROPERTIES 
+           itemsName 'Имя для формул' = staticCaption(itemsName(d))   
+PROPERTIES(d)   isHideCt, NEW ,DELETE, 
+               posCt, codeCt, nameCategory, commentary
+
+OBJECTS   s = System.Object
+PROPERTIES delete 'Удалить' = { categoryGroup(d,s) <- NULL; },
+categoryGroup(d,s)
+    
+PROPERTIES READONLY   categoryValueName(s), categoryValueClass(s) 
+FILTERS categoryGroup(d,s)
+ORDERS  posCt(d), codeCt(d) 
+;  
+ 

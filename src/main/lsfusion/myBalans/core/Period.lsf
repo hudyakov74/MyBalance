@@ -29,8 +29,9 @@ PROPERTIES   namePeriod(p) READONLY,
              pos(p) READONLY
 ORDERS pt, pos(p) 
 LIST Period OBJECT p;
+
 DESIGN periodList {
-PROPERTY  (pos(p)) {hide=TRUE;}
-PROPERTY  (pt) {charWidth=4;}
-PROPERTY  (namePeriod(p)) {charWidth=20;}
+    PROPERTY  (pos(p)) {hide=TRUE;}
+    PROPERTY  (pt) {charWidth=4;}
+    PROPERTY  (namePeriod(p)) {charWidth=20;}
 }

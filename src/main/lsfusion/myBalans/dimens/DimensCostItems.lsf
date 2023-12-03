@@ -39,5 +39,3 @@ dimCostItemsLev1 (DimCostItems s) =              (GROUP  MAX DimCostItems parent
 dimCostItemsLev2 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l);
 dimCostItemsLev3 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l*2);
 dimCostItemsLev4 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l*4);
-
- 

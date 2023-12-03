@@ -1,11 +1,10 @@
 MODULE ReportList;
 
-REQUIRE CalcTask,ReportClassList,ReportGroupTable,TypeTask,MainMenu  ;
+REQUIRE CalcTask, ReportClassList, ReportGroupTable, TypeTask, MainMenu, DimensFirm;
  
 NAMESPACE Reports;
-fileXLS = DATA EXCELFILE();
-// xlsCreateRowOutline(file,NegativeRed,fixColumn,fixRow)
-xlsCreateRowOutline 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutline' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
+fileXLS = DATA LOCAL EXCELFILE();
+// xlsCreateRowOutlineV2(file,NegativeRed,fixColumn,fixRow, columnNumLevel, flagNegativeLevelHide, columnLevelTabbed)
 xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
 xlsMergeCorrect 'Корректировка после mergeExcel' INTERNAL 'XlsMergeCorrect'  (EXCELFILE, EXCELFILE);
 // СПИСОК ОТЧЕТОВ
@@ -16,6 +15,7 @@ name    'Наименование отчета'            = DATA STRING[100](Re
 report  'Отчет'                          = DATA ReportClassList (ReportList) IN id;
 reportExecString 'Строка запуска отчета' = DATA STRING(ReportList);
 commonReport 'Включить в меню Расчета'   = DATA BOOLEAN (ReportList);
+firm = DATA LOCAL DimFirm(ReportList);
 calc1 '' =  DATA LOCAL Calc(ReportList);
 calc2 '' =  DATA LOCAL Calc(ReportList); 
 scenario1 '' =  DATA LOCAL Scenario(ReportList);
@@ -54,7 +54,6 @@ TABLE reportListVisible(ReportListVisible);
 report   = DATA ReportList(ReportListVisible);
 typeTask = DATA TypeTask(ReportListVisible);
  
- 
 // ФОРМА СПИСКА ОТЧЕТОВ
 FORM  reportList 'Список отчетов'
 OBJECTS c = ReportList
@@ -78,7 +77,7 @@ PROPERTIES(ur) READONLY sid,name
 DESIGN reportList {
       NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
         // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
-            type = TABBED;
+            tabbed = TRUE;
             fill = 1; // пусть расширяется на всю форму
             MOVE BOX(rv) {}
             MOVE BOX (ur){}
@@ -109,7 +108,13 @@ PROPERTIES READONLY
            nameReport 'Отчет'  = name(report(c)) 
 LIST ReportList OBJECT c;
 
-ReportRun(ReportList c){
+reportRun(ReportList c, Calc calc){
+    
+     calc1(c) <- calc;
+     firm(c) <- dimFirm(calc); 
+     scenario1(c) <- scenario(calc); 
+     date1(c) <- calcDateBegin(calc); 
+     date2(c) <- calcDateEnd(calc); 
  EVAL ACTION  'SHOW  form' + regexpReplace(staticName(report(c)),'.*[.]','','')
                    + 'Exec  OBJECTS reportList = $1 DOCKED NOWAIT NOMANAGESESSION ' //NEWSESSION
         PARAMS  c; //OBJECTS mainCalcTask = getCalcTask(calc($1  AS CalcTask),task($2  AS CalcTask))
@@ -121,15 +126,11 @@ EXTEND FORM  reportListExecCalc // в блоке Calc
 OBJECTS  list = (c = ReportList ) 
 FILTERS hasCurrentUserReportPermission(c)  
 PROPERTIES READONLY 
-           name(c)  
+           name(c) ON CHANGE {reportRun(c, calc);}
     //     ,nameReport 'Отчет'  = name(report(c)) 
 FILTERS commonReport(c)
  
-EVENTS
-      ON OK {
-          calc1(c) <- calc;
-          ReportRun(c);  
-      }
+EVENTS ON OK { reportRun(c, calc);}
 ; 
 
 // запуск отчета из задачи
@@ -138,15 +139,12 @@ OBJECTS tt = TypeTask PANEL, calcTask = CalcTask  PANEL
 OBJECTS  list = (c = ReportList, rv =  ReportListVisible) 
 FILTERS hasCurrentUserReportPermission(c)  
 PROPERTIES READONLY 
-           name(c)  
-    //     ,nameReport 'Отчет'  = name(report(c)) 
+           name(c) ON CHANGE {reportRun(c, calc(calcTask));}
 LIST ReportList OBJECT c
 FILTERS tt == typeTask(rv) 
 FILTERS report(rv) == c AND report(c)
 EVENTS
-      ON OK {
-          ReportRun(c);  
-      }
+      ON OK { reportRun(c,calc(calcTask)); }
 ; 
 
 FORM  reportListCard 'Отчет'
@@ -158,11 +156,9 @@ PROPERTIES READONLY
 EDIT ReportList OBJECT c;           
            
 // регистрация отчета в меню настроек
-
 NAVIGATOR {
       catalogs{
         NEW reportList;
-        
         }  
  }
                  
@@ -179,12 +175,14 @@ PROPERTIES READONLY dummy = staticCaption (dummy)
  
 OBJECTS  section  = (reportList 'Параметры' = ReportList)  PANEL
 PROPERTIES  name(reportList) READONLY,
-
-scenarioP 'Сценарий базовый' = nameScenario(scenario1(reportList)) ON CHANGE {DIALOG scenarioListSelect OBJECTS sc =  scenario1(reportList) CHANGE DO {
+firm 'По разделу' = name(firm(reportList)),
+scenarioP 'Сценарий базовый' = nameScenario(scenario1(reportList))   ON CHANGE {DIALOG scenarioListSelect OBJECTS sc =  scenario1(reportList) CHANGE 
+                                                                              LIST name(sc) 
+                                                                              DO {
                                                                                  IF NOT scenario2(reportList) THEN scenario2(reportList)<-scenario1(reportList);
                                                                                  }
                                                                              },
-scenarioF 'сравнение с' = nameScenario(scenario2(reportList)),
+scenarioF 'сравнение с' = nameScenario(scenario2(reportList)) NOSELECT,
 dateP1 'с' = date1(reportList)            ON CHANGE 
                                                     { INPUT d1 = date1(reportList)  CHANGE DO {
                                                         IF NOT date2(reportList) OR date2(reportList) < date1(reportList)  THEN date2(reportList) <- lastDayOfMonth(date1(reportList)); 
@@ -208,31 +206,31 @@ DESIGN form##nameRepClass##Exec {
         MOVE PANEL (rlist) {}
      }
     }
-}
-
+}      
 END 
          
 META  reportTemplateCompareFilter(nameRepClass,obj)
 EXTEND FORM form##nameRepClass##Exec 
 FILTERS   ( 
-        scenario1(reportList) == scenario(calc(obj))
+        isTheSameScenario(calc(obj), firm(reportList),scenario1(reportList))  
         AND 
         date1(reportList)     <= calcDateBegin(calc(obj))
         AND 
         date2(reportList)     >= calcDateEnd(calc(obj))
         OR 
-        scenario2(reportList) == scenario(calc(cost)) 
+        isTheSameScenario(calc(obj), firm(reportList),scenario2(reportList))
+        //scenario2(reportList) == scenario(calc(cost)) 
         AND
         date3(reportList)     <= calcDateBegin(calc(obj))
         AND 
         date4(reportList)     >= calcDateEnd(calc(obj))
         )
 PROPERTIES
-        rg = staticCaption(rg),     
+        
         scenario 'Сценарий'  = nameScenario(scenario(calc(obj))),    
-        periodOrder 'Порядковый номер периода' =  extractYear(calcDateBegin(calc(cost)))*100+extractMonthNumber(calcDateBegin(calc(obj)))
+        periodOrder 'Порядковый номер периода' =  extractYear(calcDateBegin(calc(obj)))*100+extractMonthNumber(calcDateBegin(calc(obj)))
                                           -
-                                          IF  scenario(calc(obj)) ==  scenario1(reportList) 
+                                          IF  isTheSameScenario(calc(obj), firm(reportList),scenario1(reportList))    
                                           AND date1(reportList) <= calcDateBegin(calc(obj))
                                           AND date2(reportList) >= calcDateEnd(calc(obj)) THEN 
                                           extractYear(date1(reportList))*100+extractMonthNumber(date1(reportList))
@@ -242,42 +240,40 @@ PROPERTIES
                                           //AND date4(reportList) >= calcDateEnd(calc(cost)) THEN 
                                           extractYear(date3(reportList))*100+extractMonthNumber(date3(reportList)),
        date 'Дата' = calcDateBegin(calc(obj)),
-       dateP 'Дата план' = calcDateBegin(calc(obj)) IF scenario(calc(obj)) ==  scenario1(reportList) 
+       dateP 'Дата план' = calcDateBegin(calc(obj)) IF isTheSameScenario( calc(obj),firm(reportList), scenario1(reportList))   
                                           AND date1(reportList) <= calcDateBegin(calc(obj))
                                           AND date2(reportList) >= calcDateEnd(calc(obj)),
-       dateF 'Дата факт' = calcDateBegin(calc(obj)) IF scenario(calc(obj)) ==  scenario2(reportList) 
+       dateF 'Дата факт' = calcDateBegin(calc(obj)) IF isTheSameScenario( calc(obj),firm(reportList), scenario2(reportList))   
                                           AND date3(reportList) <= calcDateBegin(calc(obj))
                                           AND date4(reportList) >= calcDateEnd(calc(obj))
      ;
      
      
-DESIGN form##nameRepClass##Exec  {
-       OBJECTS {
+DESIGN form##nameRepClass##Exec {
+    OBJECTS {
         NEW panelH FIRST {
-            type = CONTAINERH;
-            columns = 16;
+            horizontal = TRUE;
+            lines = 16;
             MOVE PROPERTY (name(reportList)){ hide = TRUE;};
-            
+
             NEW panelH1 {
-            type = CONTAINERV;
-            MOVE PROPERTY (scenarioP);
-            NEW panelH11 {
-                type = CONTAINERH;
-                MOVE PROPERTY (dateP1);
+                lines = 3;
+                MOVE PROPERTY (scenarioP){width = 250;};
+                MOVE PROPERTY (dateP1){width = 120;};
                 MOVE PROPERTY (dateP2);
             }
-            }
+
             NEW panelH2 {
-            MOVE PROPERTY (scenarioF);
-            NEW panelH21 {
-                type = CONTAINERH;
-                MOVE PROPERTY (dateF1);
+                lines = 3;
+                MOVE PROPERTY (scenarioF){width = 250;};
+                MOVE PROPERTY (dateF1){width = 120;};
                 MOVE PROPERTY (dateF2);
             }
-            }
-         }
+
+        }
     }
-}      
+}    
+   
 END    
      
          
@@ -295,14 +291,21 @@ PROPERTIES READONLY dummy = staticCaption (dummy)
 OBJECTS  section = (reportList 'Параметры' = ReportList)  PANEL
 PROPERTIES  
 name(reportList) READONLY,
+firm 'По разделу' = name(firm(reportList)),
 scenarioP 'Сценарий' = nameScenario(scenario1(reportList)),
 dateP1 'с' = date1(reportList) ON CHANGE { INPUT d1 = date1(reportList) CHANGE DO {
                                                       IF NOT date2(reportList) OR date2(reportList) < date1(reportList) THEN date2(reportList) <- lastDayOfMonth(date1(reportList));
                                                       }
-                                                    },
+                                         },
 dateP2 'по'= date2(reportList);
 
 DESIGN form##nameRepClass##Exec {
+    BOX (section) { 
+        caption = NULL;
+        horizontal = TRUE;
+        lines = 1;
+    }
+    
     PROPERTY (dummy){hide = TRUE;}
     OBJECTS {
      NEW trash {

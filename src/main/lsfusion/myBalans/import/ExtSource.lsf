@@ -1,6 +1,6 @@
 MODULE ExtSource;
 
-REQUIRE Utils;
+REQUIRE Utils,DimensFirm;
 
 NAMESPACE   ExtSystem; 
 

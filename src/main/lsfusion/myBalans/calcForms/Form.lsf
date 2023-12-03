@@ -11,61 +11,56 @@ strAInt(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\' 2 \' ||  TO_CHAR($2,\'FM999
 formatNum(NUMERIC n) = FORMULA 'TO_CHAR($1,\'FM999G999G999G990D00\')';
 textColumnName(STRING s, NUMERIC[18,2] n) =  IF strAInt(s,n) THEN strAInt(s,n) ELSE s; 
 
-//currentTimeText() =  [FORMULA TEXT 'to_char(now(),($1))']('YYYYMMDDHH24MISSMS'); 
-//
-//toDateFormat = FORMULA DATE 'to_date($1,$2)';
-//toDateTimeFormat = FORMULA DATETIME PG 'to_timestamp($1,$2)';
-//
-//toDateISO = FORMULA STRING[10] 'to_char(($1),\'YYYY-MM-DD\')';
-//
-//toDateDDMMYY = FORMULA STRING[8] 'to_char(($1),\'DD.MM.YY\')';DD.MM.YYYY 
 FORM dialogDateForm 'Ввод даты'
     OBJECTS d = DATE PANEL
     PROPERTIES(d) objValue = VALUE
 ;
  
+FORM dialogInputText 'Ввод текста'
+    OBJECTS t = TEXT PANEL 
+    PROPERTIES text = VALUE (t);
+DESIGN dialogInputText{
+    PROPERTY (text) {height = 500;
+                     width  = 500;}           
+}
+
 
 toTimeHMS (DATETIME dt) = FORMULA STRING[10] 'to_char(($1),\'HH24:MI:SS\')';
 
 
 
 
-META createFormReqPropertysBeforeOBJ(formname,MainCubeClass)
-new###formname 'Добавить' (calcTask){
-    NEW nC = MainCubeClass {
-        task(nC) <- Calc.task(calcTask); 
-        calc(nC) <- Calc.calc(calcTask); 
-     //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
-    }
-}
+META createFormReqPropertysBeforeOBJ(formname)
+    EXTEND FORM form###formname
+    OBJECTS calcTask = CalcTask  PANEL;
+END
+
+META createFormReqPropertyAfterOBJ(MainCubeClass,formname,cubeObject,namePropertyCalc,namePropertyTask,caption_form)
+
 delete###formname 'Удалить все' (calcTask){
     DELETE   MainCubeClass nC 
     WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
 }
 
-//form###formname###HelpExist = DATA BOOLEAN();
-//form###formname###checkHelpFile() {
-//  readResource('/doc/'###formname##'Hlp.docx');
-//  IF resourceFile() THEN  form###formname###HelpExist() <- TRUE;
-//}
-
-form###formname###OpenHlp(){
-    readResource('/doc/'###formname##'Hlp.docx');
-    IF NOT resourceFile() THEN readResource('/doc/ШаблонHlp.docx');
-    open(resourceFile(), ''###formname##'Hlp'); 
+delete###formname##ByFilter 'Удалить видимое' (calcTask){
+    DELETE   MainCubeClass nC 
+    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask)  AND [FILTER formname.cubeObject](nC); 
 }
 
-EXTEND FORM form###formname
-OBJECTS calcTask = CalcTask  PANEL;
- 
 
-END
+new###formname 'Добавить' (calcTask){
+    NEW nC = MainCubeClass {
+        task(nC) <- Calc.task(calcTask); 
+        calc(nC) <- Calc.calc(calcTask); 
+        SEEK formname.cubeObject = nC;
+     //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
+    }
+}
 
-META createFormReqPropertyAfterOBJ(formname,cubeObject,namePropertyCalc,namePropertyTask,caption_form)
 EXTEND FORM formname
 PROPERTIES  taskChecked(calcTask) READONLYIF readOnlyIfCheked(calcTask), 
             nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY,
-            hlp '?' = formname###OpenHlp() //SHOWIF formname###HelpExist()
+            tuneCalc 'Алгоритм расчета' = name(tuneCalc(calcTask)) SHOWIF tuneCalc(task(calcTask)) OR tuneCalc(calcTask) 
 PROPERTIES  READONLYIF readOnlyIfCheked(calcTask) namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
 FILTERS     (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )
         AND calc(calcTask) = namePropertyCalc(cubeObject)
@@ -77,12 +72,13 @@ DESIGN formname {
    caption =  CONCAT ' / ',nameTask(task(calcTask)) ,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDateBegin(calc(calcTask)))))+' '+ extractYear(calcDate(calc(calcTask))) ;
    OBJECTS { 
         NEW panelFirstHorizontal BEFORE BOX (calcTask) {
-               type = CONTAINERH;
-               columns = 15;
+               horizontal = TRUE;
+               lines = 1;
                MOVE PROPERTY (showReportList) FIRST;
-               MOVE PROPERTY (nameB) AFTER PROPERTY (showReportList); 
-               MOVE PROPERTY (taskChecked(calcTask));
-               MOVE PROPERTY (hlp);
+               MOVE PROPERTY (nameB) AFTER PROPERTY (showReportList);
+            MOVE PROPERTY (tuneCalc);
+            MOVE PROPERTY (taskChecked(calcTask));
+         //      MOVE PROPERTY (hlp);
             }
    }
    PROPERTY(namePropertyTask(cubeObject)){hide = TRUE;} 
@@ -101,7 +97,7 @@ META createLocalMenuOperation(menuName,extendedForm)
    
  FORM menuOperations##menuName##List 
  OBJECTS op = MenuOperations##menuName 
- PROPERTIES staticCaption(op)
+ PROPERTIES READONLY  staticCaption(op)
  LIST MenuOperations##menuName OBJECT op;
    
  operation##menuName ABSTRACT (CalcTask,  MenuOperations##menuName);
@@ -114,14 +110,13 @@ META createLocalMenuOperation(menuName,extendedForm)
    ///3 ОФОРМЛЕНИЕ
    EXTEND FORM extendedForm 
      PROPERTIES  // exec 'Импорт/экспорт...' = runActions(calcTask),
-     execLocal 'Расчеты...'= runOperation##menuName(calcTask,s); 
+     execLocal 'Расчеты...'= runOperation##menuName(calcTask,s) WAIT; 
     
    // ДИЗАЙН
    DESIGN extendedForm {
     
        panelFirstHorizontal {
-       //  type = CONTAINERH;
-         MOVE PROPERTY (execLocal) BEFORE PROPERTY (nameB) ;
+          MOVE PROPERTY (execLocal) BEFORE PROPERTY (nameB) ;
          };
         
     }

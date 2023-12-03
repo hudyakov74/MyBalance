@@ -1,0 +1,21 @@
+MODULE DimActivity;
+  
+REQUIRE TaskTune, Dimens, DimensCFO, DimensCostItems;
+
+NAMESPACE   Dimens; 
+
+CLASS DimActivity 'Виды деятельности';
+TABLE dimActivity(DimActivity);
+FORM formDimActivityGroup 'Виды деятельности'; 
+FORM formDimActivitylist 'Виды деятельности'; 
+ 
+FORM formDimActivityTreeList 'Виды деятельности'; 
+@configDimWO(DimActivity);
+
+
+EXTEND CLASS  DimActivityNamed{
+    activity1 'activity1',
+    activity2 'activity2',
+    activity3 'activity3'
+}
+

@@ -1,9 +1,13 @@
 MODULE TypeCFO;
 
 CLASS TypeCFO{
-    supportUnits 'Вспомогательные подразделения',
-    productionUnits 'Производственные подразделения',
-    commercialUnits 'Коммерческие подразделения'
+    supportUnits '23. Вспомогательные подразделения',
+    productionUnits '20. Производственные подразделения',
+    commercialUnits '44. Коммерческие подразделения',    
+    commonBusinessUnits '26. Общехозяйственные  подразделения',    
+    commonProductionUnits '25. Общепроизводственные подразделения',
+    otherIncome '91. Прочие доходы',
+    otherExpenses '91. Прочие расходы'
 } 
 name(TypeCFO td) =  staticCaption(td) ;
  

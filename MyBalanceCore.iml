@@ -10,11 +10,19 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Olingo" level="project" />
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/lsfusion/lsfusion5/5last/0623/server-5.1-20230630.124438-100-assembly.jar!/" />
+          <root url="jar://$USER_HOME$/lsfusion/lsfusion6/server-6.0-20231201.083709-882-assembly.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/lsfusion/lsfusion5/junidecode-0.4.1.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

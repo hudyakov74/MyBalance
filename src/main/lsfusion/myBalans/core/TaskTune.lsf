@@ -62,25 +62,20 @@ DESIGN  taskTune {
    OBJECTS {
     NEW mainPanel{
         fill = 1;
-        type = SPLITV;
+        
         MOVE  BOX(TREE taskTree) {fill = 2;};
         NEW panelBt{
             fill = 1;
-            type = SPLITH;
-            
+            horizontal = TRUE;
             MOVE BOX (ur) {fill =1;}
-            
             NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
         // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
-            type = TABBED;
+            tabbed = TRUE; 
             fill = 3;  
             }
-            
-            
       }
     }
   }     
-   
 };
 
 

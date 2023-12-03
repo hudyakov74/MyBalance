@@ -1,6 +1,6 @@
 MODULE Task;
 
-REQUIRE CalcCore;
+REQUIRE CalcCore, DistribTuneRef;
 
 NAMESPACE Budget;
 
@@ -13,6 +13,7 @@ type        'Тип'                   = DATA TypeTask (Task);
 calcVariant 'Вид расчета'           = DATA CalcVariant (Task) NONULL;
 isGroup     'Это группа'            = DATA BOOLEAN (Task); 
 parent      'В группе'              = DATA Task(Task);
+tuneCalc    'Алгоритм расчета'      = DATA DistribTuneRef(Task);
 
 level       'Уровень'  (Task child,Task parent) = 
     RECURSION 1l IF child IS Task AND parent = child
@@ -32,6 +33,15 @@ PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
 LIST Task OBJECT f
 ;
 
+FORM taskListByCalcVariant 'Список задач расчета'
+OBJECTS   c = CalcVariant, t = TypeTask
+OBJECTS   f = Task
+    PROPERTIES READONLY PANEL n = nameCalcVariant(c), nt = nameCalcBook(t)   
+    PROPERTIES READONLY pos(f),nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
+    ORDERS pos(f)
+FILTERS calcVariant(f) == c AND type(f) == t 
+;
+
 FORM taskListGroup 'Группы задач расчета'
 OBJECTS  calcVariant = CalcVariant PANEL 
 OBJECTS  f = Task
@@ -46,13 +56,14 @@ FORM taskListCard 'Карточка задачи расчета'
 OBJECTS  f = Task  PANEL 
 PROPERTIES   pos(f), nameTask(f) ,
             type_p  'Тип' = nameCalcBook(type(f)),
-            parent 'В группе' = nameTask(parent(f)) ON CHANGE openTaskListGroup(f)  
+            parent 'В группе' = nameTask(parent(f)) ON CHANGE openTaskListGroup(f),
+            tuneCalc 'Алгоритм расчета' = name(tuneCalc(f))
 EDIT Task OBJECT f;
 
 DESIGN taskListCard {
     OBJECTS { 
       NEW panel {
-         type = CONTAINERV;
+        horizontal = FALSE;
         MOVE PROPERTY (nameTask(f)) {charWidth = 30;}   
         MOVE PROPERTY (type_p) ;   
         MOVE PROPERTY (parent)   {charWidth = 45;}    

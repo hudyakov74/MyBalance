@@ -1,17 +1,18 @@
 MODULE Main;
-REQUIRE  MainMenu,PeriodType, Period, Scenario, CalcCore, Calc, ExtSource, ExtRequest, CalcSequence   
- 
-;
+REQUIRE  MainMenu,PeriodType, Period, Scenario, CalcCore, Calc, ExtSource, ExtRequest, CalcSequence, DistribTuneRef,
+ReportExportSettings;
 
 NAVIGATOR {
      catalogs  {
         cat1  {
             NEW periodForm;
             NEW scenarioList;
+            NEW formDistribTuneReflist;
         }
      tune   {
             NEW calcVariantList;
             NEW calcSequenceItems;
+            NEW reportExport; 
         }
      extSource  {
             NEW extSourceList;
@@ -19,5 +20,6 @@ NAVIGATOR {
             
         }
     }
-            NEW  calcList  BEFORE catalogs IMAGE 'table_96649.png'; 
+            NEW  calcList  BEFORE catalogs IMAGE 'images/table_96649.png'; 
+            
 }

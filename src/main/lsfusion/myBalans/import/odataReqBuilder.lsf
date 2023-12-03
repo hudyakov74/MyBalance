@@ -19,6 +19,17 @@ resultReqText = DATA LOCAL TEXT (OdataRequest);
 result    = DATA LOCAL TEXT (OdataRequest);
 resultFull = DATA LOCAL TEXT (OdataRequest);
 
+CLASS OdataRequestFilters;
+odataRequest = DATA OdataRequest(OdataRequestFilters) NONULL DELETE;
+filter = DATA STRING (OdataRequestFilters);
+
+CLASS OdataRequestSelect;
+odataRequest = DATA OdataRequest(OdataRequestSelect) NONULL DELETE;
+select = DATA STRING (OdataRequestSelect);
+
+
+
+
 runTest(OdataRequest r) {
 IF source(r) THEN {
  headers('Authorization') <- passwordBasicAuth(extSource(source(r)));
@@ -107,7 +118,13 @@ get2 'показать форму' = {
    EVAL formScriptResult();
      
 }      
-EDIT OdataRequest OBJECT r;
+//     
+OBJECTS f = OdataRequestFilters
+PROPERTIES filter(f)
+OBJECTS s = OdataRequestSelect
+PROPERTIES select(s)
+    
+    EDIT OdataRequest OBJECT r;
 
 
 DESIGN extRequestTestFormCard {

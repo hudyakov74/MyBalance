@@ -1,0 +1,14 @@
+MODULE DimUnitNomenkl;
+ 
+REQUIRE Dimens;
+
+NAMESPACE   Dimens; 
+//
+
+CLASS DimUnitNomenkl 'Единицы измерения';
+TABLE dimUnitNomenkl(DimUnitNomenkl);
+FORM formDimUnitNomenkllist 'Единицы измерения'; 
+@configDimWOGroup(DimUnitNomenkl);
+
+
+

@@ -1,0 +1,65 @@
+MODULE ReportTemplatesMb;
+
+REQUIRE ReportList;
+ 
+NAMESPACE Reports; 
+ 
+// шаблоны xls для дополнения отчетов
+CLASS MbReportTemplates;
+TABLE mbReportTemplates(MbReportTemplates);
+
+report = DATA ReportList(MbReportTemplates);
+active 'Использование' = DATA BOOLEAN (MbReportTemplates);
+name 'Наименование шаблона' = DATA STRING[255](MbReportTemplates) ;
+pos 'поз. листа до(-1), после(+1)' = DATA INTEGER (MbReportTemplates);
+xlsx 'Шаблон' = DATA EXCELFILE (MbReportTemplates);
+
+EXTEND FORM reportList
+    OBJECTS templ 'Шаблоны xlsx' = MbReportTemplates
+    FILTERS c = report(templ)
+    PROPERTIES 
+        DELETE (templ), NEW (templ),
+            xlsx(templ)  
+             
+            ON CHANGE {IF xlsx(templ) THEN open(xlsx(templ)); ELSE {INPUT = xlsx(templ) CHANGE;}},
+        pos(templ),
+        active(templ),
+        name(templ)
+;
+    
+DESIGN reportList {
+    PROPERTY (xlsx(templ)){charWidth = 3;} 
+    OBJECTS {
+        NEW topPanel FIRST {
+            horizontal = TRUE;
+            fill = 1;
+            MOVE BOX (c);
+            MOVE BOX (templ){fill = 0.5;};
+        }
+    }
+}
+
+mergeExcelTemplates(ReportList reportList) {
+   
+    LOCAL xl = EXCELFILE ();
+    FOR report(MbReportTemplates t) == reportList AND  active(t) ORDER pos(t) DO {
+        IF pos(t) < 0 THEN
+            {   xl() <- mergedExcel();
+                mergeExcel(xlsx(t), xl());
+                xlsMergeCorrect(mergedExcel(), xl());
+            }
+            
+        ELSE {
+            xl() <- mergedExcel();
+            mergeExcel(xl(), xlsx(t));
+            xlsMergeCorrect(mergedExcel(), xlsx(t));
+        
+        };
+    }
+}
+mergeExcelTemplatesOpen(ReportList reportList){
+    mergeExcelTemplates(reportList);
+    open(mergedExcel());
+}
+
+           

@@ -10,7 +10,7 @@ section 'Секция' = DATA SectionRequest(ExtRequest)  CHARWIDTH 10;
 type 'Тип импорта' = DATA TypeRequest(ExtRequest) CHARWIDTH 10;
 name 'Наименование' = DATA STRING[150](ExtRequest) IN id CHARWIDTH 20;
 extSource 'Источник' = DATA ExtSource (ExtRequest)   CHARWIDTH 10;
- 
+dimFirm 'Организация' = DATA DimFirm(ExtRequest);
 
 debugMode 'отладка' = DATA INTEGER (ExtRequest);
 
@@ -37,7 +37,8 @@ PROPERTIES (er) NEW,DELETE
 PROPERTIES section 'Раздел' = staticCaption(section(er)),
            type 'Вид операции' = staticCaption(type(er)),
            nameOp 'Наименование операции' = name(er),
-           nameExtSrc 'Внешний источник' =  name(extSource(er)), 
+           nameExtSrc 'Внешний источник' =  name(extSource(er)),
+           dimFirm 'Организация' =  name(dimFirm(er)),
            debugMode(er) 
             
 OBJECTS param = ExtRequestParam
@@ -74,7 +75,7 @@ DESIGN extRequestList {
     PROPERTY (type) { charWidth = 5; }
     PROPERTY (nameExtSrc) { charWidth = 5; }
     PROPERTY (nameOp) { charWidth = 25; }
- 
+    PROPERTY (dimFirm) { charWidth = 15; }
 }
 
 
@@ -87,6 +88,7 @@ odataGet(ExtRequest er, STRING req, STRING reqName) {
          EXTERNAL HTTP GET (CONCAT '',conectString(extSource(er)), req) HEADERS headers TO resultFile;
         
          IF debugMode(er) == 1 AND reqName != '' THEN {
+             printToLog(CONCAT '',conectString(extSource(er)), req);
              fileToString(resultFile());
              NEWSESSION NESTED (resultString) {
                 LOCAL d = ExtRequestDebug();

@@ -1,0 +1,149 @@
+MODULE helpZim;
+
+REQUIRE Utils;
+
+//? == Утилита формирования файла помощи ==
+//
+//  В файл описания попадают все комментарии выделенные особым образом.
+//  Сам текст комментариев можно оформлять с использованием кода  wiki
+//  Обработка использует 2 переменных
+//??
+zimSrcPath 'Каталог проекта ../src/main/lsfusion/' = DATA STRING[500](); // Каталог исходных файлов
+zimHomePath 'Каталог блокнота zim' = DATA STRING[500](); // каталог выходных фалов
+//? 
+// Исполняется на сервере, предполагается ее запуск при компоновке проекта
+//
+// == Оформление комментариев ==
+// Строки комментариев переносимых в help файлы
+// //? - начиная с такой строки все строки комментариев начинающиеся с начала строки идущие без разрывов (пустых строк)
+// будут добавлены в файл выхода
+//
+// //?? - после данной последовательности следующие все строки до первого комментария //?-  или //? встретившегося в начале строки
+// будут добавлены в выходной файл (обрамляя исходный текст в ``` ``` можно добавлять листинг)
+//
+// //?= - после данной последовательности следующие все строки до первого комментария //?- или //? встретившегося в начале строки
+// будут добавлены в выходной файл
+// строки будут добавлятся только до символа =, сделано для вывода кода и наименований свойств форм в помощь
+//
+// 
+// == Иерархия и порядок форм ==
+//  повторяется структура папок к файлам lsf добавляются расширения txt
+
+
+zimResText          = DATA LOCAL TEXT ();
+zimResTextIndex     = DATA LOCAL INTEGER ();
+zimResDir           = DATA LOCAL STRING[255] ();
+zimResDirDefault    = DATA LOCAL STRING[255] ();
+zimResFile          = DATA LOCAL STRING[255] ();
+zimResFileDefault   = DATA LOCAL STRING[255] ();
+zimResParent        = DATA LOCAL STRING[255] ();
+zimResParentDefault = DATA LOCAL STRING[255] ();
+zimResRoot          = DATA LOCAL STRING[255] (); 
+
+zimScanFile(STRING fn){
+    LOCAL sIn      = STRING ();
+    LOCAL sOut     = STRING ();
+    LOCAL sTmp     = STRING ();
+    LOCAL writeOn = INTEGER ();
+    sOut() <- '';
+    READ fn TO resultFile;
+    fileToString(resultFile());
+    sIn() <- resultString();
+    FOR iterate(INTEGER i, 1,wordCount(sIn(),'\n')) DO
+        {
+            sTmp() <- ltrim(getWord(sIn(),'\n',i));
+            CASE EXCLUSIVE   
+                WHEN startsWith(sTmp(),'//??') THEN // начало блока включаяя исходный текст, заканчиваем режим //?- или //? 
+                {
+                    sOut() <- CONCAT '',sOut(), ltrim(substrFrom(sTmp(),5)); 
+                    writeOn() <- 2;
+                }
+                WHEN startsWith(sTmp(),'//?=') THEN // начало блока включаяя исходный текст до знаков =  заканчиваем режим //?- или //? 
+                {
+                    sOut()    <- CONCAT '',sOut(), ltrim(substrFrom(sTmp(),5)); 
+                    writeOn() <- 3;
+                }
+                WHEN startsWith(sTmp(),'//?-') THEN // конец блока включаяя исходный текст   
+                {
+                    sOut()      <- CONCAT '',sOut(),ltrim(substrFrom(sTmp(),5));
+                    writeOn()   <- NULL;
+                 }
+                WHEN startsWith(sTmp(),'//?') THEN // начало блока комментария помещаемого в файл 
+                {
+                    sOut()      <- CONCAT '',sOut(),ltrim(substrFrom(sTmp(),4));
+                    writeOn()   <- 1;
+                 }
+                WHEN startsWith(sTmp(),'//') AND  writeOn() THEN // комментарии следующие. 
+                {
+                    sOut() <- CONCAT '',sOut(), ltrim(substrFrom(sTmp(),3));
+                }
+                WHEN writeOn() == 2 THEN {   // если режим 2 то включем все подряд строки 
+                    IF length(sTmp()) > 0 THEN 
+                    sOut() <- CONCAT '', sOut(), '\'\'', sTmp(), '\'\'';
+                }
+                WHEN writeOn() == 3 THEN {   // если режим 3  до символа =
+                    IF length(sTmp()) > 0 THEN 
+                    sOut() <- CONCAT '', sOut(), '\'\'', left(sTmp(), strpos(sTmp(),'=')), '\'\'';
+                }
+                ELSE {
+                    writeOn() <- NULL;
+                    sTmp() <- ''; 
+                }
+               ;
+            
+          IF  sTmp() != '' THEN  sOut() <- CONCAT '', sOut(), '\n';
+        }
+     zimResText() <- sOut();
+}
+//zimLastDir(STRING s) =  regexpReplace(s,'.*\\/)','',''); //директория файла
+zimFileName(STRING s) =  regexpReplace(s,'[^\\/]+([^\\/]*$)','',''); //файл
+
+zimCreateDirs(STRING fn){
+   FOR  isSubstring( fn, fileName(INTEGER i_)) AND fileIsDirectory(i_) ORDER fileName(i_) NOINLINE DO {
+       fileExists((CONCAT  '',zimHomePath(),fileName(i_)));
+       IF NOT fileExists() THEN {
+            mkdir((CONCAT  '',zimHomePath(),fileName(i_)));
+       }
+   }; 
+} 
+
+zimScanFiles(STRING path){
+    listFiles(path,TRUE);
+        
+    FOR  fileName(INTEGER i) NOINLINE DO {
+       IF endsWith(fileName(i),'.lsf') THEN {
+            zimResFileDefault() <- fileName(i);  // имя папки - имя файла по умолчанию
+            zimScanFile(CONCAT '', path, fileName(i));
+            IF  length(zimResText()) > 0 THEN {
+                stringToFile(CONCAT '', 'Content-Type: text/x-zim-wiki\nWiki-Format: zim 0.6\n', zimResText());
+                zimCreateDirs(zimResFileDefault());
+                WRITE resultFile() TO (CONCAT '', zimHomePath(), zimResFileDefault(), '.txt');
+            }
+        }
+        ELSE IF endsWith(fileName(i),'.wiki') THEN {
+             READ  (CONCAT '', path, fileName(i)) TO resultFile;
+             fileToString(resultFile());
+             stringToFile(CONCAT '', 'Content-Type: text/x-zim-wiki\nWiki-Format: zim 0.6\n', resultString());
+             zimCreateDirs(fileName(i));
+             WRITE resultFile() TO (CONCAT  '',zimHomePath(), replace(fileName(i),'.wiki','.txt'));
+        }
+        ELSE IF endsWith(fileName(i),'.png') THEN {
+             zimCreateDirs(fileName(i));  
+             copy((CONCAT '', path, fileName(i)),(CONCAT  '',zimHomePath(), fileName(i)));
+        }
+        
+    }
+}
+zimRun'Сформировать zim' () {
+    zimScanFiles(zimSrcPath()); 
+}
+
+FORM zimGenerateFiles 'Генерация файлов описания'
+PROPERTIES zimSrcPath(), zimHomePath(), zimRun()    
+;
+DESIGN  zimGenerateFiles {
+    GROUP() {
+       horizontal = FALSE; 
+       lines = 1;
+    }
+}

@@ -13,7 +13,7 @@ FORM formDimRawNomenklTreeList 'Номенклатура внешняя';
 @configDimWO(DimRawNomenkl);
 
 // МЕСТО для доп. свойств
-
+unit       'Единица учета'  = DATA DimUnitNomenkl(DimRawNomenkl);
 // код источника для идентификации базы источника
 codeSource 'код источника' = DATA  ISTRING[10]  (DimRawNomenkl) INDEXED ;
 
@@ -27,3 +27,44 @@ formDimRawNomenkllistSelectNom(DimRawNomenkl rNom) {
 EXTEND FORM formDimRawNomenkllist
 PROPERTIES nameNom 'Номенклатура основная'= name(dimNomenkl(d)) AFTER name(d) ON CHANGE formDimRawNomenkllistSelectNom(d);
  
+ 
+ 
+
+ getOrCreateNomenklViaRaw(STRING  nameRawNomenkl) {
+        newByNameDimRawNomenkl(nameRawNomenkl);
+        // currentDimRawPartner
+          IF NOT dimNomenkl(currentDimRawNomenkl()) THEN {
+             newByNameDimNomenkl(nameRawNomenkl);
+            dimNomenkl(currentDimRawNomenkl()) <- currentDimNomenkl();
+          }
+          ELSE {
+            currentDimNomenkl() <- dimNomenkl(currentDimRawNomenkl()); 
+          }
+  }  
+
+
+newByNameDimRawNomenkl(STRING name, DimUnitNomenkl eom) {
+ IF name AND NOT (name == '') THEN {
+    currentDimRawNomenkl() <- GROUP MAX DimRawNomenkl d IF name(d) == name AND unit(d) == eom;
+    IF (NOT currentDimRawNomenkl())   THEN {
+              NEW  new =  DimRawNomenkl  {
+                  name(new) <- name;
+                  unit(new) <- eom;
+                  currentDimRawNomenkl() <- new;
+           }
+    }  
+ }
+ ELSE currentDimRawNomenkl() <- NULL;
+}
+
+ getOrCreateNomenklViaRaw(STRING  nameRawNomenkl,DimUnitNomenkl eom) {
+        newByNameDimRawNomenkl(nameRawNomenkl, eom);
+        // currentDimRawPartner
+          IF NOT dimNomenkl(currentDimRawNomenkl()) THEN {
+             newByNameDimNomenkl(nameRawNomenkl, eom);
+            dimNomenkl(currentDimRawNomenkl()) <- currentDimNomenkl();
+          }
+          ELSE {
+            currentDimNomenkl() <- dimNomenkl(currentDimRawNomenkl()); 
+          }
+  }  

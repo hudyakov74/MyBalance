@@ -1,6 +1,6 @@
 MODULE Calc;
 
-REQUIRE TaskTune,Utils,Time,PeriodCalendar  ;
+REQUIRE TaskTune,Utils,Time,PeriodCalendar,DimensFirm;
 
 NAMESPACE Calc;
 
@@ -17,12 +17,13 @@ TABLE calc(Calc);
 // пометка -  изменение данных -  необходимость считать копию
 // 
 parentCalc '' = DATA Calc(Calc);
-caclVersionNum = DATA INTEGER (Calc);
+calcVersionNum = DATA INTEGER (Calc);
 
 calcDate 'Дата расчета' = DATA DATE (Calc) IN base NONULL ; 
 calcDateBegin 'начало'  = DATA DATE (Calc) IN base NONULL; 
 calcDateEnd 'окончание' = DATA DATE (Calc) IN base NONULL; 
 
+dimFirm     'Организация' = DATA DimFirm(Calc);
 
 description 'Комментарий' = DATA STRING[1000] (Calc) IN base;
 periodType 'Используемые периоды'  =  DATA PeriodType (Calc) NONULL;
@@ -33,7 +34,11 @@ calcVariant 'Вид расчета'  = DATA CalcVariant(Calc) NONULL;
 paramProportionPart     'Доля в днях'                         = DATA INTEGER (Calc);
 paramProportionWhole    'Полная доля (рабочих дней)'          = DATA INTEGER (Calc);
 
-name 'Наименование' (c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
+isTheSameScenario(Calc c1,Calc c2) =  scenario(c1) == scenario(c2) AND dimFirm(c1) == dimFirm(c2) ;
+isTheSameScenario(Calc c1,Calc c2, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm(c2) ;
+isTheSameScenario(Calc c1,DimFirm dimFirm, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm;
+
+name 'Наименование' (Calc c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
                                         nameScenario(scenario(c)),   
                                         nameType(periodType(c)),
                                         (
@@ -52,28 +57,58 @@ getPeriodByDate(Calc c,DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodTy
  
 openCalcCard ABSTRACT (Calc);
  
+readOnlyTitleCalc(Calc c) = calcVersionNum(c) != NULL; 
+
 FORM calcList 'Реестр расчетов' 
 OBJECTS c = Calc LAST 
-PROPERTIES  ON CHANGE {openCalcCard(c);}
-            opn 'Открыть' = openCalcCard(c) GRID,
+PROPERTIES opn 'Открыть' = openCalcCard(c) GRID IMAGE 'folder_table.png'   
+PROPERTIES   READONLY   
             n01 'Дата' = calcDate(c),
             n03 'Сценарий' = nameScenario(scenario(c))  ,
             nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
             begDate 'с'  = calcDateBegin(c), 
             endDate 'по' = calcDateEnd(c),
+            dimFirm 'Организация' = name(dimFirm(c)),
             n02 'Комментарий' = description(c)   
 PROPERTIES(c) NEW,DELETE
 ORDERS n01,n03
-LIST Calc OBJECT c;
+ ;
 
 DESIGN calcList {
-      PROPERTY(n01) { charWidth='14'; } 
-      PROPERTY(n03) { charWidth='10'; }
-      PROPERTY(nameCV) { charWidth='10'; }
-      PROPERTY(begDate) { charWidth='14'; } 
-      PROPERTY(endDate) { charWidth='14'; } 
-      PROPERTY(n02) { charWidth='50'; } 
-  };
+      BOX (c) {caption = NULL; collapsible = FALSE;}
+      PROPERTY(n01) { charWidth=14; } 
+      PROPERTY(n03) { charWidth=10; }
+      PROPERTY(nameCV) { charWidth=10; }
+      PROPERTY(begDate) { charWidth=14; } 
+      PROPERTY(endDate) { charWidth=14; } 
+      PROPERTY(dimFirm) { charWidth=10; } 
+      PROPERTY(n02) { charWidth=50; } 
+};
+ 
+FORM calcListSelect 'Реестр расчетов' 
+OBJECTS c = Calc LAST 
+PROPERTIES  READONLY 
+            n01 'Дата' = calcDate(c),
+            n03 'Сценарий' = nameScenario(scenario(c))  ,
+            nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
+            begDate 'с'  = calcDateBegin(c), 
+            endDate 'по' = calcDateEnd(c),
+            dimFirm 'Организация' = name(dimFirm(c)),
+            n02 'Комментарий' = description(c)   
+ORDERS n01,n03
+LIST Calc OBJECT c;
+
+
+
+DESIGN calcListSelect {
+      PROPERTY(n01) { charWidth=16; } 
+      PROPERTY(n03) { charWidth=10; }
+      PROPERTY(nameCV) { charWidth=10; }
+      PROPERTY(begDate) { charWidth=14; } 
+      PROPERTY(endDate) { charWidth=14; } 
+      PROPERTY(dimFirm) { charWidth=10; } 
+      PROPERTY(n02) { charWidth=50; } 
+};
   
   
  openTask ABSTRACT (Calc, Task);
@@ -82,16 +117,17 @@ FORM  reportListExecCalc 'Список отчетов'
 OBJECTS  calc = Calc PANEL; // предварительное объявление формы выбора отчета
 
 // ================ОСНОВНАЯ ФОРМА================================================
+           
 FORM calcCard 'Расчет' 
-OBJECTS curCalc = Calc PANEL 
+OBJECTS curCalc  = Calc PANEL 
 //OBJECTS p = CalcPeriod
 OBJECTS task = Task 
 PROPERTIES 
-         
+           firm 'Организация' = name(dimFirm(curCalc)),
            n01 'Дата' = calcDate (curCalc) , 
-           n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) ,
+           n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) NOSELECT,
            n03 'Сценарий' = nameScenario(scenario(curCalc)),
-           name(curCalc),
+          
            n1 'Периодичность' = nameType(periodType(curCalc)),
            begDate 'с'  = calcDateBegin(curCalc),  
            endDate 'по' = calcDateEnd(curCalc),
@@ -101,8 +137,8 @@ PROPERTIES
             
            
 PROPERTIES  ON CHANGE { openTask(curCalc, task); }
-            openTask(curCalc, task) GRID READONLYIF isGroup(task),  
-            nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor() ,
+            openTask(curCalc, task) GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'table_multiple.png' ELSE 'table_edit.png',  
+            nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor(),
             nameCol 'тип' = nameCalcBook(type(task)), 
             canonicalName(task), pos(task) // hide
 
@@ -121,46 +157,41 @@ openCalcCard (Calc c_) + {
 
   
 DESIGN calcCard   { //nameTask
-
-
-
 caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBegin(curCalc)) ;
-PROPERTY (pos(task)) {hide =TRUE;}
+
+    PROPERTY (nameTaskTab(task)) {charWidth = 60;}
+    PROPERTY (nameCol) {charWidth = 40;}
+    PROPERTY (pos(task)) {hide =TRUE;}
 PROPERTY (canonicalName(task)){hide=TRUE;}
 PROPERTY (pos(task)){hide=TRUE;}
-
+ 
   PANEL (curCalc) {
+        caption = NULL;
         NEW pan1 {
-            type = COLUMNS;
-            columns = 3;
-            MOVE PROPERTY(n01) { charWidth='14'; align = STRETCH;};
-            MOVE PROPERTY(n04) { charWidth='14'; align = STRETCH;};
-            MOVE PROPERTY(n03) { charWidth='14'; align = STRETCH;};
+            lines = 10;
+            MOVE PROPERTY(firm) { charWidth=14; align = STRETCH;};
+            MOVE PROPERTY(n01) { charWidth=14; align = STRETCH;};
+            MOVE PROPERTY(n04) { charWidth=14; align = STRETCH;};
+            MOVE PROPERTY(n03) { charWidth=14; align = STRETCH;};
         }
         NEW pan2 {
-            type = COLUMNS;
-            columns = 3;
-            MOVE PROPERTY(begDate) { charWidth='14'; align = STRETCH;} 
-            MOVE PROPERTY(endDate) { charWidth='14'; align = STRETCH;} 
-            MOVE PROPERTY(n1) { charWidth='14'; align = STRETCH;}
-        } 
-        NEW panelComment{
-            type = CONTAINERH;
+            lines = 10;
             MOVE PROPERTY (showReportList) {background = #edfffc;}; 
-            MOVE PROPERTY(n02) { charWidth='50'; align = STRETCH;} 
+            MOVE PROPERTY(begDate) { charWidth=14; align = STRETCH;} 
+            MOVE PROPERTY(endDate) { charWidth=14; align = STRETCH;} 
+            MOVE PROPERTY(n1) { charWidth=14; align = STRETCH;}
+            MOVE PROPERTY(n02) { charWidth = 50; align = STRETCH;}
         }
+    
         
   }
    OBJECTS {
       NEW tabPanelcalc {
-                 type = CONTAINERH; //TABBED ;
+                 horizontal = TRUE;
                  flex = 1; 
                  align  = STRETCH;
                  MOVE   BOX (task); 
-                // MOVE   BOX (p);
-                  
             }
     }
 };
-
   

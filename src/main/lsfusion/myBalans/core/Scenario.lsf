@@ -17,4 +17,4 @@ NAMESPACE Budget;
  LIST Scenario OBJECT sc;
  
  name(Scenario s) = nameScenario(s);
- getMainScenario() = GROUP MAX Scenario sc IF mainScenario(sc);
+ getMainScenario() = GROUP MAX Scenario sc IF mainScenario(sc) MATERIALIZED;

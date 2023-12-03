@@ -27,6 +27,13 @@ PROPERTIES calcSequence 'Последовательность расчета з�
                           }
 ;
 
+DESIGN calcCard { 
+    pan1 {
+        MOVE PROPERTY (calcSequence);
+    
+    }
+}
+
 CLASS  CalcSequenceItems 'Последовательность расчета';
 TABLE  calcSequenceItems(CalcSequenceItems);
 

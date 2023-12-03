@@ -1,0 +1,22 @@
+MODULE AlgorithmTune;
+
+REQUIRE DistribTuneRef, CalcTask;
+
+NAMESPACE Budget;
+
+runAlgorithmTuneSub 'Запуск алгоритма распределения' ABSTRACT LIST(DistribTuneRefSub, CalcTask,  INTEGER);
+
+runAlgorithmTune 'Запуск алгоритма распределения'    (CalcTask ct, INTEGER calcStage) {
+        tuneCalc(ct) <- tuneCalc(task(ct)) WHERE NOT tuneCalc(ct);
+        // запуск по подчиненному списку
+        LOCAL calcStageNext = INTEGER ();
+        calcStageNext() <- calcStage;
+        FOR distribTuneRef( DistribTuneRefSub s ) == tuneCalc(ct) ORDER order(s),s NOINLINE DO {
+           calcStageNext() <- calcStageNext() (+) 1;
+           MESSAGE ( CONCAT ' | ', calcStageNext(), name(s)) NOWAIT LOG; 
+           runAlgorithmTuneSub(s, ct, calcStageNext()); 
+        }
+       
+};
+
+ 

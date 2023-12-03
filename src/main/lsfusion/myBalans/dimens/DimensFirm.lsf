@@ -1,8 +1,15 @@
 MODULE DimensFirm;
   
-REQUIRE TaskTune,Dimens,ExtFormRequestList;
+REQUIRE TaskTune, Dimens;
 
 NAMESPACE   Dimens; 
+
+//run(){
+//LOCAL d = DimFirm();
+//    d() <-  GROUP MAX DimFirm d AS DimFirm;
+//    FOR Calc c AS Calc DO dimFirm(c) <-  d();
+//    APPLY;
+//}
 
 CLASS DimFirm 'Организации';
 TABLE dimFirm(DimFirm);
@@ -13,6 +20,21 @@ FORM formDimFirmTreeList 'Организации';
 @configDimWO(DimFirm);
 
 // МЕСТО для доп. свойств
+inn 'ИНН' = DATA STRING[12](DimFirm);
+kpp 'КПП' = DATA STRING[9](DimFirm);
+
+// роли
+dimFirmPermission 'Доступ' = DATA BOOLEAN (DimFirm, UserRole);
+
+hasCurrentUserDimFirmPermission(DimFirm r) = GROUP MAX TRUE IF dimFirmPermission(r, UserRole ur) AND has(currentUser(),ur);  
+
+EXTEND FORM formDimFirmlist PROPERTIES inn(d),kpp(d)
+
+    OBJECTS ur = UserRole
+    PROPERTIES  name(ur), dimFirmPermission(d,ur) READONLYIF NOT has(currentUser(), userRoleSID('admin'))
+;
+ 
+ 
  
 // добавление списка в CalcComposition
 TABLE dimFirmTask(Task,DimFirm);

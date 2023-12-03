@@ -1,42 +1,7 @@
 MODULE Dimens;
-REQUIRE CoreColor,CoreMenu,Utils;
+REQUIRE CoreColor,CoreMenu,Utils, DimCategory, Reflection;
 NAMESPACE   Dimens;
-
-CLASS Dim  'Измерения';
-
-pos 'Порядок' = DATA INTEGER  (Dim) IN base CHARWIDTH 5;
-code 'Код' = DATA STRING[15] (Dim) IN id;
-name 'Наименование' = DATA STRING[254] (Dim) IN id INDEXED;
-isGroup 'Группа' = DATA BOOLEAN (Dim);
-isHide 'Скрыть' = DATA BOOLEAN (Dim);
-parent 'Родитель' = DATA Dim(Dim);
-isRoot 'корень' = DATA BOOLEAN (Dim);
  
-levelInt 'Уровень'  (Dim child, Dim parent) =
-   RECURSION 1 IF child IS Dim AND parent = child
-        STEP 1 IF parent = parent($parent) MATERIALIZED;
-       
- 
-level 'Уровень' (Dim child, Dim parent) =
-   RECURSION 1l IF child IS Dim AND parent = child
-        STEP 2l IF parent = parent($parent) MATERIALIZED;
-
-isParent 'Родитель' (Dim child, Dim parent) = TRUE IF level(child, parent);
-
-                     
-        
-canonicalName 'Каноническое имя' (Dim group) =
-   GROUP CONCAT name(Dim parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
-levelNum 'levelNum' (Dim group) =
-   (GROUP  MAX level(group, parent))  CHARWIDTH 2;
- 
-   
-tabName 'имя' (Dim group) =
-   (GROUP CONCAT '    ','    ' ORDER DESC level(group, parent)) + name(group) CHARWIDTH 15;
-
-color(Dim s) = IF isGroup(s) THEN Budget.groupBackColor(3) ;
- 
-
 META configDim(ObjectDim) 
  // элемент root - представляет собой элемент множества подставляющийся вместо всего множества
  // в формах списков можно не показывать 
@@ -75,7 +40,7 @@ META configDim(ObjectDim)
     FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(t) DEFAULT
     LIST ObjectDim OBJECT t;
     DESIGN   form##ObjectDim##TreeList { 
-        PROPERTY (tabName(t)) { charWidth='100'; }
+        PROPERTY (tabName(t)) { charWidth=100; }
     };
   
    // форма для редактирования списка - открывается только из меню
@@ -128,12 +93,13 @@ META configDimWOGroup(ObjectDim)
 pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id;
 name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
+uuidInit 'Первоначальный uuid' = DATA ISTRING[36] (ObjectDim) IN id INDEXED ;
 isRoot 'корень' = DATA BOOLEAN (ObjectDim);
 isHide 'Скрыт' = DATA BOOLEAN (ObjectDim);
 isGroup 'Е' = DATA BOOLEAN (ObjectDim);
 getRoot##ObjectDim()   = GROUP MAX ObjectDim c IF isRoot(c) AND  NOT isGroup(c);
 getEmpty##ObjectDim() = GROUP MAX ObjectDim c IF isRoot(c) AND isGroup(c);
-
+ 
 
 WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectDim all) AND NOT isGroup(all) AND all IS ObjectDim)) > 1 ) DO {
    isRoot(sd)<-NULL ;
@@ -145,17 +111,18 @@ FORM  form##ObjectDim##Selectlist  'Выбор элемента'
     PROPERTIES(d)  READONLY  
     ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
     BACKGROUND  #e3e3e3 IF isHide(d) 
-    pos ,name 
+    pos, code, name 
     PROPERTIES(d) NEWEDIT,EDIT 
     
      // EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
-    FILTERS NOT isRoot(d)
+    FILTERS NOT (isRoot(d) AND NOT isGroup(d)) 
     ORDERS  pos(d)
     FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT
+    LIST ObjectDim OBJECT d
     ;
 
 DESIGN   form##ObjectDim##Selectlist { 
-   PROPERTY  (name(d))  { charWidth='40'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (name(d))  { charWidth=40; defaultCompare='=*';}
    PROPERTY  (pos(d))   { hide = TRUE ; }
    BOX { size = (1200,600);}
 } ;      
@@ -166,9 +133,9 @@ delAll##ObjectDim 'удалить все'() {
 // форма для редактирования списка - открывается только из меню
 EXTEND FORM  form##ObjectDim##list  
 OBJECTS d = ObjectDim 
-PROPERTIES delAll##ObjectDim()
+//PROPERTIES delAll##ObjectDim()
 PROPERTIES(d)   isRoot,isGroup,isHide, NEW ,DELETE, 
-               pos, name 
+               pos, code, name, uuidInit 
 ORDERS  pos(d) 
 ; 
 NAVIGATOR {
@@ -179,6 +146,17 @@ dimCatalogs   {
 
 
 current##ObjectDim = DATA LOCAL ObjectDim ();
+
+
+newByName##ObjectDim##WoCheck(STRING name) {
+  IF name AND NOT (name == '') THEN {
+              NEW  new =  ObjectDim  {
+                  name(new) <- name;
+                  current##ObjectDim() <- new;
+              }
+  }  
+}     
+
 
 newByName##ObjectDim(STRING name) {
  IF name AND NOT (name == '') THEN {
@@ -192,18 +170,112 @@ newByName##ObjectDim(STRING name) {
  }
  ELSE current##ObjectDim() <- NULL;
 }       
-       
+
+
+
+
+importStr###ObjectDim = DATA LOCAL STRING (INTEGER); 
+importUuidStr###ObjectDim = DATA LOCAL STRING[36] (INTEGER);       
+import###ObjectDim    = DATA LOCAL ##ObjectDim(INTEGER);       
+ 
+newByImportIndex##ObjectDim(INTEGER n) {
+ IF importStr###ObjectDim(n) AND length(importStr###ObjectDim(n)) > 0 THEN {
+    current##ObjectDim() <- GROUP MAX ObjectDim d IF name(d) == importStr###ObjectDim(n);
+    IF (NOT current##ObjectDim())   THEN {
+              NEW  new =  ObjectDim  {
+                  name(new) <- importStr###ObjectDim(n);
+                  uuidInit(new) <- importUuidStr###ObjectDim(n);
+                  current##ObjectDim() <- new;
+           }
+    }  
+ }
+ ELSE current##ObjectDim() <- NULL;
+}    
+
+syncByName##ObjectDim() {
+    FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL;
+    // если указан uuid то сначала смотрим по нему существующие элементы, если было переименование в первичном источнике!!! 
+    FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
+        AND 
+        uuidInit(##ObjectDim p) == importUuidStr###ObjectDim(nm) 
+        AND 
+        name(p) != importStr###ObjectDim(nm)
+        DO {
+      name(p) <- importStr###ObjectDim(nm);
+    }
+      // остальное заводим по имени!!!
+    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF name(p) == nm) DO {
+        newByName##ObjectDim(nm);
+    }
+    // если захотели добавить UUID
+    FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
+        AND 
+        NOT uuidInit(##ObjectDim p)  
+        AND 
+        name(p) == importStr###ObjectDim(nm)
+        DO {
+             uuidInit(p) <- importUuidStr###ObjectDim(nm);
+    }
+  
+    // синхронизируем по имени
+    FOR importStr###ObjectDim(INTEGER n) = name(##ObjectDim p) DO {
+        import###ObjectDim(n) <- p;
+    }
+}                
+    
+    // Категории
+   categoryValueName(Object p) += WHEN p IS ##ObjectDim THEN name(p AS ##ObjectDim);
+   categoryValueClass(Object p) += WHEN p IS ##ObjectDim THEN ''##ObjectDim;
+ // функция входимости объекта
+objectInCategory 'функция входимости объекта в категорию' (DimCategoryItemsNamed n, ##ObjectDim o) = 
+    GROUP MAX categoryGroup(DimCategory dk, ##ObjectDim o_) IF itemsName(dk) == n  AND o_ IS ##ObjectDim BY o_;
+    
+    
+objectExistInCategory 'Есть ли в категории такой объект' (DimCategory n, ##ObjectDim o) = 
+    GROUP MAX TRUE  IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim;
+    
+objectInCategoryOrEpmty 'функция входимости объекта в категорию' (DimCategory n, ##ObjectDim o) = 
+    OVERRIDE NOT objectExistInCategory(n, o),
+    (GROUP MAX TRUE IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim AND o_ == o);       
+    
+  EXTEND FORM  form##ObjectDim##list
+  OBJECTS catg = DimCategory PANEL 
+  PROPERTIES PANEL nameCat 'Категория' =  codeCt(catg) SELECTOR 
+  PROPERTIES  
+    inCatGroup 'вкл' = categoryGroup(catg, d)   
+    HEADER  codeCt(GROUP MAX  DimCategory a_ IF [VIEW form##ObjectDim##list.catg](a_))  
+    DRAW d GRID FIRST;
+    
+   DESIGN form##ObjectDim##list {
+       PROPERTY (inCatGroup) {charWidth = 5;};
+      
+      TOOLBARRIGHT (d) {
+          MOVE PROPERTY (nameCat){charWidth = 10;};
+      }
+      
+   }
 END
 
 META configDimWO(ObjectDim)
+CLASS  ObjectDim##Named{
+  empty ''
+}
+
+name(ObjectDim##Named obj_) = staticCaption(obj_); 
+itemsCode 'Код элемента' (ObjectDim##Named obj) =  regexpReplace(staticName(obj),'.*\\.','','');
+
 pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id;
 name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
+uuidInit 'Первоначальный uuid' = DATA ISTRING[36] (ObjectDim) IN id INDEXED ;
 nameWoDuble(ObjectDim s) =  regexpReplace(name(s),'"','','g'); 
 isGroup 'Группа' = DATA BOOLEAN (ObjectDim);
 isHide 'Скрыт' = DATA BOOLEAN (ObjectDim);
 parent 'Родитель' = DATA ObjectDim(ObjectDim);
 isRoot 'корень' = DATA BOOLEAN (ObjectDim);
+itemsName 'Имя для формул' = DATA ObjectDim##Named(ObjectDim); 
+get##ObjectDim##ByItem(ObjectDim##Named obj) = GROUP MAX ObjectDim d_ IF itemsName(d_) == obj;
+itemsCode 'Код элемента' (ObjectDim obj) =  regexpReplace(staticName(itemsName(obj)),'.*\\.','','');
 
 level 'Уровень' (ObjectDim child, ObjectDim parent) =
    RECURSION 1l IF child IS ObjectDim AND parent = child
@@ -213,15 +285,15 @@ levelInt 'Уровень' (ObjectDim child, ObjectDim parent) =
    RECURSION 1l IF child IS ObjectDim AND parent = child
         STEP 1l IF parent = parent($parent) MATERIALIZED;   
         
-isParent 'Родитель' (ObjectDim child, ObjectDim parent) = TRUE IF level(child, parent);
+isParent 'Родитель' (ObjectDim child, ObjectDim parent) = TRUE IF level(child, parent) MATERIALIZED;
         
 canonicalName 'Каноническое имя' (ObjectDim group) =  GROUP CONCAT name(ObjectDim parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
 
 mainOrder 'Основной порядок сортировки'  (ObjectDim group) = //GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)
 STRING[9](
-ltrim(toChar( (GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)),'000000000'))
+ltrim(toChar((GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)),'000000000'))
 ) 
-MATERIALIZED 
+MATERIALIZED INDEXED 
 CHARWIDTH 9;
 
 levelNum 'levelNum' (ObjectDim group) =            (GROUP  MAX level(group, parent))  CHARWIDTH 2;
@@ -263,19 +335,19 @@ PROPERTIES (t)
        
         tabName  BACKGROUND backgroundColor(t)  
         ,pos
-EVENTS ON INIT { EXPAND ALL TOP form##ObjectDim##TreeList.t; }
+EVENTS ON INIT {EXPAND ALL TOP form##ObjectDim##TreeList.t;} 
 FILTERS NOT (isRoot(t) AND isGroup(t)) 
 ORDERS  pos(t),tabName(t) 
 FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(t) DEFAULT
 LIST ObjectDim OBJECT t;
 DESIGN   form##ObjectDim##TreeList { 
    
-    PROPERTY (tabName(t)) { charWidth='100'; }
+    PROPERTY (tabName(t)) { charWidth=100; }
 } ;
 
 FORM  form##ObjectDim##Card
 OBJECTS c = ObjectDim PANEL
-PROPERTIES (c) parent,name
+PROPERTIES (c) name
 
 EDIT ObjectDim OBJECT c;
          
@@ -294,9 +366,9 @@ FORM form##ObjectDim##Selectlist 'Выбор элемента'
     ;
 
 DESIGN   form##ObjectDim##Selectlist { 
-   PROPERTY  (tabName(d))   { charWidth='60'; defaultCompare =  'CONTAINS';}
+   PROPERTY  (tabName(d))   { charWidth=60; defaultCompare='=*';}
    PROPERTY  (pos(d))   { hide = TRUE ; }
-   PROPERTY (canonicalName(d)) {charWidth='20'; defaultCompare =  'CONTAINS'; }
+   PROPERTY (canonicalName(d)) {charWidth=20; defaultCompare='=*'; }
   BOX { size = (1200,600);}
 } ;      
 
@@ -308,7 +380,7 @@ delAll##ObjectDim 'удалить все'() {
       // форма для редактирования списка - открывается только из меню
        EXTEND FORM  form##ObjectDim##list  
        OBJECTS d = ObjectDim 
-       PROPERTIES delAll##ObjectDim()
+  //     PROPERTIES delAll##ObjectDim()
        PROPERTIES mainOrder(d),levelNumInt(d) 
        PROPERTIES(d)   isRoot,NEW ,DELETE, 
                        isGroup BACKGROUND backgroundColor(d),
@@ -316,15 +388,19 @@ delAll##ObjectDim 'удалить все'() {
                        levelNum BACKGROUND backgroundColor(d), 
                        
                        pos BACKGROUND backgroundColor(d), 
+                       code BACKGROUND backgroundColor(d), 
                        tabName BACKGROUND backgroundColor(d), 
                        name BACKGROUND backgroundColor(d) 
-                       
-   
-       PROPERTIES      parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
+       PROPERTIES      itemsName 'Имя для формул' = name(itemsName(d)),
+                        parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
                        canonicalName(d) BACKGROUND backgroundColor(d)
        ORDERS  pos(d),canonicalName(d) 
        ; 
+       DESIGN  form##ObjectDim##list {
        
+        PROPERTY (tabName(d)) {charWidth=20; defaultCompare='=*'; }
+        PROPERTY (name(d)) {charWidth=20; defaultCompare='=*'; }
+       }  
        NAVIGATOR {
                    dimCatalogs   {
                     NEW form##ObjectDim##list;
@@ -347,10 +423,140 @@ newByName##ObjectDim(STRING name) {
  }
  ELSE current##ObjectDim() <- NULL;
 }
-        
-        
-        
+importStr###ObjectDim = DATA LOCAL STRING (INTEGER);    
+importUuidStr###ObjectDim = DATA LOCAL STRING[36] (INTEGER);  
+import###ObjectDim    = DATA LOCAL ##ObjectDim(INTEGER);       
+
+newByImportIndex##ObjectDim(INTEGER n) {
+ IF importStr###ObjectDim(n) AND length(importStr###ObjectDim(n)) > 0 THEN {
+    current##ObjectDim() <- GROUP MAX ObjectDim d IF name(d) == importStr###ObjectDim(n);
+    IF (NOT current##ObjectDim())   THEN {
+              NEW  new =  ObjectDim  {
+                  name(new) <- importStr###ObjectDim(n);
+                  uuidInit(new) <- importUuidStr###ObjectDim(n);
+                  current##ObjectDim() <- new;
+           }
+    }  
+ }
+ ELSE current##ObjectDim() <- NULL;
+}    
+
+syncByName##ObjectDim() {
+    FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL;
+    // если указан uuid то сначала смотрим по нему существующие элементы, если было переименование в первичном источнике!!! 
+    FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
+        AND 
+        uuidInit(##ObjectDim p) == importUuidStr###ObjectDim(nm) 
+        AND 
+        name(p) != importStr###ObjectDim(nm)
+        DO {
+             name(p) <- importStr###ObjectDim(nm);
+    }
+    
+       
+    // остальное заводим по имени!!!
+    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF name(p) == nm) DO {
+        newByName##ObjectDim(nm);
+    }
+    
+    // если захотели добавить UUID
+    FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
+        AND 
+        NOT uuidInit(##ObjectDim p)  
+        AND 
+        name(p) == importStr###ObjectDim(nm)
+        DO {
+             uuidInit(p) <- importUuidStr###ObjectDim(nm);
+    }
+ 
+    // синхронизируем по имени
+    FOR importStr###ObjectDim(INTEGER n) = name(##ObjectDim p) DO {
+        import###ObjectDim(n) <- p;
+    }
+}                       
+ 
+// Категории
+   categoryValueName(Object p) += WHEN p IS ##ObjectDim THEN name(p AS ##ObjectDim);
+   categoryValueClass(Object p) += WHEN p IS ##ObjectDim THEN ''##ObjectDim;
+ // функция входимости объекта
+objectInCategory 'функция входимости объекта в категорию' (DimCategoryItemsNamed n, ##ObjectDim o) = 
+    GROUP MAX categoryGroup(DimCategory dk, ##ObjectDim o_) IF itemsName(dk) == n  AND o_ IS ##ObjectDim BY o_;
+
+objectInCategory 'функция входимости объекта в категорию' (DimCategory n, ##ObjectDim o) = 
+    GROUP MAX categoryGroup(DimCategory dk, ##ObjectDim o_) IF dk == n  AND o_ IS ##ObjectDim BY o_;       
+       
+objectExistInCategory 'Есть ли в категории такой объект' (DimCategory n, ##ObjectDim o) = 
+    GROUP MAX TRUE  IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim;
+    
+objectInCategoryOrEpmty 'функция входимости объекта в категорию' (DimCategory n, ##ObjectDim o) = 
+    OVERRIDE NOT objectExistInCategory(n, o),
+    (GROUP MAX TRUE IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim AND o_ == o);       
+    
+    
+    
+  EXTEND FORM  form##ObjectDim##list
+  OBJECTS catg = DimCategory PANEL 
+  PROPERTIES PANEL nameCat 'Категория' =  codeCt(catg) SELECTOR 
+  PROPERTIES  
+    inCatGroup 'вкл' = categoryGroup(catg, d)   
+    HEADER  codeCt(GROUP MAX  DimCategory a_ IF [VIEW form##ObjectDim##list.catg](a_))  
+    DRAW d GRID FIRST;
+    
+   DESIGN form##ObjectDim##list {
+       PROPERTY (inCatGroup) {charWidth = 5;};
+      
+      TOOLBARRIGHT (d) {
+          MOVE PROPERTY (nameCat){charWidth = 10;};
+      }
+      
+   }
+    
+END 
+ 
+META configCategory(ObjectDim)
+  
+// Категории
+   categoryValueName(Object p) += WHEN p IS ##ObjectDim THEN name[##ObjectDim](p AS ##ObjectDim);
+   categoryValueClass(Object p) += WHEN p IS ##ObjectDim THEN ''##ObjectDim;
+ // функция входимости объекта
+objectInCategory 'функция входимости объекта в категорию' (DimCategoryItemsNamed n, ##ObjectDim o) = 
+    GROUP MAX categoryGroup(DimCategory dk, ##ObjectDim o_) IF itemsName(dk) == n  AND o_ IS ##ObjectDim BY o_;
+
+objectInCategory 'функция входимости объекта в категорию' (DimCategory n, ##ObjectDim o) = 
+    GROUP MAX categoryGroup(DimCategory dk, ##ObjectDim o_) IF dk == n  AND o_ IS ##ObjectDim BY o_;       
+       
+objectExistInCategory 'Есть ли в категории такой объект' (DimCategory n, ##ObjectDim o) = 
+    GROUP MAX TRUE  IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim;
+    
+objectInCategoryOrEpmty 'функция входимости объекта в категорию' (DimCategory n, ##ObjectDim o) = 
+    OVERRIDE NOT objectExistInCategory(n, o),
+    (GROUP MAX TRUE IF categoryGroup(DimCategory dk, ##ObjectDim o_) AND dk == n  AND o_ IS ##ObjectDim AND o_ == o);       
+      
+  EXTEND FORM  form##ObjectDim##list
+  OBJECTS catg = DimCategory PANEL 
+  PROPERTIES PANEL nameCat 'Категория' =  codeCt(catg) SELECTOR 
+  PROPERTIES  
+    inCatGroup 'вкл' = categoryGroup(catg, d)   
+    HEADER  codeCt(GROUP MAX  DimCategory a_ IF [VIEW form##ObjectDim##list.catg](a_))  
+    DRAW d GRID FIRST;
+    
+  DESIGN form##ObjectDim##list {
+      PROPERTY (inCatGroup) {charWidth = 5;};
+      
+      TOOLBARRIGHT (d) {
+          MOVE PROPERTY (nameCat){charWidth = 10;};
+      }
+   }
+  NAVIGATOR {
+  dimCatalogs   {
+                 NEW form##ObjectDim##list;
+              }
+}    
+    
+    
 END 
 
+@configCategory(DimCategory);
 
- 
+// Категория констант категорий
+@configCategory(DimCategoryItemsNamed);

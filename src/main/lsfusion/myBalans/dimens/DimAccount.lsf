@@ -1,0 +1,26 @@
+MODULE DimAccount;
+
+REQUIRE TaskTune,Dimens,DimensRawCFO,DimensRawCostItems,DimensCFO,DimensCostItems,DimCostNonOperItems;
+
+NAMESPACE   Dimens; 
+
+CLASS DimAccount 'Счет';
+TABLE dimAccount(DimAccount);
+
+isNoOper 'Справочник внереализационные' = DATA BOOLEAN (DimAccount);
+
+
+
+FORM formDimAccountGroup 'Счет'; 
+FORM formDimAccountlist 'Счет'; 
+ 
+FORM formDimAccountTreeList 'Счет'; 
+@configDimWO(DimAccount);
+
+EXTEND FORM formDimAccountlist 
+PROPERTIES isNoOper(d);
+
+
+EXTEND CLASS DimAccountNamed {
+    acc26 'Счет 26'
+}

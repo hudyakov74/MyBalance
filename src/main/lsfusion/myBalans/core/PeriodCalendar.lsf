@@ -30,11 +30,10 @@ OBJECTS {
 NEW panel  {
          fill = 1; 
          align  = STRETCH;
-         type = SPLITV ;
          MOVE   BOX (g); 
             
          NEW calendarPeriod  {        
-            type = TABBED;
+            tabbed = TRUE;
             fill = 1; 
             align  = STRETCH;
             MOVE   BOX (p); 

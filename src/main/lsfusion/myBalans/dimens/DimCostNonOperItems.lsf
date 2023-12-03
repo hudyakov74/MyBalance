@@ -15,9 +15,12 @@ FORM formDimCostNonOperItemsTreeList 'Статьи внереализацион�
 
 doNotDistributeItem 'Не распределять статью на основную деятельность' = DATA BOOLEAN (DimCostNonOperItems);
 doNotDeductItem     'Не принимаемые для налога на прибыль'            = DATA BOOLEAN (DimCostNonOperItems);
+asSalesItem         'Прочая реализация'                               = DATA BOOLEAN (DimCostNonOperItems);
 EXTEND FORM formDimCostNonOperItemslist 
-PROPERTIES doNotDistributeItem(d),
-doNotDeductItem(d)
+PROPERTIES 
+doNotDistributeItem(d),
+doNotDeductItem(d),
+asSalesItem(d)
 ;
  //добавление списка в CalcComposition
 TABLE dimCostNonOperItemsTask(Task,DimCostNonOperItems);

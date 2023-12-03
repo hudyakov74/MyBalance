@@ -1,0 +1,86 @@
+MODULE DistribTuneRef;
+
+REQUIRE Dimens;
+
+NAMESPACE Budget;
+
+CLASS DistribTuneRef 'Список алгоритмов распределения'; 
+TABLE distribTuneRef(DistribTuneRef);
+
+FORM formDistribTuneRefGroup 'Список алгоритмов распределения'; 
+FORM formDistribTuneReflist 'Список алгоритмов распределения'; 
+ 
+FORM formDistribTuneRefTreeList 'Список алгоритмов распределения'; 
+@configDimWO(DistribTuneRef);
+
+ 
+
+
+categoryDistrMain 'Основная категория отбора алгоритма' = DATA DimCategory(DistribTuneRef);
+debug 'Отладка' = DATA BOOLEAN(DistribTuneRef);
+//-
+
+// Реквизиты аналитик, настройка категориЙ ??
+CLASS DistribTuneRefSub 'Порядок выполнения подч.алгоритмов';
+name 'Наименование шага' = DATA STRING[254](DistribTuneRefSub);
+distribTuneRef 'ссылка' = DATA DistribTuneRef(DistribTuneRefSub);
+order 'Порядок исполнения' = DATA INTEGER(DistribTuneRefSub);
+//distribTune 'Правило'   = DATA DistribTuneRef(DistribTuneRefSub);
+itemsName 'Алгоритм'    = DATA DistribTuneRefNamed(DistribTuneRefSub); 
+categoryDistr 'Категория отборов алгоритма' = DATA DimCategory(DistribTuneRefSub);
+categoryResultNamed 'Категория результата'  = DATA DimCategoryItemsNamed(DistribTuneRefSub);
+
+EXTEND FORM  formDistribTuneReflist
+    PROPERTIES NEWEDIT (d), EDIT (d),
+debug(d) FIRST,                   
+categoryDistrMain 'Основная категория алгоритма' = nameCategory(categoryDistrMain(d))
+OBJECTS sub = DistribTuneRefSub
+    FILTERS distribTuneRef(sub) = d
+    PROPERTIES   newSub 'Добавить.' = { NEW s_ =  DistribTuneRefSub { 
+                distribTuneRef(s_) <- d;    
+                order(s_) <- 1 (+) GROUP MAX order(DistribTuneRefSub s__) IF distribTuneRef(s__) == d;
+                SEEK formDistribTuneReflist.sub = s_;
+            }  
+     },
+        DELETE (sub),
+    orderSub 'Порядок' = order(sub),
+    name(sub),               
+    itemsNameSub 'Алгоритм' = name(itemsName(sub)),
+    categoryDistrMainSub 'Категория отборов алгоритма' = nameCategory(categoryDistr(sub)),
+    categoryResultNamed  'Категория разультата'  = staticCaption(categoryResultNamed(sub))
+    ORDERS orderSub   
+ 
+;
+
+EXTEND FORM  formDistribTuneRefCard
+    OBJECTS sub = DistribTuneRefSub
+    FILTERS distribTuneRef(sub) = c
+    PROPERTIES 
+     newSub 'Добавить.' = { NEW s_ =  DistribTuneRefSub { 
+                distribTuneRef(s_) <- c;    
+                order(s_) <- 1 (+) GROUP MAX order(DistribTuneRefSub s__) IF distribTuneRef(s__) == c;
+                SEEK formDistribTuneRefCard.sub = s_;
+            }  
+     }, 
+    DELETE (sub),
+    orderSub 'Порядок' = order(sub),
+    nameSub 'Описание' = name(sub),
+    itemsNameSub 'Алгоритм' = name(itemsName(sub)),
+    categoryDistrMain 'Категория отборов алгоритма' = nameCategory(categoryDistr( sub))
+  EDIT DistribTuneRef OBJECT c
+;
+//-
+ 
+DESIGN formDistribTuneReflist {
+    
+    TOOLBARRIGHT (sub){
+        MOVE PROPERTY (newSub) FIRST;
+    }
+}
+
+
+DESIGN formDistribTuneRefCard {
+    TOOLBARRIGHT (sub){
+        MOVE PROPERTY (newSub) FIRST;
+    }
+}

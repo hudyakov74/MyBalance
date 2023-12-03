@@ -30,7 +30,7 @@ ORDERS  dimCFOpos,dimCFO,dimCostItemsPos,dimCostItems
 
 showPrintVer1FormKhpCost(CalcTask ct){
     PRINT reportFormKhpCost OBJECTS calcTask = ct XLSX TO  fileXLS; 
-    xlsCreateRowOutline(fileXLS(), 0 , 0, 0, 1, 0);
+    xlsCreateRowOutlineV2(fileXLS(), 1, 1, 1, 0, 1, 2);
     open(fileXLS());    
 }
  onlyshowPrintVer1FormKhpCost(CalcTask ct){
