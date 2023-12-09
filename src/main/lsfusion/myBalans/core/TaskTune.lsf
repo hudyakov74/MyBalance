@@ -52,8 +52,8 @@ openTaskList(CalcVariant calcV) + {
 
 DESIGN  taskTune {
     PROPERTY (isGroup(f)){ hide = TRUE; }
-    PROPERTY (nameTaskTab(f)) { charWidth ='20'; } 
-    PROPERTY (parentCol) {charWidth = 20; } 
+    PROPERTY (nameTaskTab(f)) { charWidth =20; } 
+    PROPERTY (parentCol) {charWidth = 20;} 
     PROPERTY (nameCalcVariant(cv) ) { fontStyle = 'bold'; } 
      
    TOOLBAR ( TREE taskTree) {

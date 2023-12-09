@@ -18,6 +18,7 @@ TABLE calc(Calc);
 // 
 parentCalc '' = DATA Calc(Calc);
 calcVersionNum = DATA INTEGER (Calc);
+readOnlyHeader '' = DATA BOOLEAN (Calc);
 
 calcDate 'Дата расчета' = DATA DATE (Calc) IN base NONULL ; 
 calcDateBegin 'начало'  = DATA DATE (Calc) IN base NONULL; 
@@ -71,6 +72,7 @@ PROPERTIES   READONLY
             dimFirm 'Организация' = name(dimFirm(c)),
             n02 'Комментарий' = description(c)   
 PROPERTIES(c) NEW,DELETE
+FILTERS hasCurrentUserDimFirmPermission(dimFirm(c)) OR NOT dimFirm(c)
 ORDERS n01,n03
  ;
 
@@ -122,7 +124,7 @@ FORM calcCard 'Расчет'
 OBJECTS curCalc  = Calc PANEL 
 //OBJECTS p = CalcPeriod
 OBJECTS task = Task 
-PROPERTIES 
+PROPERTIES READONLYIF readOnlyHeader(curCalc)
            firm 'Организация' = name(dimFirm(curCalc)),
            n01 'Дата' = calcDate (curCalc) , 
            n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) NOSELECT,
@@ -130,12 +132,12 @@ PROPERTIES
           
            n1 'Периодичность' = nameType(periodType(curCalc)),
            begDate 'с'  = calcDateBegin(curCalc),  
-           endDate 'по' = calcDateEnd(curCalc),
-           n02 'Комментарий' = description(curCalc), 
-           showReportList 'Отчеты'= {SHOW reportListExecCalc OBJECTS calc = curCalc
-                                     WAIT FLOAT;}        
-            
-           
+           endDate 'по' = calcDateEnd(curCalc)
+PROPERTIES n02 'Комментарий' = description(curCalc), 
+           showReportList 'Отчеты'= {SHOW reportListExecCalc OBJECTS calc = curCalc WAIT FLOAT;},
+           ro '' = readOnlyHeader(curCalc)
+EVENTS ON APPLY BEFORE {readOnlyHeader(curCalc) <- TRUE;}
+      
 PROPERTIES  ON CHANGE { openTask(curCalc, task); }
             openTask(curCalc, task) GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'table_multiple.png' ELSE 'table_edit.png',  
             nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor(),
@@ -162,8 +164,8 @@ caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBe
     PROPERTY (nameTaskTab(task)) {charWidth = 60;}
     PROPERTY (nameCol) {charWidth = 40;}
     PROPERTY (pos(task)) {hide =TRUE;}
-PROPERTY (canonicalName(task)){hide=TRUE;}
-PROPERTY (pos(task)){hide=TRUE;}
+    PROPERTY (canonicalName(task)){hide=TRUE;}
+    PROPERTY (pos(task)){hide=TRUE;}
  
   PANEL (curCalc) {
         caption = NULL;
@@ -181,6 +183,8 @@ PROPERTY (pos(task)){hide=TRUE;}
             MOVE PROPERTY(endDate) { charWidth=14; align = STRETCH;} 
             MOVE PROPERTY(n1) { charWidth=14; align = STRETCH;}
             MOVE PROPERTY(n02) { charWidth = 50; align = STRETCH;}
+            MOVE PROPERTY(ro); 
+            
         }
     
         
