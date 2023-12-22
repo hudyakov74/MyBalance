@@ -14,6 +14,7 @@ taskCompletedTime       = DATA DATETIME (CalcTask);
 paramInt1     ''        = DATA INTEGER (CalcTask);
 paramInt2     ''        = DATA INTEGER (CalcTask);
 param1                  = DATA LOCAL INTEGER (CalcTask);
+param2Bool              = DATA LOCAL BOOLEAN (CalcTask);
 tuneCalc    'Алгоритм расчета' =  DATA DistribTuneRef(CalcTask);
 INDEX calc(CalcTask c), task(c);
 

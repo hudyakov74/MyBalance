@@ -1,6 +1,6 @@
 MODULE Calc;
 
-REQUIRE TaskTune,Utils,Time,PeriodCalendar,DimensFirm;
+REQUIRE TaskTune, Utils, Time, PeriodCalendar, DimensFirm;
 
 NAMESPACE Calc;
 
@@ -37,7 +37,20 @@ paramProportionWhole    'Полная доля (рабочих дней)'       
 
 isTheSameScenario(Calc c1,Calc c2) =  scenario(c1) == scenario(c2) AND dimFirm(c1) == dimFirm(c2) ;
 isTheSameScenario(Calc c1,Calc c2, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm(c2) ;
-isTheSameScenario(Calc c1,DimFirm dimFirm, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm;
+isTheSameScenario(Calc c1, DimFirm dimFirm, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm;
+
+periodInCalc(Period p, Calc calc) = GROUP LAST PeriodCalendar c AS PeriodCalendar IF dateBegin(c) >= calcDateBegin(calc)  
+                                          AND dateEnd(c) <= calcDateEnd(calc) AND periodType(c) = periodType(p)
+                                          ORDER pos(period(c));
+
+periodInCalc(PeriodCalendar p, Calc calc) = dateBegin(p) >= calcDateBegin(calc) AND dateEnd(p) <= calcDateEnd(calc) AND periodType(calc) = periodType(p);
+periodInCalc(PeriodCalendar p, Calc calc, DATE d1, DATE d2) = 
+                                                    dateBegin(p) >= calcDateBegin(calc) 
+                                                AND dateEnd(p)   <= calcDateEnd(calc) 
+                                                AND periodType(calc) = periodType(p)
+                                                AND d1 <= dateBegin(p) AND d2 >= dateEnd(p);
+ 
+
 
 name 'Наименование' (Calc c)   =  STRING[80] (CONCAT  ', ', nameCalcVariant(calcVariant(c)),
                                         nameScenario(scenario(c)),   

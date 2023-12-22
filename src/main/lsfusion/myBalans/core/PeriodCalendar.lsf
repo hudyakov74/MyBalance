@@ -1,6 +1,6 @@
 MODULE PeriodCalendar;
 
-REQUIRE PeriodType,Period;
+REQUIRE PeriodType, Period;
 
 NAMESPACE Budget;
 
@@ -13,8 +13,20 @@ dateEnd 'Дата окончания' = DATA DATE (PeriodCalendar) IN id;
 workingDays 'Количество рабочих дней' = DATA INTEGER(PeriodCalendar);
 
 
+
+periodGetByDate(Period p, PeriodType pt, DATE d) = GROUP MAX PeriodCalendar c AS PeriodCalendar 
+                                     IF d>=dateBegin(c) AND d<=dateEnd(c)  BY period(c), periodType(c);
+
 periodGetByDate(Period p, DATE d) = GROUP MAX PeriodCalendar c AS PeriodCalendar 
                                      IF d>=dateBegin(c) AND d<=dateEnd(c)  BY period(c);
+
+periodPosition(PeriodCalendar p, DATE dbegin) =
+    GROUP SUM 1 IF periodType(p) == periodType(PeriodCalendar p_) 
+                   AND dateBegin(p_) >= dbegin
+                   AND dateBegin(p_) <= dateBegin(p);
+
+
+
 
 EXTEND FORM periodForm
 OBJECTS pCalendar = PeriodCalendar

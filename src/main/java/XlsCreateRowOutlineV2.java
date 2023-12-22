@@ -11,6 +11,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
 
 import java.io.ByteArrayOutputStream;
@@ -114,8 +115,22 @@ import static java.lang.Math.max;
                             }
                             // при отрицательном значении индекса - удаляем всю строчку
                             if (removingRow.getCell(columnTreeIndex).getNumericCellValue() < 0) {
-                                sheet.removeRow(removingRow);
-                                sheet.shiftRows(rowIndex + 1, sheet.getLastRowNum(), -1);
+                                 int lastRowNum=sheet.getLastRowNum();
+                                 if(rowIndex>=0&&rowIndex<lastRowNum){
+                                     for(int i = 0; i < sheet.getNumMergedRegions(); i++) {
+                                           CellRangeAddress merge = sheet.getMergedRegion(i);
+                                           if(merge.getFirstRow() == rowIndex) {
+                                                sheet.removeMergedRegion(i);
+                                           }
+                                     }
+
+                                     sheet.shiftRows(rowIndex+1,lastRowNum, -1);
+                                 }
+                                 if(rowIndex==lastRowNum){
+                                        if(removingRow!=null){
+                                            sheet.removeRow(removingRow);
+                                        }
+                                 }
                                 rowIndex--;
                             }
                         }

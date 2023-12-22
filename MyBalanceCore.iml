@@ -13,7 +13,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/lsfusion/lsfusion6/server-6.0-20231201.083709-882-assembly.jar!/" />
+          <root url="jar://$USER_HOME$/lsfusion/lsfusion5/junidecode-0.4.1.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -22,7 +22,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/lsfusion/lsfusion5/junidecode-0.4.1.jar!/" />
+          <root url="jar://$USER_HOME$/lsfusion/lsfusion6/server-6.0-20231208.210529-904-assembly.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
