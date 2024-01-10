@@ -121,6 +121,15 @@ reportRun(ReportList c, Calc calc){
      //   SHOW  formReport1_1BDRExec OBJECTS mainCalcTask = getCalcTask(calc(calcTask AS CalcTask), task(calcTask)) DOCKED NOWAIT MANAGESESSION;
  
 }
+
+reportRunTest 'Запустить' (ReportList c){
+     
+ EVAL ACTION  'SHOW  form' + regexpReplace(staticName(report(c)),'.*[.]','','')
+                   + 'Exec  OBJECTS reportList = $1 DOCKED NOWAIT NOMANAGESESSION ' //NEWSESSION
+        PARAMS  c;  
+ 
+}
+EXTEND FORM reportList PROPERTIES reportRunTest(c);
 // запуск отчета из Расчета
 EXTEND FORM  reportListExecCalc // в блоке Calc
 OBJECTS  list = (c = ReportList ) 
@@ -276,8 +285,34 @@ DESIGN form##nameRepClass##Exec {
    
 END    
      
-         
-       
+META  reportTemplateCompareDesign(nameRepClass)
+    
+DESIGN form##nameRepClass##Exec {
+    OBJECTS {
+        NEW panelH FIRST {
+            horizontal = TRUE;
+            lines = 16;
+            MOVE PROPERTY (name(reportList)){ hide = TRUE;};
+
+            NEW panelH1 {
+                lines = 3;
+                MOVE PROPERTY (scenarioP){width = 250;};
+                MOVE PROPERTY (dateP1){width = 120;};
+                MOVE PROPERTY (dateP2);
+            }
+
+            NEW panelH2 {
+                lines = 3;
+                MOVE PROPERTY (scenarioF){width = 250;};
+                MOVE PROPERTY (dateF1){width = 120;};
+                MOVE PROPERTY (dateF2);
+            }
+            MOVE PROPERTY (firm);
+        }
+    }
+}       
+END 
+
 META  reportTemplateSingle(nameRepClass, nameReport)
 
 EXTEND CLASS ReportClassList {

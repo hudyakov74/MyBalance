@@ -3,8 +3,8 @@ MODULE Form;
 
 NAMESPACE Forms; //<br>
  
-formDateBeg = DATA LOCAL DATE( ); 
-formDateEnd = DATA LOCAL DATE( ); 
+formDateBeg 'Дата с.' = DATA LOCAL DATE( ); 
+formDateEnd ' до ' = DATA LOCAL DATE( ); 
 strAInt_(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\'<br> <b>\' ||  TO_CHAR($2,\'FM999G999G999G999D00\') || \'</b>\' ';
 strAInt(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\' 2 \' ||  TO_CHAR($2,\'FM999G999G999G999D00\')';
 
@@ -15,6 +15,11 @@ FORM dialogDateForm 'Ввод даты'
     OBJECTS d = DATE PANEL
     PROPERTIES(d) objValue = VALUE
 ;
+FORM dialogDatesForm 'Ввод периода'
+    PROPERTIES formDateBeg(), formDateEnd()
+;
+
+ 
  
 FORM dialogInputText 'Ввод текста'
     OBJECTS t = TEXT PANEL 
@@ -61,9 +66,10 @@ EXTEND FORM formname
 PROPERTIES  taskChecked(calcTask) READONLYIF readOnlyIfCheked(calcTask), 
             nameB 'наименование бюджета' =  name(calc(calcTask)) READONLY,
             tuneCalc 'Алгоритм расчета' = name(tuneCalc(calcTask)) SHOWIF tuneCalc(task(calcTask)) OR tuneCalc(calcTask) 
-PROPERTIES  READONLYIF readOnlyIfCheked(calcTask) namePropertyTask(cubeObject),namePropertyCalc(cubeObject) 
-FILTERS     (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )
-        AND calc(calcTask) = namePropertyCalc(cubeObject)
+PROPERTIES  READONLYIF readOnlyIfCheked(calcTask) namePropertyTask(cubeObject),namePropertyCalc(cubeObject)
+FILTERS  calc(calcTask) = namePropertyCalc(cubeObject)  
+FILTERGROUP  task  FILTER 'Текущий расчет' (task(calcTask) = namePropertyTask(cubeObject) OR NOT namePropertyTask(cubeObject) )  DEFAULT
+           
 // кнопка отчеты
 PROPERTIES   showReportList 'Отчеты'= {SHOW reportListExec OBJECTS  tt =  type(namePropertyTask(calcTask)),calcTask = calcTask  WAIT FLOAT;};    // FILTERS  typeTask(rv) = type(namePropertyTask(cubeObject));     
         ;

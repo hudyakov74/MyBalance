@@ -4,13 +4,6 @@ REQUIRE TaskTune, Dimens;
 
 NAMESPACE   Dimens; 
 
-//run(){
-//LOCAL d = DimFirm();
-//    d() <-  GROUP MAX DimFirm d AS DimFirm;
-//    FOR Calc c AS Calc DO dimFirm(c) <-  d();
-//    APPLY;
-//}
-
 CLASS DimFirm 'Организации';
 TABLE dimFirm(DimFirm);
 FORM formDimFirmGroup 'Группы организации'; 

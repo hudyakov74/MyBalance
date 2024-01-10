@@ -26,15 +26,32 @@ import java.util.Map;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 
-        //https://poi.apache.org/components/spreadsheet/quick-guide.htm
+//https://poi.apache.org/components/spreadsheet/quick-guide.htm
 
-        public class XlsCreateRowOutlineV2  extends InternalAction {
+public class XlsCreateRowOutlineV2 extends InternalAction {
     public XlsCreateRowOutlineV2(ScriptingLogicsModule LM, ValueClass... classes) {
         super(LM, classes);
     }
 
     XSSFSheet sheet;
 
+    protected void deleteRow(XSSFSheet sheet,XSSFRow removingRow, int rowIndex) {
+             int lastRowNum=sheet.getLastRowNum();
+             if(rowIndex >= 0 && rowIndex < lastRowNum){
+                 for(int i = 0; i < sheet.getNumMergedRegions(); i++) {
+                       CellRangeAddress merge = sheet.getMergedRegion(i);
+                       if(merge.getFirstRow() == rowIndex) {
+                            sheet.removeMergedRegion(i);
+                       }
+                 }
+                 sheet.shiftRows(rowIndex+1,lastRowNum, -1);
+             }
+             if(rowIndex==lastRowNum){
+                    if(removingRow != null){
+                        sheet.removeRow( removingRow );
+                    }
+             }
+    }
     @Override
     protected void executeInternal(ExecutionContext<ClassPropertyInterface> context) throws SQLException, SQLHandledException {
         // костыль - выполняте доформатирование документа эксель
@@ -61,8 +78,8 @@ import static java.lang.Math.max;
         Cell cell;
         try {
 
-            XSSFWorkbook workbook = new XSSFWorkbook(f.getInputStream() );
-            sheet = workbook.getSheetAt(0);
+            XSSFWorkbook workbook = new XSSFWorkbook(f.getInputStream());
+            XSSFCreationHelper richTextFactory = workbook.getCreationHelper();
 
             // удалим дубли именjd смотрим только в прямом порядке - удаляем последние
             java.util.List<? extends Name> names = workbook.getAllNames();
@@ -90,8 +107,8 @@ import static java.lang.Math.max;
                         if (removingRow.getCell(columnTreeIndex)!=null &&
                                 removingRow.getCell(columnTreeIndex).getCellType() == CellType.NUMERIC
                                         && abs(removingRow.getCell(columnTreeIndex).getNumericCellValue()) >= 0
-                            //  &&  abs(removingRow.getCell(columnTreeIndex).getNumericCellValue())<
-                        ) {
+                        )
+                        {
                             rowLevel = abs((int) removingRow.getCell(columnTreeIndex).getNumericCellValue());
                             if (currentLevel < rowLevel) {
                                 // уровень повышен
@@ -115,26 +132,63 @@ import static java.lang.Math.max;
                             }
                             // при отрицательном значении индекса - удаляем всю строчку
                             if (removingRow.getCell(columnTreeIndex).getNumericCellValue() < 0) {
-                                 int lastRowNum=sheet.getLastRowNum();
-                                 if(rowIndex>=0&&rowIndex<lastRowNum){
-                                     for(int i = 0; i < sheet.getNumMergedRegions(); i++) {
-                                           CellRangeAddress merge = sheet.getMergedRegion(i);
-                                           if(merge.getFirstRow() == rowIndex) {
-                                                sheet.removeMergedRegion(i);
-                                           }
-                                     }
-
-                                     sheet.shiftRows(rowIndex+1,lastRowNum, -1);
-                                 }
-                                 if(rowIndex==lastRowNum){
-                                        if(removingRow!=null){
-                                            sheet.removeRow(removingRow);
-                                        }
-                                 }
+                                deleteRow(sheet, removingRow, rowIndex);
                                 rowIndex--;
+//                                 int lastRowNum=sheet.getLastRowNum();
+//                                 if(rowIndex >= 0 && rowIndex < lastRowNum){
+//                                     for(int i = 0; i < sheet.getNumMergedRegions(); i++) {
+//                                           CellRangeAddress merge = sheet.getMergedRegion(i);
+//                                           if(merge.getFirstRow() == rowIndex) {
+//                                                sheet.removeMergedRegion(i);
+//                                           }
+//                                     }
+//
+//                                     sheet.shiftRows(rowIndex+1,lastRowNum, -1);
+//                                 }
+//                                 if(rowIndex==lastRowNum){
+//                                        if(removingRow!=null){
+//                                            sheet.removeRow(removingRow);
+//                                        }
+//                                 }
                             }
                         }
+                        else if (removingRow.getCell(columnTreeIndex)!=null &&
+                                removingRow.getCell(columnTreeIndex).getCellType() == CellType.STRING
+                                        && removingRow.getCell(columnTreeIndex).getStringCellValue().contentEquals("Comment") ) {
+                            Iterator<Cell> cellIterator  =  removingRow.cellIterator();
+                                while (cellIterator.hasNext()) {
+                                    Cell cellComment = cellIterator.next();
+                                    Cell cellTarget  ;
+
+                                    if (cellComment != null
+                                            && cellComment.getCellType() == CellType.STRING
+                                            && cellComment.getStringCellValue().length() > 0
+                                            && sheet.getRow(rowIndex-1) != null
+                                            && sheet.getRow(rowIndex-1).getCell(cellComment.getColumnIndex()) != null) {
+
+                                                cellTarget = sheet.getRow(rowIndex-1).getCell(cellComment.getColumnIndex());
+
+                                                  for(int i = 0; i < sheet.getNumMergedRegions(); i++) {
+                                                        if (sheet.getMergedRegion(i).isInRange(cellTarget)) {
+                                                            cellTarget =sheet.getRow(sheet.getMergedRegion(i).getFirstRow()).getCell(sheet.getMergedRegion(i).getFirstColumn());
+                                                            break;
+                                                        }
+                                                 }
+
+                                                 XSSFDrawing drawing = sheet.createDrawingPatriarch();
+                                                 XSSFClientAnchor anchor = drawing.createAnchor(0, 0, 0, 0, cellComment.getColumnIndex(), rowIndex, cellComment.getColumnIndex() + 3, rowIndex + 10);
+                                                 XSSFComment comment1 = drawing.createCellComment(anchor);
+                                                 XSSFRichTextString rtf1 = richTextFactory.createRichTextString(cellComment.getStringCellValue());
+                                                 comment1.setString(rtf1);
+                                                 cellTarget.setCellComment(comment1);
+                                    }
+                                }
+                                deleteRow(sheet, removingRow, rowIndex);
+                                rowIndex--;
+                        }
                     }
+
+
                 }
                 rowLevel = 0;
                 // уровень понижен - сброс уровня

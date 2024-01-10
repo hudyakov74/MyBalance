@@ -30,8 +30,28 @@ itemsName 'Алгоритм'    = DATA DistribTuneRefNamed(DistribTuneRefSub);
 categoryDistr 'Категория отборов алгоритма' = DATA DimCategory(DistribTuneRefSub);
 categoryResultNamed 'Категория результата'  = DATA DimCategoryItemsNamed(DistribTuneRefSub);
 
+
+copyDistribTuneRef 'Скопировать алгоритм' (DistribTuneRef s) {
+    NEW n = DistribTuneRef {
+          name(n) <- name(n);
+          code(n) <- code(n);
+          categoryDistrMain(n) <- categoryDistrMain(n);
+          FOR distribTuneRef(DistribTuneRefSub sr) == s 
+              NEW  nn = DistribTuneRefSub DO {
+                name(nn) <- name(sr);
+                distribTuneRef(nn) <- n;
+                order(nn) <- order(sr);
+                itemsName(nn) <- itemsName(sr);
+                categoryDistr(nn) <- categoryDistr(sr);
+                categoryResultNamed(nn) <- categoryResultNamed(sr);
+          }
+    }
+}
+
+
+
 EXTEND FORM  formDistribTuneReflist
-    PROPERTIES NEWEDIT (d), EDIT (d),
+    PROPERTIES NEWEDIT (d), EDIT (d), copyDistribTuneRef(d),
 debug(d) FIRST,                   
 categoryDistrMain 'Основная категория алгоритма' = nameCategory(categoryDistrMain(d))
 OBJECTS sub = DistribTuneRefSub
@@ -42,12 +62,13 @@ OBJECTS sub = DistribTuneRefSub
                 SEEK formDistribTuneReflist.sub = s_;
             }  
      },
-        DELETE (sub),
+    DELETE (sub),
     orderSub 'Порядок' = order(sub),
     name(sub),               
     itemsNameSub 'Алгоритм' = name(itemsName(sub)),
     categoryDistrMainSub 'Категория отборов алгоритма' = nameCategory(categoryDistr(sub)),
     categoryResultNamed  'Категория разультата'  = staticCaption(categoryResultNamed(sub))
+
     ORDERS orderSub   
  
 ;

@@ -35,7 +35,7 @@ LIST DimCategoryItemsNamed OBJECT d;
 //name(DimCategoryItemsNamed obj_) = staticCaption(obj_); 
 itemsCode 'Код элемента' (DimCategoryItemsNamed obj) =  regexpReplace(staticName(obj),'.*\\.','','');
 itemsName 'Имя для формул' = DATA DimCategoryItemsNamed(DimCategory); 
-getDimCostItemsByItem(DimCategoryItemsNamed obj) = GROUP MAX DimCategory d_ IF itemsName(d_) == obj;
+getDimCategoryItemsByItem(DimCategoryItemsNamed obj) = GROUP MAX DimCategory d_ IF itemsName(d_) == obj;
 itemsCode 'Код элемента' (DimCategory obj) =  regexpReplace(staticName(itemsName(obj)),'.*\\.','','');
 
 

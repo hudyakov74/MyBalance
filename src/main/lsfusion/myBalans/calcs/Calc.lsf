@@ -75,7 +75,7 @@ readOnlyTitleCalc(Calc c) = calcVersionNum(c) != NULL;
 
 FORM calcList 'Реестр расчетов' 
 OBJECTS c = Calc LAST 
-PROPERTIES opn 'Открыть' = openCalcCard(c) GRID IMAGE 'folder_table.png'   
+PROPERTIES opn 'Открыть' = openCalcCard(c) GRID IMAGE 'images/folder_table.png'   
 PROPERTIES   READONLY   
             n01 'Дата' = calcDate(c),
             n03 'Сценарий' = nameScenario(scenario(c))  ,
@@ -152,7 +152,7 @@ PROPERTIES n02 'Комментарий' = description(curCalc),
 EVENTS ON APPLY BEFORE {readOnlyHeader(curCalc) <- TRUE;}
       
 PROPERTIES  ON CHANGE { openTask(curCalc, task); }
-            openTask(curCalc, task) GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'table_multiple.png' ELSE 'table_edit.png',  
+            openTask(curCalc, task) GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'images/table_multiple.png' ELSE 'images/table_edit.png',  
             nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor(),
             nameCol 'тип' = nameCalcBook(type(task)), 
             canonicalName(task), pos(task) // hide
