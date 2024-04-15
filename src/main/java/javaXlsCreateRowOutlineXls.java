@@ -33,8 +33,8 @@ import static java.lang.Math.abs;
 
 //https://poi.apache.org/components/spreadsheet/quick-guide.htm
 
-public class XlsCreateRowOutlineV2 extends InternalAction {
-    public XlsCreateRowOutlineV2(ScriptingLogicsModule LM, ValueClass... classes) {
+public class XlsCreateRowOutlineXls extends InternalAction {
+    public XlsCreateRowOutlineXls(ScriptingLogicsModule LM, ValueClass... classes) {
         super(LM, classes);
     }
 
@@ -107,23 +107,25 @@ public class XlsCreateRowOutlineV2 extends InternalAction {
 
         try {
 
-            OPCPackage opcPackage = OPCPackage.open(f.getInputStream());
-            XSSFWorkbook workbook = new XSSFWorkbook(opcPackage);
-            XSSFCreationHelper richTextFactory =  workbook.getCreationHelper();
+           //  OPCPackage opcPackage = OPCPackage.open(f.getInputStream());
+             HSSFWorkbook workbook = new HSSFWorkbook(f.getInputStream());
+             HSSFCreationHelper richTextFactory =  workbook.getCreationHelper();
+//               XSSFWorkbook workbook = new XSSFWorkbook(f.getInputStream());
+//               XSSFCreationHelper richTextFactory =  workbook.getCreationHelper();
 
             // удалим дубли имен ячеек. смотрим только в прямом порядке - удаляем последние
-            // для XSSFWorkbook - корректно, если повторение имен вообще корректная вещь
-            java.util.List<? extends Name> names = workbook.getAllNames();
-            ArrayList<String> namesInlist = new ArrayList<>();
-            ArrayList<Name> forDelete = new ArrayList<>();
-            for (Name name : names) {
-                if (namesInlist.contains(name.getNameName())) {
-                    forDelete.add(name); //
-                } else {
-                    namesInlist.add(name.getNameName());
-                }
-            }
-            for (int i = forDelete.size() - 1; i >= 0; i--) workbook.removeName(forDelete.get(i));
+            // !!! для HSSF - некорректное удаление
+//            java.util.List<? extends Name> names = workbook.getAllNames();
+//            ArrayList<String> namesInlist = new ArrayList<>();
+//            ArrayList<Name> forDelete = new ArrayList<>();
+//            for (Name name : names) {
+//                if (namesInlist.contains(name.getNameName())) {
+//                    forDelete.add(name); //
+//                } else {
+//                    namesInlist.add(name.getNameName());
+//                }
+//            }
+//            for (int i = forDelete.size() - 1; i >= 0; i--) workbook.removeName(forDelete.get(i));
             //--
 
             for (Sheet sheet : workbook) {
@@ -282,7 +284,8 @@ public class XlsCreateRowOutlineV2 extends InternalAction {
            //rf.write(os);
             findProperty("fileXLS").change(rf, context);
 
-        } catch (IOException | ScriptingErrorLog.SemanticErrorException | InvalidFormatException
+        } catch (IOException
+                 | ScriptingErrorLog.SemanticErrorException
                 e) {
             e.printStackTrace();
         }

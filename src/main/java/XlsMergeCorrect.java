@@ -46,9 +46,9 @@ public class XlsMergeCorrect  extends InternalAction {
                  nameOut.setRefersToFormula(name.getRefersToFormula()); //.replace(sheetNameIn,sheetNameOut)
              }
              OutputStream os = new ByteArrayOutputStream();
-            workbookOut.write(os);
-            RawFileData rf = new RawFileData((ByteArrayOutputStream) os);
-            findProperty("mergedExcel").change(rf, context);
+             workbookOut.write(os);
+             RawFileData rf = new RawFileData((ByteArrayOutputStream) os);
+             findProperty("mergedExcel").change(rf, context);
           } catch (IOException e) {
             e.printStackTrace();
            } catch (ScriptingErrorLog.SemanticErrorException e) {

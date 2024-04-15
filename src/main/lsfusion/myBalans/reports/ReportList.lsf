@@ -6,6 +6,7 @@ NAMESPACE Reports;
 fileXLS = DATA LOCAL EXCELFILE();
 // xlsCreateRowOutlineV2(file,NegativeRed,fixColumn,fixRow, columnNumLevel, flagNegativeLevelHide, columnLevelTabbed)
 xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
+xlsCreateRowOutlineXls 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineXls' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
 xlsMergeCorrect 'Корректировка после mergeExcel' INTERNAL 'XlsMergeCorrect'  (EXCELFILE, EXCELFILE);
 // СПИСОК ОТЧЕТОВ
 CLASS ReportList;
