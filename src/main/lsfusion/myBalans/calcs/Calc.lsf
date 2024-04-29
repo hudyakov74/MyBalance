@@ -1,6 +1,6 @@
 MODULE Calc;
 
-REQUIRE TaskTune, Utils, Time, PeriodCalendar, DimensFirm;
+REQUIRE TaskTune, Utils, Time, PeriodCalendar, DimensFirm, FoldersTree;
 
 NAMESPACE Calc;
 
@@ -20,7 +20,7 @@ parentCalc '' = DATA Calc(Calc);
 calcVersionNum = DATA INTEGER (Calc);
 readOnlyHeader '' = DATA BOOLEAN (Calc);
 
-calcDate 'Дата расчета' = DATA DATE (Calc) IN base NONULL ; 
+calcDate 'Дата расчета' = DATA DATE (Calc) IN base; 
 calcDateBegin 'начало'  = DATA DATE (Calc) IN base NONULL; 
 calcDateEnd 'окончание' = DATA DATE (Calc) IN base NONULL; 
 
@@ -40,7 +40,9 @@ isTheSameScenario(Calc c1,Calc c2, Scenario s2) =  s2 == scenario(c1) AND dimFir
 isTheSameScenario(Calc c1, DimFirm dimFirm, Scenario s2) =  s2 == scenario(c1) AND dimFirm(c1) == dimFirm;
 
 periodInCalc(Period p, Calc calc) = GROUP LAST PeriodCalendar c AS PeriodCalendar IF dateBegin(c) >= calcDateBegin(calc)  
-                                          AND dateEnd(c) <= calcDateEnd(calc) AND periodType(c) = periodType(p)
+                                          AND dateEnd(c) <= calcDateEnd(calc) 
+                                          AND periodType(c) == periodType(p)
+                                          AND period(c) == p 
                                           ORDER pos(period(c));
 
 periodInCalc(PeriodCalendar p, Calc calc) = dateBegin(p) >= calcDateBegin(calc) AND dateEnd(p) <= calcDateEnd(calc) AND periodType(calc) = periodType(p);
@@ -75,23 +77,46 @@ readOnlyTitleCalc(Calc c) = calcVersionNum(c) != NULL;
 
 FORM calcList 'Реестр расчетов' 
 OBJECTS c = Calc LAST 
-PROPERTIES opn 'Открыть' = openCalcCard(c) GRID IMAGE 'images/folder_table.png'   
-PROPERTIES   READONLY   
-            n01 'Дата' = calcDate(c),
-            n03 'Сценарий' = nameScenario(scenario(c))  ,
-            nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
-            begDate 'с'  = calcDateBegin(c), 
-            endDate 'по' = calcDateEnd(c),
-            dimFirm 'Организация' = name(dimFirm(c)),
-            n02 'Комментарий' = description(c)   
+;   
+
+// Папки по годам +++
+calcFolderOpenStatus(Calc c) = NOT folderClosed(extractYear(calcDateBegin(c)), currentUser());
+calcFolderOpenSet(Calc c, BOOLEAN set) { APPLY {folderClosed(extractYear(calcDateBegin(c)), currentUser()) <- NOT set;}}
+firstPosYear(Calc c) = c == (GROUP LAST Calc calc IF [FILTER calcList.c](calc) AND extractYear(calcDateBegin(c))==extractYear(calcDateBegin(calc)) ORDER DESC [ORDER calcList.c](calc));        
+EXTEND FORM calcList
+PROPERTIES
+folderPng 'Год' = IF firstPosYear(c) THEN (IF calcFolderOpenStatus(c) 
+                                          THEN (CONCAT ' ',img(FolderImage.open), extractYear(calcDateBegin(c))) 
+                                          ELSE (CONCAT ' ',img(FolderImage.close), extractYear(calcDateBegin(c))))
+                  ON CHANGE {IF firstPosYear(c) THEN  calcFolderOpenSet(c, NOT calcFolderOpenStatus(c));},
+folderYear =  extractYear(calcDateBegin(c))
+FILTERS  calcFolderOpenStatus(c) OR firstPosYear(c)  
+;
+DESIGN calcList {
+    PROPERTY (folderPng){charWidth = 4;fontStyle = 'bold';  }
+    PROPERTY (folderYear){hide = TRUE;}
+}    
+// Папки по годам ---
+
+
+EXTEND FORM  calcList
+//PROPERTIES opn 'Открыть' = {  IF calcFolderOpenStatus(c)  THEN openCalcCard(c); } GRID IMAGE 'images/folder_table.png' FIRST
+PROPERTIES ON CHANGE {IF calcFolderOpenStatus(c)  THEN openCalcCard(c);} 
+           // n01 'Дата' = calcDate(c),
+            n03     'Сценарий'      = IF calcFolderOpenStatus(c) THEN nameScenario(scenario(c))        ELSE ' ' ,
+            nameCV  'Вид расчета'   = IF calcFolderOpenStatus(c) THEN nameCalcVariant(calcVariant(c))  ELSE ' ' ,
+            begDate 'с'             = IF calcFolderOpenStatus(c) THEN calcDateBegin(c), 
+            endDate 'по'            = IF calcFolderOpenStatus(c) THEN calcDateEnd(c),
+            dimFirm 'Организация'   = IF calcFolderOpenStatus(c) THEN name(dimFirm(c))                 ELSE ' ' ,
+            n02     'Комментарий'   = IF calcFolderOpenStatus(c) THEN description(c)   ELSE ' '
 PROPERTIES(c) NEW,DELETE
 FILTERS hasCurrentUserDimFirmPermission(dimFirm(c)) OR NOT dimFirm(c)
-ORDERS n01,n03
+ORDERS folderYear, begDate, n03 
  ;
 
 DESIGN calcList {
       BOX (c) {caption = NULL; collapsible = FALSE;}
-      PROPERTY(n01) { charWidth=14; } 
+   //   PROPERTY(n01) { charWidth=14; } 
       PROPERTY(n03) { charWidth=10; }
       PROPERTY(nameCV) { charWidth=10; }
       PROPERTY(begDate) { charWidth=14; } 
@@ -103,20 +128,20 @@ DESIGN calcList {
 FORM calcListSelect 'Реестр расчетов' 
 OBJECTS c = Calc LAST 
 PROPERTIES  READONLY 
-            n01 'Дата' = calcDate(c),
+          //  n01 'Дата' = calcDate(c),
             n03 'Сценарий' = nameScenario(scenario(c))  ,
             nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
             begDate 'с'  = calcDateBegin(c), 
             endDate 'по' = calcDateEnd(c),
             dimFirm 'Организация' = name(dimFirm(c)),
             n02 'Комментарий' = description(c)   
-ORDERS n01,n03
+ORDERS begDate,n03
 LIST Calc OBJECT c;
 
 
 
 DESIGN calcListSelect {
-      PROPERTY(n01) { charWidth=16; } 
+   //   PROPERTY(n01) { charWidth=16; } 
       PROPERTY(n03) { charWidth=10; }
       PROPERTY(nameCV) { charWidth=10; }
       PROPERTY(begDate) { charWidth=14; } 
@@ -132,14 +157,13 @@ FORM  reportListExecCalc 'Список отчетов'
 OBJECTS  calc = Calc PANEL; // предварительное объявление формы выбора отчета
 
 // ================ОСНОВНАЯ ФОРМА================================================
-           
 FORM calcCard 'Расчет' 
 OBJECTS curCalc  = Calc PANEL 
 //OBJECTS p = CalcPeriod
 OBJECTS task = Task 
-PROPERTIES READONLYIF readOnlyHeader(curCalc)
+PROPERTIES NOIMAGE READONLYIF readOnlyHeader(curCalc)
            firm 'Организация' = name(dimFirm(curCalc)),
-           n01 'Дата' = calcDate (curCalc) , 
+       //    n01 'Дата' = calcDate (curCalc) , 
            n04 'Вид расчета' = nameCalcVariant(calcVariant(curCalc)) NOSELECT,
            n03 'Сценарий' = nameScenario(scenario(curCalc)),
           
@@ -152,17 +176,13 @@ PROPERTIES n02 'Комментарий' = description(curCalc),
 EVENTS ON APPLY BEFORE {readOnlyHeader(curCalc) <- TRUE;}
       
 PROPERTIES  ON CHANGE { openTask(curCalc, task); }
-            openTask(curCalc, task) GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'images/table_multiple.png' ELSE 'images/table_edit.png',  
-            nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN Budget.groupFontColor(),
+            nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN groupFontColor(),
             nameCol 'тип' = nameCalcBook(type(task)), 
             canonicalName(task), pos(task) // hide
 
-FILTERS calcVariant(curCalc) == calcVariant(task)
-FILTERS hasCurrentUserTaskPermission(task)  
-ORDERS  pos(task), canonicalName(task)
-;
-  
-  
+FILTERS calcVariant(curCalc) == calcVariant(task) AND hasCurrentUserTaskPermission(task) 
+ORDERS  pos(task)//, canonicalName(task)  
+; 
 // открываем форму расчета с деревом задач
 openCalcCard (Calc c_) + {
    SHOW calcCard OBJECTS  curCalc = c_ DOCKED NOWAIT MANAGESESSION;
@@ -185,7 +205,7 @@ caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBe
         NEW pan1 {
             lines = 10;
             MOVE PROPERTY(firm) { charWidth=14; align = STRETCH;};
-            MOVE PROPERTY(n01) { charWidth=14; align = STRETCH;};
+ //           MOVE PROPERTY(n01) { charWidth=14; align = STRETCH;};
             MOVE PROPERTY(n04) { charWidth=14; align = STRETCH;};
             MOVE PROPERTY(n03) { charWidth=14; align = STRETCH;};
         }

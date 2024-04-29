@@ -1,5 +1,4 @@
 MODULE Form;
- 
 
 NAMESPACE Forms; //<br>
  
@@ -9,7 +8,9 @@ strAInt_(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\'<br> <b>\' ||  TO_CHAR($2,\
 strAInt(STRING s, NUMERIC[18,2] n) = FORMULA '$1||\' 2 \' ||  TO_CHAR($2,\'FM999G999G999G999D00\')';
 
 formatNum(NUMERIC n) = FORMULA 'TO_CHAR($1,\'FM999G999G999G990D00\')';
-textColumnName(STRING s, NUMERIC[18,2] n) =  IF strAInt(s,n) THEN strAInt(s,n) ELSE s; 
+textColumnName(STRING s, NUMERIC[18,2] n) =  IF strAInt(s,n) THEN strAInt(s,n) ELSE s;
+
+ 
 
 FORM dialogDateForm 'Ввод даты'
     OBJECTS d = DATE PANEL
@@ -42,21 +43,21 @@ END
 
 META createFormReqPropertyAfterOBJ(MainCubeClass,formname,cubeObject,namePropertyCalc,namePropertyTask,caption_form)
 
-delete###formname 'Удалить все' (calcTask){
+delete###formname 'Удалить все' (CalcTask calcTask){
     DELETE   MainCubeClass nC 
-    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask); 
+    WHERE   task(nC) == task(calcTask) AND  calc(nC) == calc(calcTask); 
 }
 
-delete###formname##ByFilter 'Удалить видимое' (calcTask){
+delete###formname##ByFilter 'Удалить видимое' (CalcTask  calcTask){
     DELETE   MainCubeClass nC 
-    WHERE   task(nC) == Calc.task(calcTask) AND  calc(nC) == Calc.calc(calcTask)  AND [FILTER formname.cubeObject](nC); 
+    WHERE   task(nC) == task(calcTask) AND  calc(nC) == calc(calcTask)  AND [FILTER formname.cubeObject](nC); 
 }
 
 
-new###formname 'Добавить' (calcTask){
+new###formname 'Добавить' (CalcTask calcTask){
     NEW nC = MainCubeClass {
-        task(nC) <- Calc.task(calcTask); 
-        calc(nC) <- Calc.calc(calcTask); 
+        task(nC) <- task(calcTask); 
+        calc(nC) <- calc(calcTask); 
         SEEK formname.cubeObject = nC;
      //   period(nC)  <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
     }
@@ -75,7 +76,7 @@ PROPERTIES   showReportList 'Отчеты'= {SHOW reportListExec OBJECTS  tt =  
         ;
  
 DESIGN formname {
-   caption =  CONCAT ' / ',nameTask(task(calcTask)) ,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDateBegin(calc(calcTask)))))+' '+ extractYear(calcDate(calc(calcTask))) ;
+   caption =  CONCAT ' / ',nameTask(task(calcTask)) ,nameScenario(scenario(calc(calcTask)))+':', staticCaption(month(extractMonthNumber(calcDateBegin(calc(calcTask)))))+' '+ extractYear(calcDateBegin(calc(calcTask))) ;
    OBJECTS { 
         NEW panelFirstHorizontal BEFORE BOX (calcTask) {
                horizontal = TRUE;
@@ -83,7 +84,7 @@ DESIGN formname {
                MOVE PROPERTY (showReportList) FIRST;
                MOVE PROPERTY (nameB) AFTER PROPERTY (showReportList);
             MOVE PROPERTY (tuneCalc);
-            MOVE PROPERTY (taskChecked(calcTask));
+            MOVE PROPERTY (taskChecked(calcTask)){panelCommentFirst = TRUE;};
          //      MOVE PROPERTY (hlp);
             }
    }
@@ -92,7 +93,396 @@ DESIGN formname {
  }    
 END
  
+META createFormReqPropertyAfterOBJAlg(nameClass)
+    // Алгоритм в шапке
+EXTEND FORM form##nameClass  
+PROPERTIES  logicCalcTask 'Алгоритм' = name(logicCalcTask(calcTask))  
+READONLYIF readOnlyIfCheked(calcTask) 
+ON CHANGE {INPUT in_ = LogicCalc##nameClass CHANGE = logicCalcTask(calcTask);} ;
+DESIGN form##nameClass {panelFirstHorizontal{ MOVE PROPERTY (logicCalcTask) AFTER PROPERTY(nameB) {charWidth = 35;} ;};}
+END
+
+
+// создание бокса формы с иерархией свободным списком
+META addHierarchyPanel1level(formName, objectNameForm, suffix, cubeClass, object, discrObjectGr, currentPos)
+    // formName     имя расширяемой формы
+    // objectNameForm  объект добавляемый в форму BOX 
+    // suffix      суффикс в наименованиях - короткий
+    // objectGroup Имя объекта - справочник главная иерархия
+    // discrObjectGr Описание текст  главная иерархия
+    dim##suffix     = DATA LOCAL ##object(INTEGER);
+     // для скорости корректировки ссылку ячейки на запись храним тут
+    dim##suffix##Ref     = DATA LOCAL cubeClass(Period, INTEGER);
+    color##suffix##formName(INTEGER i) = CASE EXCLUSIVE WHEN isGroup(dim##suffix(i)) THEN mbColor('yellow', NULL);
+    // группы 
+    folded##suffix###formName  =  DATA LOCAL BOOLEAN(INTEGER);
+    isShowFolded##suffix###formName(INTEGER p) =  NOT GROUP LAST TRUE IF folded##suffix###formName(INTEGER parent) AND isParent(dim##suffix(p), dim##suffix(parent)) AND p != parent ORDER TRUE; 
+    
+    fill##suffix###formNameInit(CalcTask ct){
+    // 1. сразу весь список групп + то чn то встречается в кубе данных
+       FOR object d AS object DO {
+           dim##suffix(nodeKey(d)) <- d;
+       } 
+    }
+    
+    EXTEND FORM ##formName
+        OBJECTS objectNameForm discrObjectGr = INTEGER 
+        EVENTS ON CHANGE objectNameForm {currentPos() <- objectNameForm;}
+        FILTERS dim##suffix(objectNameForm) 
+        FILTERS isShowFolded##suffix###formName(objectNameForm)
+        PROPERTIES BACKGROUND (IF isGroup(dim##suffix(objectNameForm)) THEN #fffff0)     
+               folded##suffix '+' = imgFolder(isGroup(dim##suffix(objectNameForm)), NOT folded##suffix###formName(objectNameForm))  
+                    ON CHANGE     { folded##suffix###formName(objectNameForm) <- NOT folded##suffix###formName(objectNameForm); } GRID IN id, // колонка дерева
+               name##suffix discrObject     =  tabName(dim##suffix(objectNameForm)) READONLY STICKY // наименования
+        PROPERTIES 
+            nameOrder##suffix = name(dim##suffix(objectNameForm)),
+            isRoot##suffix = isRoot(dim##suffix(objectNameForm)), 
+            pos##suffix = pos(dim##suffix(objectNameForm)), 
+            isGroup##suffix = isGroup(dim##suffix(objectNameForm)), 
+            nameCanon##suffix = canonicalName(dim##suffix(objectNameForm))
+        ORDERS     isRoot##suffix DESC, pos##suffix DESC, nameCanon##suffix, isGroup##suffix DESC, nameOrder##suffix
+        //EVENTS ON INIT {fill##suffix###formName(calcTask);}
+        
+        PROPERTIES
+              level##suffix##1 '1+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix(all_)) >= 0;},
+              level##suffix##2 '2+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix(all_)) >= 1;},
+              level##suffix##3 '3+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix(all_)) >= 2;},
+              level##suffix##Curr '+' = {folded##suffix###formName(INTEGER all_) <-NULL WHERE isParent(dim##suffix(all_), dim##suffix(objectNameForm));},
+              level##suffix##All '++'= {folded##suffix###formName(INTEGER all_) <- NULL; }
+    ;
+    DESIGN ##formName {
+        PROPERTY (folded##suffix){ charWidth = 2;}
+        PROPERTY (name##suffix){ charWidth = 25; }
+        PROPERTY (nameOrder##suffix){ hide = TRUE;}
+        PROPERTY (isRoot##suffix ){ hide = TRUE;}
+        PROPERTY (pos##suffix){ hide = TRUE;}
+        PROPERTY (isGroup##suffix){ hide = TRUE;}
+        PROPERTY (nameCanon##suffix){ hide = TRUE;}
+        
+        TOOLBARLEFT (objectNameForm) {
+            MOVE PROPERTY (level##suffix##1);
+            MOVE PROPERTY (level##suffix##2);
+            MOVE PROPERTY (level##suffix##3);
+            MOVE PROPERTY (level##suffix##Curr);
+            MOVE PROPERTY (level##suffix##All);
+        }
+    }
+END 
+                // formName, objectNameForm, suffix, cubeClass, object, discrObjectGr, currentPos
+META inputCellPanel1level(objectNameFormL, suffix, formName, cubeClass, propertyName, procName, useGroupChange)
+ //objectNameFormL объект формы 
+//suffixL 
+//formName
+//cubeClass класс таблицы данных
+//propertyName свойсто редактируемое
+//procName процедура итогов по ячейке
+//useGroupChange - разрешение редактировать группы
+//onChanged##suffix 'после изменения ячейки' (###cubeClass s) ABSTRACT; 
+    
+onEdit##suffix 'ввод значения в ячейку' (CalcTask ct, Period period, BOOLEAN allPeriod, INTEGER pg) {
+    LOCAL val_ = NUMERIC();
+    IF NOT isGroup(dim##suffix(pg)) THEN {
+        val_() <- procName(ct, period, dim##suffix(pg));
+        INPUT inp =  val_() DO {
+              FOR  periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+                  {
+                      current###cubeClass() <- dim##suffix##Ref(pr, pg); 
+                      IF  current###cubeClass() THEN {
+                          propertyName( current###cubeClass() ) <- inp;
+                         // onChanged##suffix(current###cubeClass());
+                      }   
+                      ELSE {
+                          new###cubeClass(ct, pr, dim##suffix(pg));    
+                          propertyName(current###cubeClass()) <- inp;
+                          dim##suffix##Ref(pr, pg) <- current###cubeClass();
+                       //   onChanged##suffix(current###cubeClass());   
+                      } 
+                  }
+        }
+    } 
+    ELSE IF useGroupChange THEN {
+        // 1 - заполнять только видимые - доступные ячейки!!! поэтому выбоку основываем на заполненных координатных позициях
+        // 2 . и на видимых  FILTERS!!!
+        val_() <- procName(ct, period, dim##suffix(pg));
+        INPUT inp =  val_() DO {
+        FOR     [FILTER formName.objectNameFormL](INTEGER i) AND level(dim##suffix(i), dim##suffix(pg)) AND NOT isGroup(dim##suffix(i))  
+            AND
+            periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+              {
+                      current###cubeClass() <- dim##suffix##Ref(pr, i); 
+                      IF current###cubeClass() THEN {
+                          propertyName(current###cubeClass()) <- inp;
+                        //  onChanged##suffix(current###cubeClass());   
+                      }
+                      ELSE {
+                        new###cubeClass(ct, pr,  dim##suffix(i));    
+                        propertyName(current###cubeClass()) <- inp;
+                        dim##suffix##Ref(pr, i) <- current###cubeClass();
+                     //   onChanged##suffix(current###cubeClass());   
+                      } 
+              }
+        }
+    }
+}
+END 
+
+
+
+// создание бокса формы с иерархией свободным списком 2 измерения 
+META addHierarchyPanel(formName, objectNameForm, suffix, cubeClass, objectGroup, object, useObject, discrObjectGr, discrObject, currentPos)
+    // formName     имя расширяемой формы
+    // objectNameForm  объект добавляемый в форму BOX 
+    // suffix      суффикс в наименованиях - короткий
+    // objectGroup Имя объекта - справочник главная иерархия
+    // object      Имя объекта - подчиненный, необязательное измерение
+    // useObject   Включать подчиненную колонку
+    // discrObjectGr Описание текст  главная иерархия
+    // discrObject  Описание текст необязательное измерение
+   
+    
+    dim##suffix##Fg = DATA LOCAL ##objectGroup(INTEGER);
+    dim##suffix     = DATA LOCAL ##object(INTEGER);
+     // для скорости корректировки ссылку ячейки на запись храним тут
+    dim##suffix##Ref     = DATA LOCAL cubeClass(Period, INTEGER, INTEGER);
+    color##suffix##formName(INTEGER i) = CASE EXCLUSIVE WHEN isGroup(dim##suffix##Fg(i)) THEN mbColor('yellow', NULL);
+    // группы 
+    folded##suffix###formName  =  DATA LOCAL BOOLEAN(INTEGER);
+    isShowFolded##suffix###formName(INTEGER p) =  NOT GROUP LAST TRUE IF folded##suffix###formName(INTEGER parent) AND isParent(dim##suffix##Fg(p), dim##suffix##Fg(parent)) AND p != parent ORDER TRUE; 
+    
+    //fill##suffix###formName(CalcTask ct) ABSTRACT;
+   
+    fill##suffix###formNameInit(CalcTask ct){
+    // 1. сразу весь список групп + то что встречается в кубе данных
+       FOR objectGroup d AS objectGroup DO {
+           dim##suffix##Fg(nodeKey(d)) <- d;
+           dim##suffix(nodeKey(d)) <- object.empty;
+       } 
+    }
+    
+    EXTEND FORM ##formName
+        OBJECTS objectNameForm discrObjectGr = INTEGER 
+        EVENTS ON CHANGE objectNameForm {currentPos() <- objectNameForm;}
+        FILTERS dim##suffix##Fg(objectNameForm) 
+        FILTERS isShowFolded##suffix###formName(objectNameForm)
+        PROPERTIES BACKGROUND (IF isGroup(dim##suffix##Fg(objectNameForm)) THEN #fffff0)     
+               folded##suffix '+' = imgFolder(isGroup(dim##suffix##Fg(objectNameForm)),NOT folded##suffix###formName(objectNameForm))  
+                    ON CHANGE     { folded##suffix###formName(objectNameForm) <- NOT folded##suffix###formName(objectNameForm); } GRID IN id, // колонка дерева
+               name##suffix discrObjectGr     = IF (object.empty == dim##suffix(objectNameForm)) THEN tabName(dim##suffix##Fg(objectNameForm)) ELSE '                    в т.ч.'   READONLY STICKY, // наименования
+               name##suffix##Elem discrObject = IF (object.empty == dim##suffix(objectNameForm)) THEN ' ' ELSE name(dim##suffix(objectNameForm))  
+                                                READONLYIF dim##suffix(objectNameForm) == object.empty 
+                                                SHOWIF useObject// наименования
+                                                BACKGROUND color##suffix##formName(objectNameForm)
+                                                FOOTER ' ' STICKY   
+        
+        PROPERTIES 
+            nameOrder##suffix = name(dim##suffix##Fg(objectNameForm)),
+            isRoot##suffix = isRoot(dim##suffix##Fg(objectNameForm)), 
+            pos##suffix = pos(dim##suffix##Fg(objectNameForm)), 
+            isGroup##suffix = isGroup(dim##suffix##Fg(objectNameForm)), 
+            nameCanon##suffix = canonicalName(dim##suffix##Fg(objectNameForm))
+        ORDERS     isRoot##suffix DESC, pos##suffix DESC, nameCanon##suffix, isGroup##suffix DESC, nameOrder##suffix
+        //EVENTS ON INIT {fill##suffix###formName(calcTask);}
+        
+        PROPERTIES
+              level##suffix##1 '1+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix##Fg(all_)) >= 0;},
+              level##suffix##2 '2+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix##Fg(all_)) >= 1;},
+              level##suffix##3 '3+' = {folded##suffix###formName(INTEGER all_) <- levelNumInt(dim##suffix##Fg(all_)) >= 2;},
+              level##suffix##Curr '+' = {folded##suffix###formName(INTEGER all_) <-NULL WHERE isParent(dim##suffix##Fg(all_), dim##suffix##Fg(objectNameForm));},
+              level##suffix##All '++'= {folded##suffix###formName(INTEGER all_) <- NULL; }
+    ;
+    DESIGN ##formName {
+        PROPERTY (folded##suffix){ charWidth = 2;}
+        PROPERTY (name##suffix){ charWidth = 25; }
+        PROPERTY (name##suffix##Elem){ charWidth = 15; notNull = TRUE;}
+        
+        PROPERTY (nameOrder##suffix){ hide = TRUE;}
+        PROPERTY (isRoot##suffix ){ hide = TRUE;}
+        PROPERTY (pos##suffix){ hide = TRUE;}
+        PROPERTY (isGroup##suffix){ hide = TRUE;}
+        PROPERTY (nameCanon##suffix){ hide = TRUE;}
+        
+        TOOLBARLEFT (objectNameForm) {
+            MOVE PROPERTY (level##suffix##1);
+            MOVE PROPERTY (level##suffix##2);
+            MOVE PROPERTY (level##suffix##3);
+            MOVE PROPERTY (level##suffix##Curr);
+            MOVE PROPERTY (level##suffix##All);
+        }
+    }
+END 
+
+META functionPanel(objectNameFormH, suffixH, objectNameFormL, suffixL, formName, cubeClass, propertyName, procName, useGroupChange)
+//objectNameFormH Имя формы
+//suffixH суффикс переменных верхней группы
+//objectNameFormL объект формы верхней группы
+//suffixL 
+//formName
+//cubeClass класс таблицы данных
+//propertyName свойсто редактируемое
+//procName процедура итогов по ячейке
+//useGroupChange - разрешение редактировать группы
+
+    
+reReadDataToCell##suffixL##Fg 'Перезаполнить кэш' (CalcTask calcTask) {
+    dim##suffixL##Ref(p_, i, j) <- NULL;
+    FOR cubeClass##Ref (calcTask, Period p_, dim##suffixH##Fg(INTEGER i), dim##suffixH(i), dim##suffixL##Fg(INTEGER j), dim##suffixL(j))
+        AND periodType(p_) == periodType(calc(calcTask)) DO {
+        dim##suffixL##Ref(p_, i, j) <- cubeClass##Ref(calcTask, p_, dim##suffixH##Fg(i), dim##suffixH(i), dim##suffixL##Fg( j), dim##suffixL(j));
+    }
+}
+
+END 
+
+META functionPanelWithCost(objectNameFormH, suffixH, objectNameFormL, suffixL, formName, cubeClass, propertyName, procName, useGroupChange)
+//objectNameFormH Имя формы
+//suffixH суффикс переменных верхней группы
+//objectNameFormL объект формы верхней группы
+//suffixL 
+//formName
+//cubeClass класс таблицы данных
+//propertyName свойсто редактируемое
+//procName процедура итогов по ячейке
+//useGroupChange - разрешение редактировать группы
+    
+reReadDataToCell##suffixL##Fg 'Перезаполнить кэш' (CalcTask calcTask, DimCostItems cost,  DimCFO dimCfo ) {
+    dim##suffixL##Ref(p_, i, j) <- NULL;
+    FOR cubeClass##Ref (calcTask, Period p_, dim##suffixH##Fg(INTEGER i), dim##suffixH(i), dim##suffixL##Fg(INTEGER j), dim##suffixL(j), cost, dimCfo)
+        AND periodType(p_) == periodType(calc(calcTask)) DO {
+        dim##suffixL##Ref(p_, i, j) <- cubeClass##Ref(calcTask, p_, dim##suffixH##Fg(i), dim##suffixH(i), dim##suffixL##Fg( j), dim##suffixL(j), cost, dimCfo);
+    }
+}    
+
+END 
+
+META inputCellPanel(objectNameFormH, suffixH, objectNameFormL, suffixL, formName, cubeClass, propertyName, procName, useGroupChange)
+//objectNameFormH Имя формы
+//suffixH суффикс переменных верхней группы
+//objectNameFormL объект формы верхней группы
+//suffixL 
+//formName
+//cubeClass класс таблицы данных
+//propertyName свойсто редактируемое
+//procName процедура итогов по ячейке
+//useGroupChange - разрешение редактировать группы
+onChanged##suffixL##Fg 'после изменения ячейки' (###cubeClass s) ABSTRACT; 
+    
+onEdit##suffixL##Fg 'ввод значения в ячейку' (CalcTask ct, Period period, BOOLEAN allPeriod, INTEGER pg,  INTEGER ng) {
+    LOCAL val_ = NUMERIC();
+  
+    
+    IF NOT isGroup(dim##suffixH##Fg(pg)) AND NOT isGroup(dim##suffixL##Fg(ng)) THEN {
+        val_() <- procName(ct, period, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng));
+        
+        INPUT inp =  val_() DO {
+              FOR  periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+                  {
+                      current###cubeClass() <- dim##suffixL##Ref(pr, pg, ng); 
+                      IF  current###cubeClass() THEN {
+                          propertyName( current###cubeClass() ) <- inp;
+                          onChanged##suffixL##Fg(current###cubeClass());
+                      }   
+                      ELSE {
+                          new###cubeClass(ct, pr, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng));    
+                          propertyName(current###cubeClass()) <- inp;
+                          dim##suffixL##Ref(pr, pg, ng) <- current###cubeClass();
+                          onChanged##suffixL##Fg(current###cubeClass());   
+                      } 
+                  }
+        }
+    } 
+    ELSE IF useGroupChange THEN {
+                // 1 - заполнять только видимые - доступные ячейки!!! поэтому выбоку основываем на заполненных координатных позициях
+        // 2 . и на видимых  FILTERS!!!
+        val_() <- procName(ct, period, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng));
+        INPUT inp =  val_() DO {
+        FOR     [FILTER formName.objectNameFormH](INTEGER i) AND level(dim##suffixH##Fg(i), dim##suffixH##Fg(pg)) AND NOT isGroup(dim##suffixH##Fg(i))
+            AND [FILTER formName.objectNameFormL](INTEGER j) AND level(dim##suffixL##Fg(j), dim##suffixL##Fg(ng)) AND NOT isGroup(dim##suffixL##Fg(j))  
+            AND
+            periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+              {
+                      current###cubeClass() <- dim##suffixL##Ref(pr, i, j);// cubeSaleFactRef(ct, pr, dimSpgFg(pg), dimSpg(pg), dimScgFg(ng), dimScg(ng));
+                      IF current###cubeClass() THEN {
+                          propertyName(current###cubeClass()) <- inp;
+                          onChanged##suffixL##Fg(current###cubeClass());   
+                      }
+                      ELSE {
+                        new###cubeClass(ct, pr,  dim##suffixH##Fg(i), dim##suffixH(i), dim##suffixL##Fg(j), dim##suffixL(j));    
+                        propertyName(current###cubeClass()) <- inp;
+                        dim##suffixL##Ref(pr, i, j) <- current###cubeClass();
+                        onChanged##suffixL##Fg(current###cubeClass());   
+                      } 
+              }
+        }
+    }
+}
+
+END 
  
+ 
+META inputCellPanelWithCost(objectNameFormH, suffixH, objectNameFormL, suffixL, formName, cubeClass, propertyName, procName, useGroupChange, costProperty)
+//objectNameFormH Имя формы
+//suffixH суффикс переменных верхней группы
+//objectNameFormL объект формы верхней группы
+//suffixL 
+//formName
+//cubeClass класс таблицы данных
+//propertyName свойсто редактируемое
+//procName процедура итогов по ячейке
+//useGroupChange - разрешение редактировать группы
+onChanged##suffixL##Fg 'после изменения ячейки' (###cubeClass s) ABSTRACT; 
+    
+onEdit##suffixL##Fg 'ввод значения в ячейку' (CalcTask ct, Period period, BOOLEAN allPeriod, INTEGER pg,  INTEGER ng) {
+    LOCAL val_ = NUMERIC();
+  
+    IF dimCostItems(costProperty()) THEN {
+    IF NOT isGroup(dim##suffixH##Fg(pg)) AND NOT isGroup(dim##suffixL##Fg(ng)) THEN {
+        val_() <- procName(ct, period, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng), dimCostItems(costProperty()), dimCFO(costProperty()));
+        
+        INPUT inp =  val_() DO {
+              FOR  periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+                  {
+                      current###cubeClass() <- dim##suffixL##Ref(pr, pg, ng); 
+                      IF  current###cubeClass() THEN {
+                          propertyName( current###cubeClass() ) <- inp;
+                          onChanged##suffixL##Fg(current###cubeClass());
+                      }   
+                      ELSE {
+                          new###cubeClass(ct, pr, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng), dimCostItems(costProperty()), dimCFO(costProperty()));    
+                          propertyName(current###cubeClass()) <- inp;
+                          dim##suffixL##Ref(pr, pg, ng) <- current###cubeClass();
+                          onChanged##suffixL##Fg(current###cubeClass());   
+                      } 
+                  }
+        }
+    } 
+    ELSE IF useGroupChange THEN {
+                // 1 - заполнять только видимые - доступные ячейки!!! поэтому выбоку основываем на заполненных координатных позициях
+        // 2 . и на видимых  FILTERS!!!
+        val_() <- procName(ct, period, dim##suffixH##Fg(pg), dim##suffixH(pg), dim##suffixL##Fg(ng), dim##suffixL(ng), dimCostItems(costProperty()), dimCFO(costProperty()));
+        INPUT inp =  val_() DO {
+        FOR     [FILTER formName.objectNameFormH](INTEGER i) AND level(dim##suffixH##Fg(i), dim##suffixH##Fg(pg)) AND NOT isGroup(dim##suffixH##Fg(i))
+            AND [FILTER formName.objectNameFormL](INTEGER j) AND level(dim##suffixL##Fg(j), dim##suffixL##Fg(ng)) AND NOT isGroup(dim##suffixL##Fg(j))  
+            AND
+            periodType(Period pr AS Period) == periodType(calc(ct)) AND (allPeriod OR period = pr)  DO
+              {
+                      current###cubeClass() <- dim##suffixL##Ref(pr, i, j);// cubeSaleFactRef(ct, pr, dimSpgFg(pg), dimSpg(pg), dimScgFg(ng), dimScg(ng));
+                      IF current###cubeClass() THEN {
+                          propertyName(current###cubeClass()) <- inp;
+                          onChanged##suffixL##Fg(current###cubeClass());   
+                      }
+                      ELSE {
+                        new###cubeClass(ct, pr,  dim##suffixH##Fg(i), dim##suffixH(i), dim##suffixL##Fg(j), dim##suffixL(j), dimCostItems(costProperty()), dimCFO(costProperty()));    
+                        propertyName(current###cubeClass()) <- inp;
+                        dim##suffixL##Ref(pr, i, j) <- current###cubeClass();
+                        onChanged##suffixL##Fg(current###cubeClass());   
+                      } 
+              }
+        }
+    }
+    }
+}
+
+END 
  
  
 META createLocalMenuOperation(menuName,extendedForm)

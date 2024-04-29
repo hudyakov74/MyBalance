@@ -12,6 +12,7 @@ name    = DATA STRING (OdataRequest);
 varPrefix 'Префикс переменных в скрипте'   = DATA STRING[5] (OdataRequest);
 reqText = DATA STRING[2048] (OdataRequest);
 source  = DATA ExtRequest (OdataRequest);
+reqNoSmallResult 'не запрашивать первый результат'  = DATA BOOLEAN (OdataRequest);
 filters = DATA STRING[2048] (OdataRequest);
 select  = DATA STRING[2048] (OdataRequest);
 expand  = DATA STRING[2048] (OdataRequest);
@@ -35,7 +36,7 @@ IF source(r) THEN {
  headers('Authorization') <- passwordBasicAuth(extSource(source(r)));
  LOCAL result = FILE();
 
-
+IF NOT reqNoSmallResult(r) THEN {
     TRY { 
     EXTERNAL HTTP GET  (
                       CONCAT '', 
@@ -50,6 +51,7 @@ IF source(r) THEN {
     fileToString(result());
     result(r) <- resultString() ;
     }
+}
     
     
      resultReqText(r) <- ( 
@@ -64,13 +66,26 @@ IF source(r) THEN {
                       (IF filters(r) THEN '&$filter='+filters(r))
                      );
     
-     TRY { 
-    EXTERNAL HTTP GET   resultReqText(r)
-                     HEADERS headers TO result;
-    fileToString(result());
-    resultFull(r) <- resultString() ;
-    }
+    
+    IF   reqNoSmallResult(r) THEN {
 
+        
+            EXTERNAL HTTP GET resultReqText(r)
+                HEADERS headers TO result;
+            fileToString(result());
+            resultFull(r) <- resultString() ;
+         
+    }
+    ELSE
+        {
+            
+        TRY {
+            EXTERNAL HTTP GET resultReqText(r)
+                HEADERS headers TO result;
+            fileToString(result());
+            resultFull(r) <- resultString() ;
+        }
+        }
 
 } 
 }
@@ -96,7 +111,8 @@ PROPERTIES name(r),varPrefix(r),reqText(r),
 PROPERTIES(r) 
 resultReqText, 
 result,
-resultFull
+resultFull,
+reqNoSmallResult
 PROPERTIES
 get1 'показать скрипт' = {
     getFormScriptFromJson(result(r),varPrefix(r));

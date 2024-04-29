@@ -1,6 +1,6 @@
 MODULE DimAccount;
 
-REQUIRE TaskTune,Dimens,DimensRawCFO,DimensRawCostItems,DimensCFO,DimensCostItems,DimCostNonOperItems;
+REQUIRE TaskTune,Dimens,DimensRawCFO,DimensRawCostItems,DimensCFO,DimensCostItems;
 
 NAMESPACE   Dimens; 
 

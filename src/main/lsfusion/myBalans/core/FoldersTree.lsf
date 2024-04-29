@@ -1,0 +1,11 @@
+MODULE FoldersTree;
+
+REQUIRE Utils, Security, Task;
+ 
+NAMESPACE MyBalance;
+
+/// состояние папки зависит: User, Year; User, Task
+
+folderClosed = DATA BOOLEAN (INTEGER, User); // для года
+folderClosed = DATA BOOLEAN (Task, CalcVariant, User);
+

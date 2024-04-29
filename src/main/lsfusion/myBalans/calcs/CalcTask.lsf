@@ -1,22 +1,62 @@
 MODULE CalcTask;
 
-REQUIRE Calc, Cube, Form, DistribTuneRef;
+REQUIRE Calc, Cube, Form, DistribTuneRef, LogicCalc;
 
 NAMESPACE Calc;
 
 CLASS CalcTask 'Задача';
 TABLE calcTask(CalcTask);
+
+currentCalcTask = DATA LOCAL CalcTask();
+
 calc 'Расчет' = DATA Calc(CalcTask) INDEXED NONULL; 
 task 'Задача' = DATA Task(CalcTask) INDEXED NONULL;
-versionNum 'Актуальный номер версии данных' = DATA INTEGER (CalcTask);
 taskChecked 'Проверен'  = DATA BOOLEAN  (CalcTask);
-taskCompletedTime       = DATA DATETIME (CalcTask);
+
+versionNum 'Актуальный номер версии данных' = DATA INTEGER (CalcTask); // значение 0 - данные для удаления
+tuneCalc    'Алгоритм расчета'   =  DATA DistribTuneRef(CalcTask); // версия - проба
+
+
+// используем для шедулера 
+logicCalcTask   'Алгоритм константа' = DATA LogicCalc(CalcTask);
+taskTime                             = DATA DATETIME (CalcTask);
+taskCompletedTime                    = DATA DATETIME (CalcTask);
+
+
 paramInt1     ''        = DATA INTEGER (CalcTask);
 paramInt2     ''        = DATA INTEGER (CalcTask);
 param1                  = DATA LOCAL INTEGER (CalcTask);
 param2Bool              = DATA LOCAL BOOLEAN (CalcTask);
-tuneCalc    'Алгоритм расчета' =  DATA DistribTuneRef(CalcTask);
 INDEX calc(CalcTask c), task(c);
+
+META createCube(objectDim)
+TABLE objectDim(###objectDim);
+task   'задача' = DATA Task(###objectDim) INDEXED IN id;
+period 'Период' = DATA Period(###objectDim) INDEXED IN id; // для плоских списков 
+calc   'расчет' = DATA Calc(###objectDim) INDEXED IN id NONULL;
+calcTask(###objectDim d) = getCalcTask(calc(d),task(d)) MATERIALIZED;
+versionNum 'Номер версии данных' = DATA INTEGER (###objectDim);
+//INDEX calcTask(###objectDim d), versionNum(d), d;
+current###objectDim = DATA LOCAL ###objectDim();
+END
+
+META createCubeReqDim(ObjectDim,tableName)
+TABLE tableName(###ObjectDim);
+task   'задача' = DATA Task(###ObjectDim) INDEXED IN id;
+period 'Период' = DATA Period(###ObjectDim) INDEXED IN id; // для плоских списков 
+calc   'расчет' = DATA Calc(###ObjectDim) INDEXED IN id NONULL;
+calcTask(###ObjectDim d) = getCalcTask(calc(d),task(d)) MATERIALIZED;
+versionNum 'Номер версии данных' = DATA INTEGER (###ObjectDim);
+INDEX calcTask(###ObjectDim d), versionNum(d), d;
+current###ObjectDim = DATA LOCAL ###ObjectDim();
+END
+
+META createCubeReqDimTable(ObjectDim,tableName)
+TABLE tableName(ObjectDim);
+TABLE tableName##Period(ObjectDim,Period);
+task   'задача' = DATA Task(ObjectDim)  INDEXED IN id;
+calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
+END
 
 taskCompletedTime(d) <- currentDateTime() WHEN SET(taskChecked(d));
 readOnlyIfCheked(CalcTask ct) = has(currentUser(),userRoleSID('readonlyIfCheked')) AND taskChecked(ct);
@@ -24,28 +64,37 @@ readOnlyIfCheked(CalcTask ct) = has(currentUser(),userRoleSID('readonlyIfCheked'
 getCalcTask(Calc calcL,Task taskL) = GROUP MAX CalcTask c IF calc(c) == calcL AND task(c) == taskL MATERIALIZED;
 checkOrCreateCalcTask (Calc calcL,Task taskL)
 {
-     IF NOT  getCalcTask(calcL,taskL) THEN  {
-      NEWSESSION {
+    currentCalcTask() <- getCalcTask(calcL,taskL);
+     IF NOT  currentCalcTask() THEN  {
+      //NEWSESSION 
+      APPLY NESTED LOCAL {
         NEW ct = CalcTask  {
             calc(ct) <- calcL;
             task(ct) <- taskL;
+            logicCalcTask(ct) <- logicTask(taskL);
+            currentCalcTask() <- ct;
         }
-       APPLY ;
        }
      }
 }
-
+calcTaskRuns(Calc c, Task t) ABSTRACT;
  
 taskChecked(Calc c,Task t) = GROUP MAX taskChecked(CalcTask ct) IF calc(ct)==c AND  task(ct) == t;
 EXTEND FORM calcCard
-PROPERTIES   taskChecked 'Выполнен' = taskChecked(curCalc,task) GRID
-            ,taskCompletedTime '' =
-             CONCAT ' ', toDateDDMMYYYY(taskCompletedTime(getCalcTask(curCalc,task))),  
-                         toTimeHMS(taskCompletedTime(getCalcTask(curCalc,task)));
-             
-          
+PROPERTIES   taskChecked 'Проверено' = taskChecked(curCalc,task) GRID,
+             taskStartTime 'Запуск' =
+             (CONCAT ' ', toDateDDMMYYYY(taskTime(getCalcTask(curCalc,task))),  
+                         toTimeHMS(taskTime(getCalcTask(curCalc,task)))),
+             taskCompletedTime 'Завершено' =
+             (CONCAT ' ', toDateDDMMYYYY(taskCompletedTime(getCalcTask(curCalc,task))),  
+                         toTimeHMS(taskCompletedTime(getCalcTask(curCalc,task)))) 
+    
+    EVENTS ON SCHEDULE PERIOD 60 { formRefresh(); }    
+;
+       
 DESIGN calcCard {
     PROPERTY (taskChecked){charWidth = 8;}
+ 
 }
  
 FORM  calcTaskSelectParamNnn 'Выбор пропорции'
@@ -62,3 +111,81 @@ EXTEND FORM  calcCard
 DESIGN calcCard {
     PROPERTY (nameCol) {hide = TRUE;}
 }
+
+dateColumnName 'Название колонки' (CalcTask calcTask, Period p, STRING name) =  
+   CONCAT ', ', STRING (toChar(dateBegin(periodInCalc(p, calc(calcTask))), 'TMMon YY')), name;  
+
+// Tree
+isNoShowFoldedFormcalcCard(Calc c, Task p) = (      GROUP MAX TRUE 
+                                                                 IF calcVariant(c) == calcVariant(Task parent_)
+                                                                 AND levelInt(p, parent_)
+                                                                 AND folderClosed(parent_, calcVariant(c), currentUser())
+                                                                 AND p != parent_ 
+                                                        );
+
+taskFolderCloseSet(Calc c, Task t, BOOLEAN set)   { 
+    IF isGroup(t) THEN {
+        folderClosed(t, calcVariant(c), currentUser()) <- set; 
+    }
+}
+                                   
+taskFolderOpenSet(Task c, INTEGER level) { 
+        folderClosed(Task all_, calcVariant(c), currentUser()) <- levelNumInt(all_) >= level WHERE isGroup(all_);
+        formRefresh();
+};  
+
+taskFolderOpenSet(Task c) {
+    IF isGroup(c) THEN {
+        folderClosed(Task all_, calcVariant(c), currentUser()) <- NULL WHERE isGroup(all_) AND level(all_, c);
+        formRefresh();
+    }
+};  
+
+EXTEND FORM  calcCard 
+PROPERTIES 
+//     sShowFoldedFormcalcCard 'ff' = isNoShowFoldedFormcalcCard(curCalc, task) FIRST,
+//         formCalcCardTaskView 'folderClosed' = folderClosed(task, calcVariant(curCalc), currentUser()) FIRST,
+//         levelNumInt = levelNumInt(task),   
+             
+         openFolder = imgFolder(isGroup(task), NOT folderClosed(task, calcVariant(curCalc), currentUser()))    
+            ON CHANGE {
+                 taskFolderCloseSet(curCalc, task, NOT folderClosed(task, calcVariant(curCalc), currentUser()));
+            } 
+         DRAW task GRID FIRST    
+//FILTERGROUP dtt FILTER 'иерархия' NOT isShowFoldedFormcalcCard(curCalc, task) DEFAULT 
+FILTERS  NOT isNoShowFoldedFormcalcCard(curCalc, task)  
+      
+PROPERTIES
+         levelFg1 '①' = {taskFolderOpenSet(task,0);} NOIMAGE,
+         levelFg2 '②' = {taskFolderOpenSet(task,1);} NOIMAGE,
+         levelFg3 '③' = {taskFolderOpenSet(task,2);} NOIMAGE,
+         levelFgCurr '+' = {taskFolderOpenSet(task);}  NOIMAGE,
+         openFgAll '++'= {taskFolderOpenSet(task,100);} NOIMAGE    
+;
+DESIGN calcCard {
+        TOOLBARLEFT (task) {
+            MOVE PROPERTY (levelFg1){charWidth = 2;};
+            MOVE PROPERTY (levelFg2){charWidth = 2;};
+            MOVE PROPERTY (levelFg3){charWidth = 2;};
+            MOVE PROPERTY (levelFgCurr){charWidth = 2;};
+            MOVE PROPERTY (openFgAll){charWidth = 2;};
+        }
+   PROPERTY (openFolder){charWidth = 2;};
+}
+
+
+
+FORM formCalcTask 'Для администратора' 
+OBJECTS s = CalcTask
+    PROPERTIES DELETE (s),
+    isGroup = isGroup(task(s)),
+    nameTask = nameTask(task(s)),
+    nameCalc = name(calc(s)),
+    calcVariant = nameCalcVariant(calcVariant(task(s)))
+;
+ DESIGN  formCalcTask {
+    PROPERTY (nameCalc) {charWidth = 15;}
+    PROPERTY (nameTask) {charWidth = 15;}
+    PROPERTY (calcVariant) {charWidth = 15;}
+ }
+    

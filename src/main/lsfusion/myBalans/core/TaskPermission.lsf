@@ -7,9 +7,7 @@ NAMESPACE Budget;
 
 taskPermission 'Доступ к участку' = DATA BOOLEAN (Task ,UserRole);
 
-hasCurrentUserTaskPermission(Task t) = GROUP MAX TRUE IF 
-                                    taskPermission(t, UserRole ur)
-                                    AND has(currentUser(),ur);   
+hasCurrentUserTaskPermission(Task t) = GROUP MAX TRUE IF taskPermission(t, UserRole ur) AND has(currentUser(),ur);   
 
 
 // has(currentUser(),userRoleSID('admin'))

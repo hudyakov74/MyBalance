@@ -1,0 +1,26 @@
+MODULE LogicCalc;
+
+REQUIRE System;
+
+NAMESPACE Budget;
+
+CLASS ABSTRACT LogicCalc;
+
+CLASS LogicCalcEmpty : LogicCalc;
+EXTEND CLASS LogicCalcEmpty {
+    empty '<>'
+}
+
+ name(LogicCalc s) = staticCaption(s);
+ 
+FORM formLogicCalc 'Алгоритмы'
+OBJECTS s = LogicCalc
+PROPERTIES staticName(s), name(s)
+LIST LogicCalc OBJECT s;
+
+FORM formLogicCalcCard 'Алгоритмы'
+OBJECTS s = LogicCalc PANEL 
+PROPERTIES staticName(s), name(s)
+EDIT LogicCalc OBJECT s;
+
+

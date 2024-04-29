@@ -35,7 +35,7 @@ PROPERTIES typeCostItem = name(typeCostItem(d)), variableCost(d), doNotUseImport
 ;
 
 // функции имен уровней иерархии - для отчетов
-dimCostItemsLev1 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 1l);
-dimCostItemsLev2 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l);
-dimCostItemsLev3 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l*2);
-dimCostItemsLev4 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND level( n, parent) AND levelNum(parent) == 2l*4);
+dimCostItemsLev1 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 1);
+dimCostItemsLev2 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 2);
+dimCostItemsLev3 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 3);
+dimCostItemsLev4 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 4);

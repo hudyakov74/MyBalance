@@ -1,0 +1,11 @@
+MODULE ReportExportType;
+
+REQUIRE System;
+
+NAMESPACE Reports;
+
+CLASS ReportExportType {
+    empty 'пустой элемент'
+}
+
+name(ReportExportType t) =  staticCaption(t); 

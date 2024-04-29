@@ -1,6 +1,6 @@
 MODULE Task;
 
-REQUIRE CalcCore, DistribTuneRef;
+REQUIRE CalcCore, DistribTuneRef, LogicCalc, TypeTask, Utils;
 
 NAMESPACE Budget;
 
@@ -14,22 +14,30 @@ calcVariant 'Вид расчета'           = DATA CalcVariant (Task) NONULL;
 isGroup     'Это группа'            = DATA BOOLEAN (Task); 
 parent      'В группе'              = DATA Task(Task);
 tuneCalc    'Алгоритм расчета'      = DATA DistribTuneRef(Task);
+logicTask   'Алгоритм константа'    = DATA LogicCalc(Task);
 
 level       'Уровень'  (Task child,Task parent) = 
-    RECURSION 1l IF child IS Task AND parent = child
-    STEP 2l IF parent = parent($parent) MATERIALIZED;
+   RECURSION 1l IF child IS Task AND parent = child STEP 2l IF parent = parent($parent) MATERIALIZED;
+
+levelInt 'Уровень' (Task child, Task parent) =
+   RECURSION 1l IF child IS Task AND parent = child STEP 1l IF parent = parent($parent) MATERIALIZED;   
+ 
+
+levelNumInt 'levelNumInt' (Task group) = LONG (GROUP  SUM levelInt(group,Task parent))-1  CHARWIDTH 2; 
+
+isParent 'Родитель' (Task child, Task parent) = TRUE IF level(child, parent);
     
 nameTaskTab 'Наименование задачи' (Task group)=
- ( GROUP CONCAT '    ','.   '  ORDER DESC level(group, Task parent)  ) + nameTask(group) CHARWIDTH 15;
+ ( GROUP CONCAT '    ','.   '  ORDER DESC levelInt(group, Task parent)  ) + nameTask(group) CHARWIDTH 15;
  
 
 canonicalName 'Каноническое имя' (Task group) =
-   GROUP CONCAT nameTask(Task parent), ' / ' ORDER DESC level(group, parent) CHARWIDTH 50;
+   GROUP CONCAT nameTask(Task parent), ' / ' ORDER DESC levelInt(group, parent) CHARWIDTH 50;
  
 
 FORM taskList 'Список задач расчета'
 OBJECTS  f = Task
-PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
+PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN groupFontColor()
 LIST Task OBJECT f
 ;
 
@@ -37,7 +45,7 @@ FORM taskListByCalcVariant 'Список задач расчета'
 OBJECTS   c = CalcVariant, t = TypeTask
 OBJECTS   f = Task
     PROPERTIES READONLY PANEL n = nameCalcVariant(c), nt = nameCalcBook(t)   
-    PROPERTIES READONLY pos(f),nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
+    PROPERTIES READONLY pos(f),nameTaskTab(f) FOREGROUND IF isGroup(f) THEN groupFontColor()
     ORDERS pos(f)
 FILTERS calcVariant(f) == c AND type(f) == t 
 ;
@@ -45,7 +53,7 @@ FILTERS calcVariant(f) == c AND type(f) == t
 FORM taskListGroup 'Группы задач расчета'
 OBJECTS  calcVariant = CalcVariant PANEL 
 OBJECTS  f = Task
-PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN Budget.groupFontColor()
+PROPERTIES nameTaskTab(f) FOREGROUND IF isGroup(f) THEN groupFontColor()
 FILTERS isGroup(f) AND calcVariant(f) == calcVariant;
 
 openTaskListGroup(Task curr){
@@ -54,10 +62,16 @@ openTaskListGroup(Task curr){
 
 FORM taskListCard 'Карточка задачи расчета'
 OBJECTS  f = Task  PANEL 
-PROPERTIES   pos(f), nameTask(f) ,
+PROPERTIES  pos(f), nameTask(f) ,
             type_p  'Тип' = nameCalcBook(type(f)),
             parent 'В группе' = nameTask(parent(f)) ON CHANGE openTaskListGroup(f),
-            tuneCalc 'Алгоритм расчета' = name(tuneCalc(f))
+            tuneCalc 'Алгоритм расчета' = name(tuneCalc(f)),
+            logicCalc 'Алгоритм константа' =  name(logicTask(f)) ON CHANGE { 
+                EVAL ACTION 'INPUT inp_ = LogicCalc'+ substrFrom(staticName(type(f)), strpos(staticName(type(f)),'.')+1) +' CHANGE = logicTask($1);' PARAMS f; //MyBalanceCalc_TypeTask.SalePayouts
+                
+            } // выбор элемента зависит от type
+        
+            
 EDIT Task OBJECT f;
 
 DESIGN taskListCard {

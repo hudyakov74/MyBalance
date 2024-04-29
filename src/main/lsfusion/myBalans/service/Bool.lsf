@@ -1,7 +1,0 @@
-MODULE Bool;
-
-CLASS Bool {
-    true 'True',
-    false 'False'
-}
-

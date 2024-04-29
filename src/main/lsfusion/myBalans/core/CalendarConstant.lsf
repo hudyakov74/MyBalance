@@ -1,0 +1,80 @@
+MODULE CalendarConstant;
+
+REQUIRE Utils, Time;
+
+NAMESPACE Budget;
+
+
+numberMonthCalendarConstant '{time.number.month}' (Month m) = CASE EXCLUSIVE 
+    WHEN m == Month.january THEN 1
+    WHEN m == Month.february THEN 2
+    WHEN m == Month.march THEN 3
+    WHEN m == Month.april THEN 4
+    WHEN m == Month.may THEN 5
+    WHEN m == Month.june THEN 6
+    WHEN m == Month.july THEN 7
+    WHEN m == Month.august THEN 8
+    WHEN m == Month.september THEN 9
+    WHEN m == Month.october THEN 10
+    WHEN m == Month.november THEN 11
+    WHEN m == Month.december THEN 12;
+
+
+cc_extractQuarter = FORMULA INTEGER PG '(extract(QUARTER from ($1)))';
+cc_dayOfWeek = FORMULA INTEGER PG '(extract(ISODOW from ($1)))';
+cc_weekNum = FORMULA INTEGER PG '(extract(WEEK from ($1)))';
+cc_weekBeg = FORMULA DATE PG 'cast(date_trunc(\'week\',  ($1)) AS date)';
+cc_yearBeg = FORMULA DATE PG 'cast(date_trunc(\'year\',  ($1)) AS date)';
+cc_weekEnd = FORMULA DATE PG 'cast(date_trunc(\'week\',  ($1)) AS date) + 6';
+cc_periodId	= FORMULA INTEGER PG 'select extract(year from age(($1), date \'2017-01-01\' )) * 12 + extract(month from age(($1), date \'2017-01-01\')) +1';
+  
+CLASS CalendarConstant;
+TABLE calendarConstant(CalendarConstant);
+date 'Дата' = DATA DATE (CalendarConstant) INDEXED;
+uniDate = GROUP AGGR CalendarConstant c BY date(c);
+
+year            'Год'               (CalendarConstant c) = extractYear(date(c)) MATERIALIZED TABLE calendarConstant;
+quarterNumber   'Номер квартала'    (CalendarConstant c) = cc_extractQuarter(date(c)) MATERIALIZED TABLE calendarConstant;
+quarter         'Квартал'           (CalendarConstant c)  = STRING ('Кв.'+toChar(cc_extractQuarter(date(c)),'9'))  MATERIALIZED TABLE calendarConstant; //extractQuarter(date(c))
+monthNumber     'Номер месяца'      (CalendarConstant c) =  extractMonthNumber(date(c)) MATERIALIZED TABLE calendarConstant;
+monthFirstDay   'Начало месяца'     (CalendarConstant c) = firstDayOfMonth(date(c)) MATERIALIZED TABLE calendarConstant;
+monthLastDay    'Конец месяца'      (CalendarConstant c) = lastDayOfMonth(date(c)) MATERIALIZED TABLE calendarConstant;
+dayOfMonth      'День месяца'       (CalendarConstant c) = extractDay(date(c)) MATERIALIZED TABLE calendarConstant;
+dayCode         'Код даты'          (CalendarConstant c) =STRING ( toChar(date(c),'YYYYMMDD')) MATERIALIZED TABLE calendarConstant;
+month           'Месяц'             (CalendarConstant c) = STRING (staticCaption(GROUP MAX Month m IF numberMonthCalendarConstant(m) == extractMonthNumber(date(c)))) MATERIALIZED TABLE calendarConstant;
+mon             'Мес.'              (CalendarConstant c) = STRING ( toChar(date(c),'TMmon')) MATERIALIZED TABLE calendarConstant;
+monYear         'Месяц года'        (CalendarConstant c) =STRING (  CONCAT ' ',mon(c),year(c))  MATERIALIZED TABLE calendarConstant;
+quarterYear     'Квартал года'      (CalendarConstant c) =  CONCAT '-',quarter(c),year(c)  MATERIALIZED TABLE calendarConstant;
+dayOfWeekNumber 'Номер дня недели'  (CalendarConstant c) =  cc_dayOfWeek(date(c))-1 MATERIALIZED TABLE calendarConstant;
+dayOfWeekName   'День недели'       (CalendarConstant c) = STRING ( toChar(date(c),'TMday')) MATERIALIZED TABLE calendarConstant;
+dyOfWeekName    'День'              (CalendarConstant c) = STRING ( toChar(date(c),'TMdy')) MATERIALIZED TABLE calendarConstant;
+weekFirstDay    'Начало недели'     (CalendarConstant c) =      cc_weekBeg(date(c))   MATERIALIZED  TABLE calendarConstant;
+weekLastDay     'Конец недели'      (CalendarConstant c) =      cc_weekEnd(date(c)) MATERIALIZED TABLE calendarConstant;
+weekNumber      'Номер недели'      (CalendarConstant c) =  toInteger(toChar(date(c),'WW')) MATERIALIZED TABLE calendarConstant;
+
+codeYearMonth   'Код месяца года'   (CalendarConstant c) =  STRING (( toChar(date(c), 'YYYYMM') + '00')) MATERIALIZED TABLE calendarConstant;
+codeYearQuater  'Код квартала года' (CalendarConstant c) =  STRING ((toChar(date(c),'YYYY')+'0'+toChar(date(c),'Q')+'00')) MATERIALIZED TABLE calendarConstant;
+
+periodId        'PeriodID'          (CalendarConstant c) =  cc_periodId(date(c)) MATERIALIZED TABLE calendarConstant;
+halfYear        'Полугодие'         (CalendarConstant c) =  IF extractMonthNumber(date(c)) < 7 THEN ('1 пг -'+extractYear(date(c))) ELSE ('2 пг -'+extractYear(date(c)))  MATERIALIZED TABLE calendarConstant;
+weekPeriod      'Период недели'     (CalendarConstant c) =  STRING (toChar(cc_weekBeg(date(c)),'DD.MM') +' '+toChar(cc_weekEnd(date(c)),'DD.M')) MATERIALIZED TABLE calendarConstant;
+weekMonth       'Неделя месяца'     (CalendarConstant c) = STRING ( toChar(date(c),'WW')+'неделя-'+mon(c)+' '+year(c)) MATERIALIZED TABLE calendarConstant;
+yearBegin       'Начало года'       (CalendarConstant c) =  cc_yearBeg(date(c)) MATERIALIZED TABLE calendarConstant;
+
+
+fillCalendarConstant 'Заполнить пропущеные даты' (){
+    FOR iterate(DATE d,(GROUP MIN date(CalendarConstant c)), (GROUP MAX date(CalendarConstant c))) 
+        AND NOT  (GROUP MAX TRUE IF date(CalendarConstant c) == d ) NEW c = CalendarConstant  DO {
+        date(c) <- d;
+    }
+}
+
+FORM formCalendarConstant 'Календарь BI' 
+OBJECTS c = CalendarConstant 
+EVENTS ON INIT { SEEK formCalendarConstant.c = GROUP MAX  CalendarConstant cc IF date(cc) = currentDate();}
+PROPERTIES date(c), NEW(c), DELETE (c), fillCalendarConstant()
+ORDERS date(c)  
+PROPERTIES(c) READONLY year,quarterNumber,quarter,monthNumber,monthFirstDay,monthLastDay,dayOfMonth,dayCode,month,mon,monYear,quarterYear,dayOfWeekNumber,dayOfWeekName,
+                       dyOfWeekName,weekFirstDay,weekLastDay,weekNumber,codeYearMonth,codeYearQuater,periodId,halfYear,weekPeriod,weekMonth,yearBegin      
+;
+

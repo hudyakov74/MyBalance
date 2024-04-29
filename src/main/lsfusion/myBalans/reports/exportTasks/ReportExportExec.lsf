@@ -1,0 +1,18 @@
+MODULE ReportExportExec;
+
+REQUIRE  ReportExportSettings;
+
+NAMESPACE Reports;
+
+
+runExportReport 'Запуск' (INTEGER numRep) {
+    
+    MESSAGE name(reportByRunCode(numRep));
+    
+    
+    
+}
+
+EXTEND FORM reportExport
+PROPERTIES testRun 'Запуск тест' = {runExportReport(1);}
+;

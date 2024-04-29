@@ -1,15 +1,22 @@
 MODULE FormsDriverExt;
 
-REQUIRE   CalcTask,Utils;
+REQUIRE   CalcTask, Utils, CalcTaskSheduler;
 
 NAMESPACE Forms;
 
-openTask(Calc c, Task cc)+{
+openTask(Calc c, Task cc) + {
+     IF NOT isGroup(cc) THEN {
          checkOrCreateCalcTask(c,cc);
-          NEWSESSION {
+         IF  calcTaskRuns(currentCalcTask()) THEN {
+             MESSAGE 'Выполняется расчет задачи в фоне';
+             formRefresh();
+         }
+         ELSE   
+         NEWSESSION {
            // regexpReplace - убираем namespace с точкой слева
            IF type(cc) THEN
             EVAL ACTION  'SHOW  form' + regexpReplace(staticName(type(cc)),'.*[.]','','')+ ' OBJECTS calcTask = getCalcTask($1,$2) DOCKED NOWAIT MANAGESESSION ' PARAMS  c, cc ;
         }
+     }
 }  
  

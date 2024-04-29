@@ -1,32 +1,5 @@
 // убрал - упростил генерацию
 MODULE Cube;
 
-REQUIRE CalcCore,Calc,DimensCFO,DimensCostItems,PeriodCalendar;
-
 NAMESPACE Cube;
-
-META createCubeReqDim(ObjectDim,tableName)
-TABLE tableName(ObjectDim);
-task   'задача' = DATA Task(ObjectDim) INDEXED IN id;
-period 'Период' = DATA Period(ObjectDim) INDEXED IN id; // для плоских списков 
-calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
-calcTask(ObjectDim d) = getCalcTask(calc(d),task(d)) MATERIALIZED;
-versionNum 'Номер версии данных' = DATA INTEGER (ObjectDim);
-INDEX calcTask(ObjectDim d), versionNum(d), d;
-END
-
-META createCubeReqDimTable(ObjectDim,tableName)
-TABLE tableName(ObjectDim);
-TABLE tableName##Period(ObjectDim,Period);
-task   'задача' = DATA Task(ObjectDim)  INDEXED IN id;
-calc   'расчет' = DATA Calc(ObjectDim) INDEXED IN id NONULL;
-END
-
-// PeriodType (Calc);
-// добавить версия расчета - наслаивание сценария
- // слои делаем с помощью calc 
- // в модулях с данными главное
- // 1. копирование
- // 2. стирание всех данных
- // ???
  

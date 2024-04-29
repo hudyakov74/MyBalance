@@ -52,9 +52,9 @@ EXTEND CLASS SectionRequest {
 
 functionsImport###formName  ABSTRACT (CalcTask,ExtRequest);
 
-runActions###formName(CalcTask calcTask) {
-  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.section###formName, firm = dimFirm(calc(calcTask)),er INPUT extReq FLOAT CANCEL DO {
-            functionsImport###formName(calcTask,extReq);
+runActions###formName(CalcTask calcTask_) {
+  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.section###formName, firm = dimFirm(calc(calcTask_)), er INPUT extReq_ FLOAT CANCEL DO {
+            functionsImport###formName(calcTask_, extReq_);
      }  
 }; 
 ///3 ОФОРМЛЕНИЕ
@@ -64,7 +64,7 @@ PROPERTIES exec 'Импорт/экспорт...' = runActions###formName(calcTas
 // ДИЗАЙН
 DESIGN formName {
  OBJECTS {
-    NEW horizPanel FIRST {
+    panelFirstHorizontal   {
       horizontal = TRUE;
       MOVE PROPERTY (exec) FIRST;
       }

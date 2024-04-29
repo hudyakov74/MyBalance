@@ -12,7 +12,7 @@ PROPERTIES nameCalcVariant(cv) READONLY PANEL
 PROPERTIES  ON CHANGE {SHOW taskListCard;} 
             pos(f),
             nameTaskTab(f)  
-                FOREGROUND  IF isGroup(f) THEN Budget.groupFontColor(), 
+                FOREGROUND  IF isGroup(f) THEN groupFontColor(), 
                 
                 
             nameCol 'тип' = nameCalcBook(type(f))  ,

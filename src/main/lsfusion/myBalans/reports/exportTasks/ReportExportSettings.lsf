@@ -1,0 +1,56 @@
+MODULE ReportExportSettings;
+
+REQUIRE ReportExportType;
+
+NAMESPACE Reports;
+
+CLASS ReportExportSettings 'Выгружаемые отчеты';
+
+
+
+parent 'Папка'       = DATA ReportExportSettings(ReportExportSettings);
+name 'Наименование ' = DATA STRING[512] (ReportExportSettings);
+type     'Отчет'         = DATA ReportExportType(ReportExportSettings);
+lastExec 'Дата выполнения' = DATA DATETIME(ReportExportSettings);
+path 'Относительный путь' = DATA STRING[512] (ReportExportSettings);
+
+runCode 'Код запуска' = DATA  INTEGER (ReportExportSettings);
+reportByRunCode(INTEGER n)  = GROUP AGGR ReportExportSettings r BY runCode(r);
+
+template 'Шаблон произвольный' = DATA EXCELFILE (ReportExportSettings);
+
+newReportExport 'Добавить'() {
+     NEW nC = ReportExportSettings {
+         runCode(nC) <- (GROUP MAX runCode(ReportExportSettings r)) (+) 1;
+         addedObject() <- nC;
+    }
+}
+
+parentName 'Папка' (ReportExportSettings r) = name(parent(r)); 
+
+FORM reportExport 'Экспортные отчеты'
+OBJECTS r = ReportExportSettings
+PROPERTIES 
+    runCode 'Код запуска' = runCode(r), 
+    parentName(r),
+    name(r),
+    type 'Отчет'  = name(type(r)),
+    path(r),
+    lastExec(r) READONLY 
+
+PROPERTIES  DELETE(r), newReportExport() EXTID 'new'; 
+    
+DESIGN reportExport {
+    TOOLBARRIGHT (r) {
+        MOVE PROPERTY (newReportExport());
+    }
+    PROPERTY (runCode){charWidth =  5;}
+    PROPERTY (parentName(r)){charWidth =  15;}
+    PROPERTY (name(r)){charWidth =  15;}
+    PROPERTY (type){charWidth =  15;}
+    PROPERTY (path(r)){charWidth =  15;}
+    
+}
+
+
+ 

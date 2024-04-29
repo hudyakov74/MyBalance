@@ -1,6 +1,6 @@
 MODULE CalcCore;
 
-REQUIRE PeriodType,Period,Scenario,TypeTask,CoreColor,Time;
+REQUIRE PeriodType,Period,Scenario, CoreColor,Time;
 
 NAMESPACE Budget;
  

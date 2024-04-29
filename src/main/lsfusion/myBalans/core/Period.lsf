@@ -8,8 +8,8 @@ NAMESPACE Budget;
 CLASS Period  'Период'  ;
 TABLE period (Period);
 namePeriod 'Наименование' = DATA ISTRING[30] (Period) DEFAULTCOMPARE 'CONTAINS' IN id ;
-pos 'Порядок' = DATA INTEGER  (Period) IN base;
-periodType = DATA PeriodType(Period) IN base NONULL; 
+pos 'Порядок'             = DATA INTEGER     (Period) IN base;
+periodType                = DATA PeriodType  (Period) IN base NONULL; 
 
 FORM periodForm 'Периоды'
 OBJECTS  g = PeriodType

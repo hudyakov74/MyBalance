@@ -23,6 +23,16 @@ groupColor(INTEGER gl) = groupColor(0,gl, NULL,TRUE);
 
 groupFontColor() = #0000ff;
 
+mbColor(STRING name, COLOR r) = CASE EXCLUSIVE 
+                                    WHEN r THEN r
+                                    WHEN name = 'grey' THEN #eeeeee
+                                    WHEN name = 'yellow' THEN #fffff0
+                                    WHEN name = 'green' THEN #f0fff0
+                                    WHEN name = 'red' THEN #fff0ff
+
+;
+                                                        
+
 CLASS FolderImage {
     close   '📁',  //'⏵🗀',
     open   '📂',   //'⏷🗁',
@@ -31,6 +41,9 @@ CLASS FolderImage {
     level2 '②',
     level3 '③',
     level4 '④',
-    level5 '⑤'
+    level5 '⑤',
+    plus   '+',
+    plusPlus  '++'
 }
- 
+img(FolderImage i) = staticCaption(i);
+imgFolder(BOOLEAN isFolder, BOOLEAN isFolderOpen) = IF isFolder THEN (IF isFolderOpen THEN img(FolderImage.open) ELSE img(FolderImage.close))  ELSE img(FolderImage.document);

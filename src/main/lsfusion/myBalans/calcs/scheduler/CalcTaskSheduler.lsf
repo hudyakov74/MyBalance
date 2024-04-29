@@ -1,0 +1,100 @@
+MODULE CalcTaskSheduler;
+
+REQUIRE CalcTask, System, Time;
+
+NAMESPACE Calc;
+
+runTuneCalc 'Запуск алгоритма расчета' (CalcTaskSheduler sh,CalcTask ct, LogicCalc lc) ABSTRACT;
+
+CLASS CalcTaskSheduler;
+TABLE calcTaskSheduler(CalcTaskSheduler);
+
+calcTask 'Задача для расчета' = DATA CalcTask(CalcTaskSheduler);
+insertTime 'Время постановки задачи'     = DATA DATETIME(CalcTaskSheduler);
+startTime 'Время запуска'     = DATA DATETIME(CalcTaskSheduler);
+endTime 'Время завершения'    = DATA DATETIME(CalcTaskSheduler);
+progressComment 'Состояние выполнения' = DATA STRING[512](CalcTaskSheduler);
+logicCalc 'Указанный алгоритм' = DATA LogicCalc(CalcTaskSheduler);
+
+onStarted() + {
+    FOR CalcTaskSheduler s IS CalcTaskSheduler AND startTime(s) AND NOT endTime(s) DO{
+        progressComment(s) <- left((CONCAT ', ',currentDateTime() ,'Прервано перезапуском системы' ,progressComment(s)), 512);
+        endTime(s) <- currentDateTime();
+    }
+}
+FORM formCalcTaskManager 'Фоновые расчеты'
+  OBJECTS s = CalcTaskSheduler
+    PROPERTIES DELETE (s),
+    calc 'бюджет' = name(calc(calcTask(s))),
+    task 'Ордер'  = nameTask(task(calcTask(s))),
+    algr 'Алгоритм' =   name(OVERRIDE logicCalc(s),logicCalcTask(calcTask(s))),
+    insertTime(s),
+    startTime(s),
+    endTime(s),
+    progressComment(s)
+    EVENTS ON SCHEDULE PERIOD 15 formRefresh();     
+;
+DESIGN formCalcTaskManager {
+   PROPERTY (calc){charWidth = 25;}
+   PROPERTY (task){charWidth = 25;}
+   PROPERTY (algr){charWidth = 25;}
+   PROPERTY (progressComment(s)){charWidth = 50;}
+}
+
+calcTaskManagerAdd(CalcTask ct, LogicCalc lc){
+    APPLY {
+        taskTime(ct) <- NULL;
+        taskCompletedTime(ct) <- NULL;
+        
+        NEW new = CalcTaskSheduler {
+        calcTask(new) <- ct;
+        insertTime(new) <- currentDateTime();
+        logicCalc(new) <- lc;
+        }
+    }
+}
+calcTaskManagerLastTask(CalcTask ct) = GROUP LAST  CalcTaskSheduler s IF  calcTask(s) == ct  ORDER insertTime(s);
+
+calcTaskManagerDeleteFunction() ABSTRACT; //  обработчики объявляем везде где нужна функция
+
+calcTaskManagerSheduleDeleteFunction 'MyBalance Запуск фонового удаления помеченнного' (){
+    calcTaskManagerDeleteFunction();
+} 
+
+calcTaskManagerSheduleRunFunction 'MyBalance Запуск фоновых расчетов' (INTEGER taskNumber){
+   // поместить вызов в скрипт- для паралельности используем несколько заданий с разными taskNumber
+   // taskNumber - 5 секундный интервал запуска задания в пределах минуты - видимо номеров заданий до 12 
+    LOCAL task_ = CalcTaskSheduler();
+    MESSAGE currentTimeText() LOG;
+    task_()  <- GROUP LAST CalcTaskSheduler s IF s IS  CalcTaskSheduler AND NOT startTime(s) ORDER DESC insertTime(s);
+    IF  task_() THEN {
+           sleep( (60 - extractSecond(currentDateTime()) +  taskNumber * 5) * 1000 ); // тупо чтобы запуски не накладывались - раскидаем по окнам времени 
+            // Запускаем поток задачи
+           APPLY NESTED LOCAL {
+                taskChecked(calcTask(task_())) <- NULL;
+                taskTime(calcTask(task_())) <- currentDateTime();
+                taskCompletedTime(calcTask(task_())) <- NULL;
+                startTime(task_()) <- currentDateTime(); 
+           };
+           runTuneCalc(task_(), calcTask(task_()),(OVERRIDE logicCalc(task_()),logicCalcTask(calcTask(task_()))));
+           endTime(task_()) <- currentDateTime();
+           APPLY; // Все включая сделанное
+        }
+}
+
+EXTEND FORM calcCard
+PROPERTIES   
+  progress 'Состояние' = progressComment( calcTaskManagerLastTask(getCalcTask(curCalc,task)))
+;
+
+calcTaskRuns(Calc c, Task t) = GROUP MAX TRUE IF calcTask(CalcTaskSheduler sh) == getCalcTask(c,t) AND NOT endTime(sh);
+calcTaskRuns(CalcTask ct) = GROUP MAX TRUE IF calcTask(CalcTaskSheduler sh) == ct AND NOT endTime(sh);
+             
+DESIGN calcCard {
+    PROPERTY (progress){charWidth = 25;}
+    PROPERTY (taskStartTime) {background = IF calcTaskRuns(curCalc, task) THEN #ffaaaa;}
+    PROPERTY (taskCompletedTime) {background = IF calcTaskRuns(curCalc, task) THEN #ffaaaa;}
+}
+
+
+
