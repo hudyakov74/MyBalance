@@ -2,7 +2,7 @@ MODULE ExtSource;
 
 REQUIRE Utils,DimensFirm;
 
-NAMESPACE   ExtSystem; 
+NAMESPACE MyBalance; 
 
 CLASS ExtSource 'Внешние источники';
 TABLE extSource(ExtSource);

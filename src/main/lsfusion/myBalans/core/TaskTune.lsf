@@ -2,7 +2,31 @@ MODULE TaskTune;
 
 REQUIRE Task, TaskPermission;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
+
+// на все элементы посадим описание, типы форм, функции, отчеты, импорты/экспорты
+descrMyBalance           'Описание элемента'       (Object d)     = ABSTRACT CASE TEXT; //TypeRequest, MenuOperations*, TypeTask
+descrMenuOperations      'Описание операций'       (Task d)       = ABSTRACT CASE TEXT; // возв
+descrSectionRequest      'Описание Ипорта/экспорта'(TypeTask d)   = ABSTRACT CASE TEXT; 
+
+
+ 
+
+EXTEND FORM taskListCard
+PROPERTIES 
+description          'Описание задачи'  =  descriptionTask(f),
+descriptionTypeTask  'Описание   типа'  =  descrMyBalance(type(f));
+
+DESIGN taskListCard {
+    OBJECTS {
+        NEW description {
+            fill = 1;
+            MOVE PROPERTY (description) {height = 200;} ;
+            MOVE PROPERTY (descriptionTypeTask) ;
+        }
+    }
+}
+
 
 
 FORM taskTune 'Настройка задач расчета'
@@ -27,7 +51,20 @@ FILTERS cv = calcVariant(f)
 
 OBJECTS ur = UserRole
 PROPERTIES taskPermission(f , ur)
-PROPERTIES(ur) READONLY sid,name
+PROPERTIES(ur) READONLY sid, name
+
+
+OBJECTS scenario = Scenario
+PROPERTIES enableScenario(f , scenario)
+    ON CONTEXTMENU 'Изменить для всех задач этого вида расчета' {
+        INPUT  inp = enableScenario(f , scenario) DO  {
+            FOR cv == calcVariant(Task taskAll) DO {
+                enableScenario(taskAll , scenario) <- inp;
+            }
+        }
+    }
+    
+PROPERTIES(scenario) READONLY nameScenario
 ;
 
 
@@ -62,16 +99,21 @@ DESIGN  taskTune {
    OBJECTS {
     NEW mainPanel{
         fill = 1;
-        
+
         MOVE  BOX(TREE taskTree) {fill = 2;};
         NEW panelBt{
             fill = 1;
+            tabbed = TRUE;
             horizontal = TRUE;
-            MOVE BOX (ur) {fill =1;}
-            NEW details  { // создаем новый контейнер в стандартный контейнер сразу после i.box
-        // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
+            lines = 1;
+            MOVE BOX (ur) {fill = 0.5; caption = 'Права доступа';}
+            MOVE BOX (scenario) {fill = 0.5; caption = 'Видимость в сценариях';}
+            NEW details  {
+                caption = 'Преднастр.значений'; 
+                // создаем новый контейнер в стандартный контейнер сразу после i.box
+                // этот контейнер будет панелью закладок, в который можно будет добавлять закладки со свойствами товара
             tabbed = TRUE; 
-            fill = 3;  
+            fill = 0.5;  
             }
       }
     }

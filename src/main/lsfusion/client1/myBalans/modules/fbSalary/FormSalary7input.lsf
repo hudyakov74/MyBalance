@@ -1,0 +1,63 @@
+MODULE FormSalary7input;
+
+REQUIRE FormSalary7;
+
+NAMESPACE MyBalance;
+
+
+EXTEND FORM formSalary7
+    OBJECTS input  = (iCfo = DimCFO, iCost = DimCostItems)
+    FILTERS (isAllInputCostFormSalary7(iCost) AND (NOT GROUP MAX checkedCostItems(task(calcTask), DimCostItems iCost_))) OR checkedCostItems(task(calcTask), iCost) OR isCostItemsExistCubeSalary7(calcTask, iCost)
+   // FILTERS  checkedCfu(task(calcTask), dimCfu(iCfo)) OR isCfoExistCubeSalary7(calcTask, iCfo)
+    FILTERS   isCfoExistCubeSalary7(calcTask, iCfo)
+    FILTERGROUP fSalAll FILTER 'Отбор/все' checkedCFO(task(calcTask), iCfo) OR isCfoExistCubeSalary7(calcTask, iCfo) DEFAULT 
+PROPERTIES reCalcAllValue 'Пересчитать' = reCalcAllValue(calcTask)    
+PROPERTIES
+        READONLYIF (NOT isInputCostFormSalary7(iCost))
+        BACKGROUND 
+          IF  isInputCostFormSalary7(iCost) THEN #ffffee ELSE  #f9f9f9
+    
+    
+    iCfoS  'Сортировка'     = name(iCfo) READONLY,
+    iCfo  'Подразделения'   = name(iCfo) IF itemsName(iCost) == DimCostItemsNamed.salary READONLY,
+                                //,
+    iCost 'Статья начисления' = name(iCost) STICKY READONLY,
+    iValueSum = valueSumCubeSalary7(calcTask, p,  iCfo, iCost)
+        ON CHANGE {
+            INPUT inp = OVERRIDE valueSumCubeSalary7(calcTask, p,  iCfo, iCost), 0 DO {
+                IF formSalary7fillModeString() THEN
+                    {
+                     FOR periodInCalc(Period p_, calc(calcTask)) AND pos(p_) >= pos(p) DO {
+                         setValueSumfCubeSalary7(calcTask, p_, iCfo, iCost, inp);
+                     }  
+                    }    
+                ELSE {
+                    setValueSumfCubeSalary7(calcTask, p, iCfo, iCost, inp);
+                }
+            }
+        }
+        ON GROUPCHANGE {}
+        ON CONTEXTMENU 'Вкл.запол.вправо' {
+            formSalary7fillModeString() <- TRUE;
+        }
+        ON CONTEXTMENU 'Выкл.запол.вправо' {
+            formSalary7fillModeString() <- NULL;
+        }
+
+        FOOTER       valueSumCubeSalary7(calcTask, p)
+        //  SHOWIF formSalePlanColumns('1count') cubeEnergoResValueSumH(calcTask, p, dimnomEFg(nomenklEr), dimcfoEFg(cfoEr))
+        COLUMNS columnSpg (p) HEADER (CONCAT ' ', dateColumnName(calcTask, p, ''),'')
+        DRAW  input GRID
+        FOREGROUND #FF7777 IF isValueSumNotCorrect(calcTask, valueSumCubeSalary7(calcTask, p,  iCfo, iCost), p,  iCfo, iCost )
+     
+DRAW  input GRID
+    ORDERS iCfoS, iCost
+    
+;
+ DESIGN formSalary7 {
+     PROPERTY (iCfoS) {hide = TRUE;};
+     PROPERTY (iCfo) {charWidth = 20;}
+     PROPERTY (iCost) {charWidth = 20;}
+     PROPERTY (iValueSum) {charWidth = 13; pattern = '#,##0.00'; }
+     
+ }

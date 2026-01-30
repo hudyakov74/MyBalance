@@ -1,8 +1,8 @@
 MODULE TaskPermission;
 
-REQUIRE Task,Security;
+REQUIRE Task, Security;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 
 taskPermission 'Доступ к участку' = DATA BOOLEAN (Task ,UserRole);

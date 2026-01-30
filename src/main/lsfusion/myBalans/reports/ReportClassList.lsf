@@ -1,6 +1,7 @@
 MODULE ReportClassList;
 
-NAMESPACE Reports;
+
+NAMESPACE MyBalance;
 //СПИсок типов отчетов
 CLASS ReportClassList {
  dummy 'заглушка'

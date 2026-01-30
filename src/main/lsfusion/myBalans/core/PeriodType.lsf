@@ -1,8 +1,14 @@
 MODULE PeriodType;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 CLASS PeriodType  'Виды периодов';
 TABLE periodType (PeriodType);
-nameType  'Наименование' = DATA STRING[100] (PeriodType) IN id ;
- 
+CLASS PeriodTypeNamed {
+    month 'Помесячный'
+};
+name (PeriodTypeNamed n) = staticName(n);
+nameType  'Наименование' = DATA STRING[100] (PeriodType) IN id;
+named 'Период ссылка' = DATA  PeriodTypeNamed(PeriodType) IN id;
+
+getPeriodType(PeriodTypeNamed pn) = GROUP MAX PeriodType t IF named(t) == pn; 

@@ -1,0 +1,554 @@
+MODULE BReportConfigForm;
+
+REQUIRE    BReportConfigAction, BReportConfig, BReportConfigColumns, MainMenu, ReportList;
+
+NAMESPACE MyBalance;
+
+FORM formBReportConfig 'Отчеты: Список вариантов' 
+    TREE  bReportConfig  p = ReportClassList, s = BReportConfig
+    FILTERS GROUP MAX TRUE IF report(BReportConfig r) == p 
+    FILTERS p == report(s) 
+    FILTERGROUP notCopy FILTER 'основн/все' NOT copyOf(s) DEFAULT 
+    PROPERTIES(s) DELETE, EDIT NEWSESSION, NEWEDIT NEWSESSION
+    PROPERTIES READONLY name(p) BACKGROUND #f2fced, name(s),  commonReport(s) CHANGEABLE 
+    LIST BReportConfig OBJECT s
+    EVENTS ON INIT { EXPAND ALL TOP formBReportConfig.p; }
+
+    OBJECTS  version 'Варианты' = BReportConfig
+    FILTERS s = copyOf(version) OR s = copyOf(copyOf(version)) OR p == report(version) AND copyOf(version)
+    PROPERTIES DELETE (version)
+    PROPERTIES  BACKGROUND #cccccc IF NOT (s = copyOf(version) OR s = copyOf(copyOf(version)))
+                READONLY name(version), owner 'User' = name(owner(version)), nameCopyOf = name(copyOf(version))
+    FILTERGROUP ownerVers FILTER 'Только общие варианты' NOT owner(version) DEFAULT 
+
+    OBJECTS rv 'Видимость в задаче' =  BReportListVisible
+    PROPERTIES    typeTask 'Видимость в задаче' = nameCalcBook(typeTask(rv)),
+        NEW(rv) READONLYIF NOT s, DELETE(rv)
+    FILTERS  report(rv) == s
+
+    OBJECTS ur 'Права' = UserRole
+    PROPERTIES bReportPermission(s,ur) READONLYIF NOT s
+    PROPERTIES(ur) READONLY sid,name
+
+    OBJECTS uow 'Владельцы' = CustomUser
+    PROPERTIES bReportPermissionUser(s,uow) READONLYIF NOT s
+    PROPERTIES(uow) READONLY name
+    
+    PROPERTIES open(s) BACKGROUND  #eeffee
+;
+
+FORM formBReportConfigList 'Выбор варианта'
+    OBJECTS version = BReportConfig
+    PROPERTIES READONLY name(version) 
+    FOREGROUND  CASE WHEN NOT copyOf(version) THEN #0000cc WHEN owner(version) THEN #a26666
+    FILTERS NOT owner(version)
+;
+
+DESIGN formBReportConfig{
+   
+    TOOLBARLEFT (TREE bReportConfig) {
+        MOVE PROPERTY (open(s));
+    }
+    OBJECTS {
+        horizontal = FALSE;
+        lines = 1;
+        NEW hPan {
+            fill = 2;
+            MOVE BOX (TREE bReportConfig);
+        }
+        NEW bPan {
+            fill = 1;
+            tabbed = TRUE;
+            horizontal = TRUE;
+            NEW bPan0 {
+                fill = 1;
+                caption = 'Варианты';
+                MOVE BOX (version);
+            }
+            NEW bPan1 {
+                fill = 1;
+                caption = 'Расположение';
+                MOVE BOX (rv);
+            }
+            NEW bPan2 {
+                fill = 1;
+                caption = 'Права';
+                MOVE BOX (ur);
+            }
+            NEW bPan3 {
+                fill = 1;
+                caption = 'Владельцы';
+                MOVE BOX (uow);
+            }
+        }
+    }
+}
+
+FORM formBReportConfigCard 'Настройки отчета'
+    OBJECTS s = BReportConfig PANEL
+    PROPERTIES config(s)
+    PROPERTIES(s) 
+        nameReport, 
+        name READONLYIF  copyOf(s), 
+        reportName READONLYIF copyOf(s) BACKGROUND #eeeeee IF copyOf(s) 
+    PROPERTIES NOIMAGE 
+    parent = name(copyOf(s)), 
+    owner = name(owner(s)),
+//    rowGroupCodeStr(s),
+//    rowGroupNameStr(s),
+//    rowGroupStyleStr(s),
+//    colGroupCodeStr(s),
+//    colGroupNameStr(s),
+//    colEnabledLabelName(s),
+    saveVariant 'Сохранить вариант' = {saveVariant(s);} SHOWIF owner(s),
+    fillByParent 'Заполнить из(текущ) варианта' = {fillByParent(s);},   
+    saveAsNewVariant  'Сохранить новый вариант' = {
+                  saveAsNewVariant(s);
+                  IF  currentBReportConfig() THEN SEEK formBReportConfigCard.s = currentBReportConfig();
+                }
+                SHOWIF owner(s)
+    EDIT BReportConfig OBJECT s
+    EVENTS ON CANCEL { 
+      currentBReportConfig() <- s; 
+    }
+    EVENTS ON CLOSE {
+        currentBReportConfig() <- s;
+    }
+    EVENTS ON OK {
+        currentBReportConfig() <- s;
+    }
+;
+
+// регистрация отчета в меню настроек
+NAVIGATOR {
+    catalogs{
+        NEW formBReportConfig;
+    }
+}
+
+// КАРТОЧКА НАСТРОЙКИ ОТЧЕТА
+DESIGN formBReportConfigCard {
+    TOOLBARRIGHT {
+              MOVE PROPERTY (saveVariant) FIRST;
+              MOVE PROPERTY (saveAsNewVariant) FIRST;
+              MOVE PROPERTY (fillByParent) FIRST;
+    }
+    
+    
+    PROPERTY (name(s)) {tooltip = '' ;}
+    PROPERTY (nameReport(s)) {tooltip = 'Наименование выводимое в отчете' ;}
+    
+    OBJECTS {
+        TOOLBARLEFT (s) {
+            MOVE PROPERTY (config(s));
+        }
+        NEW secHead {
+            fill = 0.8;
+        }
+
+        NEW tabPanel {
+            tabbed = TRUE;
+            fill = 0.8;
+
+            NEW section {
+                caption = 'Отборы данных';
+                fill = 1;
+                horizontal = FALSE;
+                lines = 1;
+            }
+            
+            NEW tune {
+                caption = 'Настройка вида отчета';
+                fill = 1;
+                horizontal = TRUE;
+                lines = 1;
+            }
+            NEW other {
+                caption = 'Прочее';
+                 
+                fill = 1;
+                MOVE PROPERTY (parent);
+                MOVE PROPERTY (owner);
+      
+            }
+        }
+    }
+}
+
+EXTEND FORM formBReportConfigCard
+    // Секции
+    OBJECTS sec = BReportConfigSections
+    FILTERS bReportConfig(sec) == s
+    PROPERTIES (sec) NEW, DELETE,
+        enable, pos, nameScenario, interval, negativeSign, nameSection NOSELECT BACKGROUND IF nameSection(sec) THEN #ffffee //pos,, id , name 
+    PROPERTIES empty '' = '' DRAW sec GRID
+
+    //  ORDERS pos(sec)
+    OBJECTS part = BReportPartition
+    FILTERS  bReportConfig(part) == s
+    PROPERTIES (part) DELETE, NEW, isEnable, isGroup
+    PROPERTIES (part) name, pos, id
+    PROPERTIES inGroup 'в группе'  = name(parent(part)) ON CHANGE { DIALOG formBReportPartitionList OBJECTS d = parent(part) CHANGE LIST name(d) FILTERS isGroup(d) AND bReportConfig(d)==s READONLY; }
+    PROPERTIES getDataFromGroup 'данные из раздела'  = name(includeDataFromGroup(part)) ON CHANGE { DIALOG formBReportPartitionList OBJECTS d = includeDataFromGroup(part) CHANGE LIST name(d) FILTERS  bReportConfig(d)==s  READONLY; }
+    PROPERTIES includeDataInGroup 'данные для раздела'  = name(includeDataInGroup(part)) ON CHANGE { DIALOG formBReportPartitionList OBJECTS d = includeDataInGroup(part) CHANGE LIST name(d) FILTERS  bReportConfig(d)==s  READONLY; }
+    
+    PROPERTIES (part) personalV, crosstabWoHeader, crosstabWoSummary
+    ORDERS pos(part)
+    
+    TREE filt filt 'Фильтр раздела' = BReportPartitionFilter PARENT filterParent(filt)
+    FILTERS partition(filt) ==  part
+    PROPERTIES DELETE (filt), 
+        newFilt 'Добавить' = {
+            NEW new = BReportPartitionFilter {
+                IF part THEN {
+                    partition(new) <- part;
+                }
+                ELSE {
+                    NEW newPart = BReportPartition {
+                        name(newPart) <- 'Раздел 1';
+                        partition(new) <- newPart;
+                    }
+                }
+                enable(new) <- TRUE;
+                condition(new) <- BReportCondition.in;
+            }
+        },
+        
+        nodeKey(filt),
+        enable(filt),
+        conditionName(filt),
+        column 'Колонка' = name(column(filt)) ON CHANGE {
+            DIALOG formBReportConfigColumns OBJECTS d = column(filt) INPUT d FILTERS  bReportConfig(d) == s AND idClass(d) != '' AND length(trim(idClass(d)))>1 READONLY  DO {
+                column(filt) <- d;
+                IF  idClass(column(filt)) AND length(trim(idClass(column(filt))))>1 THEN {
+                    currentBReportPartitionFilter() <- filt;
+                  EVAL ACTION 'namePartitionFilter(currentBReportPartitionFilter()) <- left( (GROUP CONCAT name(' + idClass(column(filt)) + ' s) IF lBrepSel(s, currentBReportPartitionFilter()),\', \' ORDER name(s)), 255);';
+                }
+            };
+        },
+        
+        openList 'Значения' =  namePartitionFilter(filt)
+        ON CHANGE {
+             
+              IF  idClass(column(filt)) AND length(trim(idClass(column(filt))))>1 THEN {
+                  currentBReportPartitionFilter() <- filt;
+                  EVAL ACTION 'SHOW listBreportSelected' + idClass(column(filt)) + ' OBJECTS c = currentBReportPartitionFilter() READONLY';
+                  EVAL ACTION 'namePartitionFilter(currentBReportPartitionFilter()) <- left( (GROUP CONCAT name(' + idClass(column(filt)) + ' s) IF lBrepSel(s,  currentBReportPartitionFilter()),\', \' ORDER name(s)), 255 );';
+              }
+        } DRAW filt GRID,
+        filterParent = nodeKey(filterParent(filt)) ON CHANGE { DIALOG formBReportPartitionFilter OBJECTS d INPUT FILTERS partition(d) = part AND filt != d DO { filterParent(filt) <- d; }}
+// Персональная вертикальная иерархия
+    OBJECTS vGroupPers 'Вертикальная иерархия текущей группы' = BReportConfigGroup 
+    FILTERS bReportConfig(vGroupPers) == s
+    FILTERS bReportPartition(vGroupPers)  == part
+    FILTERS NOT horisontalOnly(vGroupPers) == TTRUE
+    PROPERTIES(vGroupPers) SHOWIF personalV(part) DELETE, enableV, posV READONLY, groupName READONLY, hierarchy, level
+    ORDERS posV(vGroupPers)
+    PROPERTIES SHOWIF personalV(part)
+    vUpp '⇧' = {
+        LOCAL tmp = BReportConfigGroup();
+        tmp() <- GROUP LAST BReportConfigGroup l IF posV(l) < posV(vGroupPers) AND  bReportConfig(l) == bReportConfig(vGroupPers) AND bReportPartition(l) == part  ORDER posV(l);
+        IF tmp() THEN {
+            posV(vGroupPers)  <- posV(tmp());
+            posV(tmp())       <- posV(tmp()) + 1;
+        }
+    } ,
+        vDownp '⇩' = {
+            LOCAL tmp = BReportConfigGroup();
+            tmp() <- GROUP LAST BReportConfigGroup l IF posV(l) > posV(vGroupPers) AND bReportConfig(l) == bReportConfig(vGroupPers) AND bReportPartition(l) == part ORDER DESC posV(l);
+            IF tmp() THEN {
+                posV(vGroupPers)  <- posV(tmp());
+                posV(tmp())       <- posV(tmp()) - 1;
+            }
+        }
+    
+    
+// Общая вертикальная иерархия
+    OBJECTS vGroup 'Вертикальная иерархия' = BReportConfigGroup
+    FILTERS bReportConfig(vGroup) == s
+    FILTERS NOT bReportPartition(vGroup)
+    FILTERS NOT horisontalOnly(vGroup) == TTRUE
+    PROPERTIES (vGroup) DELETE, enableV, posV READONLY, groupName READONLY, hierarchy, level
+    ORDERS posV(vGroup)
+    PROPERTIES 
+        vUp '⇧' = {
+            LOCAL tmp = BReportConfigGroup();
+            tmp() <- GROUP LAST BReportConfigGroup l IF posV(l) < posV(vGroup) AND  bReportConfig(l) == bReportConfig(vGroup) AND NOT bReportPartition(l) ORDER posV(l);
+            IF tmp() THEN {
+                posV(vGroup)  <- posV(tmp());
+                posV(tmp())   <- posV(tmp()) + 1;
+            }
+        },
+        vDown '⇩' = {
+            LOCAL tmp = BReportConfigGroup();
+            tmp() <- GROUP LAST BReportConfigGroup l IF posV(l) > posV(vGroup) AND  bReportConfig(l) == bReportConfig(vGroup) AND NOT bReportPartition(l)  ORDER DESC posV(l);
+            IF tmp() THEN {
+                posV(vGroup)  <- posV(tmp());
+                posV(tmp())   <- posV(tmp()) - 1;
+            }
+        }
+    
+
+    OBJECTS hGroup 'Горизонтальная иерархия' = BReportConfigGroup
+    FILTERS bReportConfig(hGroup) == s
+    FILTERS NOT horisontalOnly(hGroup) == TFALSE
+    PROPERTIES   DELETE(hGroup), 
+        enableH(hGroup),
+        disableTotalByH 'Отключить итог по группе' = disableTotalByH(group(hGroup)) ON CHANGE { INPUT in = disableTotalByH(group(hGroup)) DO {disableTotalByH(group(hGroup)) <- in;}},
+        totalCompareH   'Поля сравнения, включить' = totalCompareH(group(hGroup)) ON CHANGE { INPUT in = totalCompareH(group(hGroup)) DO {totalCompareH(group(hGroup)) <- in;}},
+        posH(hGroup) READONLY, 
+        groupName(hGroup) READONLY //, hierarchy, level
+    ORDERS posH(hGroup)
+    PROPERTIES
+    hUp '⇧' = {
+        LOCAL tmp = BReportConfigGroup();
+        tmp() <- GROUP LAST BReportConfigGroup l IF posH(l) < posH(hGroup) AND  bReportConfig(l) == bReportConfig(hGroup) ORDER posH(l);
+        IF tmp() THEN {
+            posH(hGroup)  <- posH(tmp());
+            posH(tmp())   <- posH(tmp()) + 1;
+        }
+        },
+        hDown '⇩' = {
+            LOCAL tmp = BReportConfigGroup();
+            tmp() <- GROUP LAST BReportConfigGroup l IF posH(l) > posH(hGroup) AND  bReportConfig(l) == bReportConfig(hGroup) ORDER DESC posH(l);
+            IF tmp() THEN {
+                posH(hGroup)  <- posH(tmp());
+                posH(tmp())   <- posH(tmp()) - 1;
+            }
+        }
+
+    OBJECTS col = BReportConfigColumns
+    FILTERS bReportConfig(col) == s
+    FILTERS isMesuare(col) 
+    PROPERTIES(col)  DELETE, enable, dockToPreviuosHeader, totalAutoCompare, totalAutoComparePerc, pos READONLY, name READONLY//, idPosName, idPosRef,idNameName,idNameRef//, type, typeIsDate
+    ORDERS pos(col)
+    PROPERTIES
+        cUp '⇧' = { //↑↓
+            LOCAL tmp = BReportConfigColumns();
+            tmp() <- GROUP LAST BReportConfigColumns l IF pos(l) < pos(col) AND  bReportConfig(l) == bReportConfig(col) ORDER pos(l);
+            IF tmp() THEN {
+                pos(col)  <- pos(tmp());
+                pos(tmp())   <- pos(tmp()) + 1;
+            }
+        },
+        cDown '⇩' = {
+            LOCAL tmp = BReportConfigColumns();
+            tmp() <- GROUP LAST BReportConfigColumns l IF pos(l) > pos(col) AND  bReportConfig(l) == bReportConfig(col) ORDER DESC pos(l);
+            IF tmp() THEN {
+                pos(col)  <- pos(tmp());
+                pos(tmp())   <- pos(tmp()) - 1;
+            }
+        }
+;
+
+DESIGN formBReportConfigCard {
+    
+    caption = CONCAT ': ','Настройки отчета',nameReport(s);
+    BOX (sec) {caption = '<font size="3" color="#0066ff">Секции отчета</font>';}
+    BOX (part) {caption = '<font size="3" color="#0066ff">Разделы отчета</font>';}
+    BOX (vGroupPers) {caption = '<font size="3" color="#0066ff">Вертикальная иерархия текущего раздела отчета</font>';}
+    BOX (TREE  filt) {caption = '<font size="3" color="#0066ff">Условия текущего раздела отчета</font>';}
+    GRID (TREE  filt){hierarchicalCaption = ''; hierarchicalWidth = 40;}
+    //caption = CONCAT ' ', 'Условия раздела', name(sec);
+    
+    PROPERTY (nodeKey(filt)){charWidth = 4;}
+    
+    TOOLBARLEFT (vGroup) {
+        MOVE PROPERTY (vUp);
+        MOVE PROPERTY (vDown);
+    }
+    TOOLBARLEFT (hGroup) {
+        MOVE PROPERTY (hUp);
+        MOVE PROPERTY (hDown);
+    }
+
+    TOOLBARLEFT (col) {
+        MOVE PROPERTY (config(s));
+        MOVE PROPERTY (cUp);
+        MOVE PROPERTY (cDown);
+    }
+    TOOLBARRIGHT (TREE filt) {
+     MOVE PROPERTY (newFilt);
+    }
+    
+    TOOLBARSYSTEM (sec)  {
+        showViews = FALSE;
+        showFilters = FALSE;
+        showCountQuantity = FALSE;
+        showSettings = FALSE;
+        showCalculateSum = FALSE;
+        showPrintGroupXls = FALSE;
+        showManualUpdate = FALSE;
+    }
+    TOOLBARSYSTEM (vGroup) {
+        showViews = FALSE;
+        showFilters = FALSE;
+        showCountQuantity = FALSE;
+        showSettings = FALSE;
+        showCalculateSum = FALSE;
+        showPrintGroupXls = FALSE;
+        showManualUpdate = FALSE;
+    }
+    TOOLBARSYSTEM (hGroup) {
+        showViews = FALSE;
+        showFilters = FALSE;
+        showCountQuantity = FALSE;
+        showSettings = FALSE;
+        showCalculateSum = FALSE;
+        showPrintGroupXls = FALSE;
+        showManualUpdate = FALSE;
+    }
+    TOOLBARSYSTEM (col) {
+        showViews = FALSE;
+        showFilters = FALSE;
+        showCountQuantity = FALSE;
+        showSettings = FALSE;
+        showCalculateSum = FALSE;
+        showPrintGroupXls = FALSE;
+        showManualUpdate = FALSE;
+    }
+
+    PROPERTY(pos(part)) {charWidth =  4; }
+    PROPERTY(id(part)) {charWidth =  3; }
+    PROPERTY (inGroup) {charWidth =  10; }
+    
+    PROPERTY (posV(vGroup)) {charWidth =  2; fill = 0.1;}
+    PROPERTY (hierarchy(vGroup)) {charWidth =  3; fill = 0;}
+    PROPERTY (groupName(vGroup)) {charWidth =  15; fill = 0.1;}
+    PROPERTY (posV(vGroupPers)) {charWidth =  2; fill = 0.1;}
+    PROPERTY (hierarchy(vGroupPers)) {charWidth =  3; fill = 0;}
+    PROPERTY (groupName(vGroupPers)) {charWidth =  15; fill = 0.1;}
+    PROPERTY (posH(hGroup)) {charWidth =  2; fill = 0.1;}
+    //PROPERTY (hierarchy(hGroup)) {charWidth =  3; fill = 0;}
+    PROPERTY (groupName(hGroup)) {charWidth =  15; fill = 0.1;}
+    
+    PROPERTY (pos(col)) {charWidth =  2; fill = 0.1;}
+    PROPERTY (name(col)) {charWidth =  13; fill = 0.1;}
+    PROPERTY (pos(sec)) {charWidth =  2; fill = 0.1;}
+
+    PROPERTY (column) {charWidth =  15; fill = 0.1;}
+    PROPERTY (nameScenario(sec)) {charWidth = 25; fill = 0.1;}
+    PROPERTY (nameSection(sec)) {charWidth = 15; fill = 1;  comment = 'Наименование по умолчанию - на сером фоне'; }
+//    PROPERTY (date2(sec)) {charWidth = 12; fill = 0.1;}
+    PROPERTY (empty) {charWidth = 1; fill = 1;}
+
+    //PROPERTY (name(sec)) {charWidth = 15;}
+
+  PROPERTY (conditionName(filt)) {charWidth = 10;}
+  PROPERTY (openList) {charWidth = 25;}
+  PROPERTY (filterParent) {charWidth = 2;}
+    
+    PROPERTY (groupName(vGroup)) {charWidth = 15;}
+    PROPERTY (groupName(vGroupPers)) {charWidth = 15;}
+    PROPERTY (level(vGroup)) {charWidth = 3;}
+    PROPERTY (level(vGroupPers)) {charWidth = 3;}
+    PROPERTY (groupName(hGroup)) {charWidth = 15;}
+    secHead {
+        fill = 0.2;
+        MOVE BOX (sec) {
+            fill = 0.2;
+            collapsible = FALSE;
+        }
+    }
+    section {
+        horizontal = TRUE;
+        lines = 1;
+        MOVE BOX (part) {fill = 0.5; collapsible = FALSE;};
+        MOVE BOX (TREE filt) {
+            collapsible = FALSE;
+            fill = 1;
+        }
+        MOVE BOX (vGroupPers) {fill = 0.5; collapsible = FALSE;};
+    }
+    
+    tune {
+        MOVE BOX (vGroup){fill = 1; collapsible = FALSE;};
+        MOVE BOX (hGroup){fill = 1; collapsible = FALSE;};
+        MOVE BOX (col){fill = 1; collapsible = FALSE;};
+    }
+}
+ 
+openBReportConfig(BReportConfig c) + {
+    SHOW formBReportConfigCard OBJECTS s = c WAIT;
+};
+
+hasCurrentUserReportPermission(BReportConfig r) = GROUP MAX TRUE IF
+    bReportPermission(r, UserRole ur) AND has(currentUser(),ur);
+
+// ФОРМА ВЫБОРА ОТЧЕТА В Calc
+EXTEND FORM reportListExecCalc 
+    OBJECTS bTypeTree = ReportClassList // , bRep 'Отчеты' = BReportConfig
+    FILTERS GROUP MAX TRUE IF report(BReportConfig r) == bTypeTree
+    PROPERTIES   READONLY        bType 'Тип' = name( bTypeTree)
+    
+    OBJECTS   bRepVar 'Варианты' = BReportConfig
+    PROPERTIES  FOREGROUND #003399 IF NOT copyOf(bRepVar)  
+          mainRep = IF copyOf(bRepVar) THEN '2.вар' ELSE '1.осн' READONLY,
+          bvName  = name(bRepVar)  ON CHANGE { 
+                                             NEWSESSION open(bRepVar);
+                                             formClose();
+                                             } 
+    FILTERS bTypeTree == report(bRepVar)  
+    FILTERS NOT owner(bRepVar)    // не рабочая копия           
+    FILTERS hasCurrentUserReportPermission(copyOf(bRepVar)) OR hasCurrentUserReportPermission( bRepVar )        
+
+    EVENTS ON OK {IF bRepVar THEN open(bRepVar);}
+    ORDERS mainRep, bvName
+;
+
+DESIGN  reportListExecCalc {
+    PROPERTY (bType) {charWidth = 15; };
+
+    PROPERTY (mainRep) {charWidth = 5; };
+    PROPERTY (bvName) {charWidth = 25;};
+    size = (800, 600);
+ BOX (list) { collapsed = TRUE; }
+ OBJECTS {
+     NEW selwind{
+         fill = 1;
+         horizontal = TRUE;
+         lines = 1;
+         MOVE BOX (bTypeTree){fill = 0.5;};
+         MOVE BOX (bRepVar);
+     }
+ }  
+    
+}
+
+// ФОРМА ВЫБОРА ОТЧЕТА В CalcTask
+EXTEND FORM reportListExec
+    OBJECTS bTypeTree = ReportClassList 
+    FILTERS GROUP MAX TRUE IF report(BReportConfig r) == bTypeTree
+    PROPERTIES READONLYIF TRUE  bType 'Тип' = name( bTypeTree)
+
+    OBJECTS   bRepVar 'Варианты' = BReportConfig
+    PROPERTIES FOREGROUND #003399 IF NOT copyOf(bRepVar)
+    mainRep = IF copyOf(bRepVar) THEN '2.вар' ELSE '1.осн' READONLY,    
+    bvName = name(bRepVar)   ON CHANGE {
+                                    open(bRepVar);
+                                    formClose();
+                                }
+    FILTERS  bTypeTree == report(bRepVar)
+    FILTERS NOT owner(bRepVar)  // не рабочая копия  
+    FILTERS hasCurrentUserReportPermission(copyOf(bRepVar)) OR hasCurrentUserReportPermission( bRepVar )
+ 
+    EVENTS ON OK { IF  bRepVar THEN open(bRepVar); }
+    ORDERS mainRep, bvName
+;
+
+DESIGN reportListExec {
+    PROPERTY (bType) {charWidth = 15; };
+
+    PROPERTY (mainRep) {charWidth = 5; };
+    PROPERTY (bvName) {charWidth = 25;};
+    size = (800, 600);
+    OBJECTS {
+        NEW selwind{
+            fill = 1;
+            horizontal = TRUE;
+            lines = 1;
+            MOVE BOX (bTypeTree){fill = 0.5;};
+            MOVE BOX (bRepVar);
+        }
+    }
+}

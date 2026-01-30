@@ -1,0 +1,25 @@
+MODULE CubeKhpCostManual;
+
+REQUIRE CalcCore, Calc, CalcTask, DimensCFO, Cube
+//        ,DimPlantProductLine,CubePlantProductDimPartnerFinGroup,
+        , DimensNomenkl, DimensCostItems, CalcTaskSheduler;
+
+NAMESPACE MyBalance;
+
+CLASS CubeKhpCostManual 'Затраты';
+
+@createCube(cubeKhpCostManual);
+
+
+date 'дата операции'                         = DATA DATETIME (CubeKhpCostManual);
+dimCFO 'Подразделение'                       = DATA DimCFO(CubeKhpCostManual); // 7 изм итан
+//dimCfoPlant 'Подразделение пр-ва'            = DATA DimCFO(CubeKhpCostManual);
+dimCostItem 'Статья затрат'                  = DATA DimCostItems(CubeKhpCostManual); // 4 изм итан
+//dimPlantProductLine 'Производственная линия' = DATA DimPlantProductLine(CubeKhpCostManual);
+//dimNomenklPlant     'Продукт'                = DATA DimNomenklPlant(CubeKhpCostManual);
+cubePlantProduct 'Способ производства - имя спец.' = DATA STRING[512](CubeKhpCostManual); // для совместимости 
+includeInCost 'Вычитать из затрат' = DATA BOOLEAN (CubeKhpCostManual);
+//dimNomenklCostGroup  'Ценовая группа'        = DATA DimNomenklCostGroup(CubeKhpCostManual); /// это не то - удалять1!!
+//dimPartnerFinGroup   'Сегмент покупателей'   = DATA DimPartnerFinGroup(CubeKhpCostManual);/// это не то - удалять1!!
+
+value 'Сумма' = DATA NUMERIC[14,2](CubeKhpCostManual);

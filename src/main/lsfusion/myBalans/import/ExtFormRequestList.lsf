@@ -2,7 +2,7 @@ MODULE ExtFormRequestList;
 
 REQUIRE ExtRequest;
 
-NAMESPACE ExtSystem; 
+NAMESPACE MyBalance; 
 
 
 // форма для выбора подходящих действий (импортов)
@@ -14,14 +14,25 @@ OBJECTS er = ExtRequest  GRID
 PROPERTIES READONLY staticCaption(sr) 
 PROPERTIES READONLY name(er),
                   // typeEr =  staticCaption(type(er)),
-           nameExtSrc = name(extSource(er)) 
-FILTERS sr = section(er) AND  (dimFirm(er) == firm OR NOT firm);
+           nameExtSrc = name(extSource(er))
+PROPERTIES READONLY descr = RICHTEXT (descrMyBalance(type(er))) PANEL
+FILTERS sr = section(er) AND  (dimFirm(er) == firm OR NOT firm)
+FILTERS hasCurrentUserDimErPermission(er)
+;
 
  
 DESIGN extRequestSelectList{
-   size  = (650,250); 
+   size  = (650,450); 
    TOOLBARSYSTEM (er) { visible = FALSE;}
    PROPERTY (staticCaption(sr)) { hide = TRUE; }
    PROPERTY (nameExtSrc) {charWidth = 8;}
    PROPERTY (name(er)) {charWidth = 40;}
+   OBJECTS {
+      fill = 1;
+      NEW  p1 {
+         fill = 0.2;
+         MOVE PROPERTY (descr) { caption = ''; fill = 1; }
+      }
+   }
+   
 }

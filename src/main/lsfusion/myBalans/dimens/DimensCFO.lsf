@@ -2,7 +2,7 @@ MODULE DimensCFO;
  
 REQUIRE TaskTune,Dimens,ExtFormRequestList,TypeCFO;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimCFO 'Центры финансовой ответственности';
 TABLE dimCFO(DimCFO);
@@ -13,15 +13,43 @@ FORM formDimCFOTreeList 'Центры финансовой ответствен�
 @configDimWO(DimCFO);
 
 // МЕСТО для доп. свойств
-typeCFO 'Тип подразделения' = DATA TypeCFO(DimCFO);
+distrCoeffConst 'Постоянные коэфф. рапределения' = DATA BOOLEAN (DimCFO);
+typeCFO 'Тип подразделения'                      = DATA TypeCFO(DimCFO);
+nameTypeCFO 'Тип подразделения, для lookup'(DimCFO d)   =  name(typeCFO(d)) MATERIALIZED;
+
+EXTEND CLASS DimCFONamed {
+   commercialDiv 'Коммерческое подразделение',
+   notMainSale  'Отражение прочей реализации',
+   cfo99        'Налог на прибыль',
+   feo          'ФЭО'
+}
+
+
 EXTEND FORM formDimCFOlist
 PROPERTIES typeCFO 'Тип подразделения' = name(typeCFO(d)) AFTER name(d)
 ;
 
+EXTEND FORM  formDimCFOCard
+    PROPERTIES typeCFO(c);
+
+
 // добавление списка в CalcComposition
 TABLE dimCfoTask(Task,DimCFO);
+
 checkedCFO 'выбрано' = DATA BOOLEAN  (Task,DimCFO) TABLE dimCfoTask;
+checkedCFOplant 'выбрано' = DATA BOOLEAN  (Task,DimCFO) TABLE dimCfoTask; 
+
 @configDim2TaskTune(DimCFO,checkedCFO,vCFO);
+
+@configDim2TaskTune(DimCFO,checkedCFOplant,vCfoPlant);
+
+DESIGN taskTune {
+BOX(vCfoPlant){
+    caption = 'Подразделения производства(цфо)';
+}
+}
+
+EXTEND FORM formDimCFOlist PROPERTIES  distrCoeffConst(d);
 
 // добавление операций над задачей
 // операции Расчетов
@@ -41,10 +69,9 @@ runActions() {
 }; 
 
 EXTEND FORM formDimCFOlist PROPERTIES exec 'Функции...' = runActions();
- 
- 
 
 
+ 
 
 
 // КОНЕЦ ТЕКСТА

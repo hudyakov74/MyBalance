@@ -1,0 +1,7 @@
+MODULE TypeUppCostPlan;
+
+CLASS TypeUppCostPlan {
+    year 'Годовой'
+}
+
+name(TypeUppCostPlan c) = staticCaption(c);

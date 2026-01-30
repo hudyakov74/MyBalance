@@ -1,0 +1,596 @@
+MODULE BReportConfig;
+
+REQUIRE   ReportClassList, Utils, Scenario, TypeTask, Security, BReportPartition, Dimens, CalcTask;
+
+NAMESPACE MyBalance;
+// =============================
+// Уровень настроек отчета
+// =============================
+currentBReportFormTxt = DATA LOCAL TEXT();
+
+report     'Тип отчета'       = DATA ReportClassList(BReportConfig);
+name       'Вариант отчета'   = DATA STRING[150] (BReportConfig);
+nameReport 'Заголовок отчета' = DATA STRING[512] (BReportConfig);
+commonReport 'Включить в меню Расчета'   = DATA BOOLEAN (BReportConfig);
+
+copyOf 'Вариант, копия'             = DATA BReportConfig (BReportConfig);
+owner 'Рабочая копия пользователя'  = DATA CustomUser (BReportConfig);
+
+form = DATA LOCAL FILE (BReportConfig);
+rowGroupCodeStr     'rowGroupCodeStr'       = DATA LOCAL STRING (BReportConfig);
+rowGroupNameStr     'rowGroupNameStr'       = DATA LOCAL STRING (BReportConfig);
+rowGroupStyleStr    'rowGroupStyleStr'      = DATA LOCAL STRING (BReportConfig);
+rowGroupLevel       'уровень группы'        = DATA LOCAL STRING (BReportConfig);
+
+colGroupCodeStr     'colGroupCodeStr'       = DATA LOCAL STRING (BReportConfig);
+colGroupNameStr     'colGroupNameStr'       = DATA LOCAL STRING (BReportConfig);
+disableTotalByHStr  'disableTotalByH'       = DATA LOCAL STRING (BReportConfig);
+totalCompareHStr    'totalCompareH'         = DATA LOCAL STRING (BReportConfig);
+
+
+
+colEnabledLabelName 'colEnabledLabelName'   = DATA LOCAL STRING (BReportConfig);
+colCellHeaderNameStr        'заголовок |,|' = DATA LOCAL STRING (BReportConfig); //name
+colCellHeaderNameUnitStr     'Unit |,|'     = DATA LOCAL STRING (BReportConfig); //name
+colCellHeaderNameRatioStr    'Ratio |,|'    = DATA LOCAL STRING (BReportConfig); //name
+colCellMesuareFunctionStr   'разделитель |,|'= DATA LOCAL STRING (BReportConfig); //mesuareFunction
+colCellExpression           'разделитель |,|'= DATA LOCAL STRING (BReportConfig); //cellExpression
+colCellFormat               'разделитель |,|'= DATA LOCAL STRING (BReportConfig); //cellFormat
+colCellType                 '|,|'       = DATA LOCAL STRING (BReportConfig); //type
+dockToPreviuosHeader        '|,|'       = DATA LOCAL STRING (BReportConfig); //type
+dockToPreviuosHeaderText        '|,|'       = DATA LOCAL STRING (BReportConfig); //type
+compareToBaseSub        '|,|'       = DATA LOCAL STRING (BReportConfig); //type
+totalAutoCompareStr    '|,|totalAutoCompare'         = DATA LOCAL STRING (BReportConfig);
+totalAutoComparePercStr    '|,|totalAutoComparePerc'         = DATA LOCAL STRING (BReportConfig);
+required        '|,|'       = DATA LOCAL STRING (BReportConfig); //type
+
+
+
+// ВИДИМОСТЬ ОТЧЕТА В ЗАДАЧАХ
+CLASS BReportListVisible;
+TABLE bReportListVisible(BReportListVisible);
+report   = DATA BReportConfig(BReportListVisible);
+typeTask = DATA TypeTask(BReportListVisible);
+
+// РАЗРЕШЕНИЯ
+bReportPermission     'Доступ к отчету' = DATA BOOLEAN (BReportConfig ,UserRole);
+bReportPermissionUser 'Доступ к отчету, владельцы' = DATA BOOLEAN (BReportConfig ,CustomUser);
+
+reportName 'Тип отчета' (BReportConfig d) = staticCaption(report(d));
+//
+// тут свойства вывода 
+//
+config   'Заполнить по умолчанию' (BReportConfig rep) ABSTRACT CASE;
+exec     'Заполнить данные'       (BReportConfig rep) ABSTRACT CASE;
+open     'Открыть отчет'          (BReportConfig rep) ABSTRACT CASE;
+
+CLASS BReportUnits 'Единицы отчета';
+name      'Ед.измер.'           = DATA STRING[25]  (BReportUnits) IN id;
+ratio     'Коэфф'               = DATA INTEGER  (BReportUnits) IN id; //originalValue.divide(BigDecimal.valueOf(1000), 6, RoundingMode.HALF_UP);
+ 
+FORM formBReportUnits OBJECTS s = BReportUnits
+    PROPERTIES(s) NEW, DELETE, name, ratio
+LIST BReportUnits OBJECT s;
+
+CLASS BReportConfigColumns 'Список колонок';
+bReportConfig                   = DATA BReportConfig (BReportConfigColumns) NONULL DELETE;
+enable    'Включено'            = DATA BOOLEAN (BReportConfigColumns);
+pos       'Позиция поля'        = DATA INTEGER (BReportConfigColumns);
+name      'Имя поля'            = DATA STRING[255] (BReportConfigColumns);
+unit      'Ед.измер.'           = DATA BReportUnits (BReportConfigColumns);
+ratio     'Коэфф'               = DATA STRING[255] (BReportConfigColumns);
+idPosName  'id nameProp'        = DATA STRING[255] (BReportConfigColumns);
+idPosRef   'id груп.ссылкой'    = DATA STRING[255] (BReportConfigColumns);
+idNameName 'id nameProp'        = DATA STRING[100] (BReportConfigColumns);
+idClass    'id class'           = DATA STRING[100] (BReportConfigColumns);
+isMesuare  'это показатель'     = DATA BOOLEAN    (BReportConfigColumns);
+idNameRef  'id поля ссылкой'    = DATA STRING[100] (BReportConfigColumns);
+
+commentary  'Комментарий, основание' = DATA STRING[1024] (BReportConfigColumns);
+
+ 
+disableTotalByH  'Отключить итог по группе'  = DATA BOOLEAN    (BReportConfigColumns);
+totalCompareH    'Поля сравнения, включить'  = DATA BOOLEAN   (BReportConfigColumns);
+
+
+// описания полей для генератора 
+dockToPreviuosHeader      'в т.ч. к предыдущему столбцу'    = DATA BOOLEAN(BReportConfigColumns);
+dockToPreviuosHeaderText  'в т.ч. Текст'    = DATA STRING[100](BReportConfigColumns);
+
+compareToBaseSub          'блок сравнения'      = DATA BOOLEAN(BReportConfigColumns);
+totalAutoCompare      'Сравн.автополе'       = DATA BOOLEAN   (BReportConfigColumns);
+totalAutoComparePerc  '% Сравн.автополе'     = DATA BOOLEAN   (BReportConfigColumns);
+required         'добавлять поле всегда'    = DATA BOOLEAN(BReportConfigColumns);
+
+type                  'тип (JR notation)'               = DATA STRING[100](BReportConfigColumns);
+ 
+mesuareFunction       'Выражение меры (JR notation)'      = DATA STRING[1024](BReportConfigColumns);
+cellExpression        'Выражение в ячейке (JR notation)'  = DATA STRING[1024](BReportConfigColumns);
+cellFormat            'Формат вывода (JR notation)'       = DATA STRING[50](BReportConfigColumns);
+
+FORM formBReportConfigColumns
+    OBJECTS d = BReportConfigColumns
+    PROPERTIES  READONLYIF TRUE name(d)
+    LIST BReportConfigColumns OBJECT d;
+
+CLASS BReportConfigGroup 'Иерархия';
+bReportConfig            = DATA BReportConfig (BReportConfigGroup)  NONULL DELETE;
+
+// если поле заполнено то для данной группы вызывается генерация собственной crossTab. колонки мер - общие (пока? или в этой модели навсегда? что с промежуточными заголовками?)
+// было бы полезным гасить ненужные в разделе меры?
+// для вертикальных = полностью независимо
+// для горизонтальных - выводим материнские - и делаем только enableH - персональным
+bReportPartition 'Настройка для группы, персональная' // 
+                         = DATA BReportPartition (BReportConfigGroup);
+
+
+enableV   'Включено'     = DATA BOOLEAN (BReportConfigGroup);
+enableH   'Включено'     = DATA BOOLEAN (BReportConfigGroup);
+posV      'Позиция поля' = DATA INTEGER (BReportConfigGroup); 
+posH      'Позиция поля' = DATA INTEGER (BReportConfigGroup);
+ 
+//idGroup   'id поля'      = DATA STRING[100] (BReportConfigGroup);
+group     'Имя группы'   = DATA BReportConfigColumns (BReportConfigGroup);
+hierarchy 'Иерархия'     = DATA BOOLEAN (BReportConfigGroup);
+level     'Уровень иерархии' = DATA INTEGER (BReportConfigGroup); // от корня??? 
+horisontalOnly   'Горизонтальная' = DATA TBOOLEAN (BReportConfigGroup);
+groupName 'Имя поля' (BReportConfigGroup c)  = name(group(c));
+
+
+CLASS BReportConfigSections 'Секции отчета';
+bReportConfig              = DATA BReportConfig (BReportConfigSections)  NONULL DELETE;
+enable    'Включено'       = DATA BOOLEAN (BReportConfigSections);
+pos       'Позиция секции' = DATA INTEGER (BReportConfigSections);
+id        'id секции'      = DATA STRING[100] (BReportConfigSections);
+name      'Имя секции'     = DATA STRING[255] (BReportConfigSections);
+scenario  'Сценарий'       = DATA Scenario (BReportConfigSections);
+interval  'Период'         = DATA INTERVAL[DATE] (BReportConfigSections);
+negativeSign  'базовый' =   DATA  BOOLEAN (BReportConfigSections);
+date1  'Дата начала'    (BReportConfigSections s)   =    from(interval(s)); 
+date2  'Дата окончания'  (BReportConfigSections s)    =  to( interval(s));
+
+signSub(BOOLEAN in) = IF in THEN -1 ELSE 1;
+
+openBReportConfig(BReportConfig c) ABSTRACT; 
+
+CLASS BReportCondition {
+   // eq '=',
+    in    'в списке',
+    notIn 'исключить' 
+   // gq '>=',
+   // lq '<=',
+   // g  '>',
+   // l  '<',
+  //  and 'И',
+  //  or 'ИЛИ'
+}
+FORM formBReportCondition
+OBJECTS d = BReportCondition
+PROPERTIES  READONLY  staticCaption(d)
+LIST BReportCondition OBJECT d;
+
+
+// CLASS BReportPartition 'Разделы отчета';
+bReportConfig = DATA BReportConfig(BReportPartition)  NONULL DELETE;
+isGroup   'Группа'          = DATA BOOLEAN (BReportPartition); // для группы фильтры не работают - это просто группа
+parent    'в группе'        = DATA BReportPartition(BReportPartition);
+
+// эти 2 поля скорее как костыль добавлены 
+// если это поле выставлено - выбрасываем группу из запроса данных, заполняем ее после выборок данных во все группы доп алгоритмами
+includeDataFromGroup 'Собирать данные из группы' = DATA BReportPartition(BReportPartition); // для расчета справок - для доступа к данным уже подобранным на 1 шаге выборки
+
+// данные готовятся в этой группе по фильтрам - но при публикации маркируются указанной ид группой - т.о. сама группа без данных не должна показываться, а данные объединяются в целевой 
+includeDataInGroup   'Отправить данные в группу' = DATA BReportPartition(BReportPartition); // для объединения данных - просто данные подготовленные для текущей партиции помечаем как данные для другой!!!
+
+isEnable  'Включено'        = DATA BOOLEAN (BReportPartition);
+pos       'Позиция раздела' = DATA INTEGER (BReportPartition);
+id        'id раздела'      = DATA STRING[100] (BReportPartition) CHARWIDTH 10;
+name      'Имя раздела'     = DATA STRING[255] (BReportPartition) CHARWIDTH 10;
+personalV 'Отдельная настройка вертик. иерархии'
+                            = DATA BOOLEAN (BReportPartition);
+crosstabWoHeader    'Раздел без заголовка' = DATA BOOLEAN (BReportPartition);
+crosstabWoSummary   'Раздел без итогов'    = DATA BOOLEAN (BReportPartition);
+
+enable    'Включено'  (BReportPartition s)      = isEnable(s) AND NOT isGroup(s);
+bRepInterval = DATA LOCAL BOOLEAN (Scenario, DATE);
+bRepIntervalSec = DATA LOCAL BOOLEAN (BReportConfigSections, DATE);
+
+FORM formBReportPartitionList
+OBJECTS d = BReportPartition
+PROPERTIES name(d)
+LIST BReportPartition OBJECT d;
+
+// CLASS BReportPartitionFilter 'Разделы отчета: фильтры';
+partition                  = DATA BReportPartition (BReportPartitionFilter) NONULL DELETE;
+filterParent  'В группе'   = DATA BReportPartitionFilter (BReportPartitionFilter);
+nodeKey 'поз.' (BReportPartitionFilter obj_) = PARTITION SUM 1 IF obj_ IS BReportPartitionFilter   ORDER partition(obj_), obj_   MATERIALIZED;
+enable    'Включено'       = DATA BOOLEAN (BReportPartitionFilter);
+//pos       'Позиция секции' = DATA INTEGER (BReportSectionsFilter);
+condition 'Условие раздела' = DATA BReportCondition(BReportPartitionFilter);
+
+type      'Тип списка выбора'          = DATA DimRegisters(BReportPartitionFilter);  
+namePartitionFilter  = DATA STRING[256] (BReportPartitionFilter);
+column    'Поле раздела'    = DATA BReportConfigColumns (BReportPartitionFilter);
+
+conditionName 'Условие' (BReportPartitionFilter d) = staticCaption(condition(d));
+
+
+FORM formBReportPartitionFilter
+TREE flt d = BReportPartitionFilter PARENT filterParent(d)
+PROPERTIES(d)   nodeKey, enable, conditionName
+LIST BReportPartitionFilter OBJECT d;
+
+//1. для всех справочников - сохраняемая отметка списка  BOO..(BReportSectionsFilter, DimAll) или LONG ???
+// ну допустим макрос нагенерит..
+//2 как набирать условия по и или ... как ссылаться на списки?
+//3. как их включать в запрос?   на равно\ не равно \ в иерархии
+
+columnName 'Имя поля' (BReportPartitionFilter c)  = name(column(c));
+
+// по умолчанию - отказываемся от этой процедуры!!!!! все руками!!!
+bReportConfig_(BReportConfig rep,STRING values, STRING vGroup, STRING hGroup) {
+    
+//    IF NOT GROUP MAX BReportPartition p IF bReportConfig(p) == rep THEN {
+//        NEW new = BReportPartition {
+//        bReportConfig(new) <- rep;
+//        }
+//    }
+//    LOCAL values, vValues, hValues = STRING();
+//    values()    <- values;  // код поля наименования, код колонки сортировки группировки, для наименования колонки в форме
+//    vValues()   <- CONCAT '',',',vGroup,',';  
+//    hValues()   <- CONCAT '',',',hGroup,',';
+//    
+//    DELETE BReportConfigColumns d WHERE d IS BReportConfigColumns AND bReportConfig(d) == rep;
+//    DELETE BReportConfigGroup d   WHERE d IS BReportConfigGroup   AND bReportConfig(d) == rep;
+//    // логика заполнения  
+//    LOCAL col =  INTEGER();
+//    col() <- wordCount(values(),',') / 5;
+//    FOR iterate(INTEGER i, 1 , col()) NOINLINE DO {
+//        NEW new = BReportConfigColumns {
+//            bReportConfig(new) <- rep;
+//           //  TRUE;
+//            idClass(new) <-   trim(getWord(values(),',',i*5 - 4));
+//            isMesuare(new) <- trim(getWord(values(),',',i*5 - 3))== '+';
+//            enable(new) <- isMesuare(new); 
+//            pos(new)  <- i;
+//            
+//            idNameName(new) <- trim(getWord(values(),',',i*5 - 2));
+//            idPosName(new)  <- trim(getWord(values(),',',i*5 - 1));
+//            name(new)       <- trim(getWord(values(),',',i*5));
+//            //type(new) <- ; 
+//
+//            IF   isSubstring(vValues(),','+idNameName(new)+',') OR isSubstring(hValues(),','+idNameName(new)+',') THEN {
+//                NEW n = BReportConfigGroup {
+//                    bReportConfig(n) <- rep;
+//                    group(n) <- new;
+//                    
+//                    posV(n) <- i IF  isSubstring(vValues(),','+idNameName(new)+',');
+//                    posH(n) <- i IF  isSubstring(hValues(),','+idNameName(new)+',');
+//                    
+//                    horisontalOnly(n) <- CASE EXCLUSIVE WHEN  NOT (isSubstring(vValues(),','+idNameName(new)+',') AND isSubstring(hValues(),','+idNameName(new)+',')) THEN TTRUE
+//                        WHEN  NOT (isSubstring(hValues(),','+idNameName(new)+',')) THEN TFALSE;
+//                }
+//            }
+//        }
+//    }
+}
+
+nameScenario 'Сценарий' (BReportConfigSections s) = nameScenario(scenario(s));
+nameSection 'Наименование' (BReportConfigSections s) = STRING ( CONCAT ' ', (OVERRIDE name(s), nameScenario(s)) ,toChar(date1(s),'dd.MM.YYYY'),'-',toChar(date2(s),'dd.MM.YYYY'), (IF negativeSign(s) THEN '(базовый)') ) ON CHANGE {INPUT inp = name(s) CHANGE;};
+nameHeader '' (BReportConfig s) = CONCAT ': ', name(s), (GROUP CONCAT nameScenario(BReportConfigSections c)  IF bReportConfig(c) == s,', ' ORDER pos(c));
+nameHeaderDetail '' (BReportConfig s) = CONCAT ': ', name(s), name(owner(s)), (GROUP CONCAT nameSection(BReportConfigSections c)  IF bReportConfig(c) == s AND enable(c),' / ' ORDER pos(c)) NOIMAGE ON CHANGE {openBReportConfig(s);};
+
+
+// 1 Заголовок отчета 
+printNameReport(BReportConfig r) = OVERRIDE nameReport(r), name(r);
+
+// 2. Секциии - даты, сценарии
+printPeriodsReport(BReportConfig r) =  GROUP CONCAT nameSection(BReportConfigSections s) IF bReportConfig(s) == r AND enable(s), '\n' ORDER pos(s), s;
+
+// 3. Список выбранных фильтров
+printFilterReport(BReportPartition r) = GROUP CONCAT (CONCAT ' ', conditionName(BReportPartitionFilter s), namePartitionFilter(s))  IF partition(s) == r AND enable(s), ', ' ORDER s;
+
+printFiltersReport(BReportConfig r) =  GROUP CONCAT (CONCAT ' ',name(BReportPartition s), printFilterReport(s)) IF bReportConfig(s) == r, '\n' ORDER pos(s), s;
+
+// 4. Список разрезов вертикаль
+printColumnsReport(BReportConfig r) =  GROUP CONCAT groupName(BReportConfigGroup s) IF bReportConfig(s) == r  AND NOT bReportPartition(s) AND enableV(s)   , ' / ' ORDER posV(s), s;
+
+// 5. Список разрезов горизонталь
+printRowsReport(BReportConfig r) = GROUP CONCAT groupName(BReportConfigGroup s) IF bReportConfig(s) == r AND enableH(s)   , ' / ' ORDER posH(s), s;
+
+
+// список имен мер включенных для отображения
+//'\{([^}]+)\}'
+listMeasuresBReportConfig = DATA LOCAL NESTED STRING;
+
+includedMeasures(BReportConfig r) {
+
+    listMeasuresBReportConfig() <- GROUP CONCAT idPosName(BReportConfigColumns s) IF bReportConfig(s) == r AND enable(s),',' ORDER s;
+    listMeasuresBReportConfig() <- CONCAT ',',  listMeasuresBReportConfig(), GROUP CONCAT idNameName(BReportConfigColumns s) IF bReportConfig(s) == r AND enable(s),',' ORDER s;
+    
+    FOR idPosName(BReportConfigColumns s) IF bReportConfig(s) == r AND enable(s) NOINLINE DO {
+        FOR iterate(INTEGER x,1, regexpCount(mesuareFunction(s),r'{([^}]+)}')) DO {
+            listMeasuresBReportConfig() <- CONCAT ',',  listMeasuresBReportConfig(), regexpSubstr(mesuareFunction(s),r'{([^}]+)}',1,x) ;
+        }
+        FOR iterate(INTEGER x,1, regexpCount(cellExpression(s),r'{([^}]+)}')) DO {
+            listMeasuresBReportConfig() <- CONCAT ',',  listMeasuresBReportConfig(), regexpSubstr(cellExpression(s),r'{([^}]+)}',1,x) ;
+        }
+    }
+    listMeasuresBReportConfig() <- ','+listMeasuresBReportConfig()+',';
+    printToLog(listMeasuresBReportConfig());
+}
+
+
+
+
+mbJasperTemplateCorrect 'Корректировка шаблона, с удалением колонок шаблона jrxml' (FILE file, BReportConfig conf) {
+    mbJasperTemplateCorrect( file, 0, rowGroupCodeStr(conf), rowGroupNameStr(conf), rowGroupStyleStr(conf), colGroupCodeStr(conf), colGroupNameStr(conf), colEnabledLabelName(conf));
+};
+
+mbJasperTemplateCorrect2 'Корректировка шаблона с дублированием колонок шаблона, jrxml' (FILE file, BReportConfig conf) {
+    mbJasperTemplateCorrect( file, 1, rowGroupCodeStr(conf), rowGroupNameStr(conf), rowGroupStyleStr(conf), colGroupCodeStr(conf), colGroupNameStr(conf), colEnabledLabelName(conf));
+};
+
+
+mbJasperFillTemplate 'Заполнение шаблона, jrxml' (FILE file, BReportConfig conf, STRING labelCrosstab, BReportPartition idPartition, INTEGER indexPartition) {
+    mbJasperFillTemplate( file, indexPartition,
+        rowGroupCodeStr(conf), rowGroupNameStr(conf), rowGroupStyleStr(conf), rowGroupLevel(conf),
+
+        colGroupCodeStr(conf), colGroupNameStr(conf), colEnabledLabelName(conf),
+        colCellHeaderNameStr(conf),
+        colCellHeaderNameUnitStr(conf),
+        colCellHeaderNameRatioStr(conf),
+
+        colCellMesuareFunctionStr(conf),
+        colCellExpression(conf),
+        colCellFormat(conf),
+        colCellType(conf),
+
+        dockToPreviuosHeader(conf),
+        dockToPreviuosHeaderText(conf),
+        compareToBaseSub(conf),
+        required(conf),
+        disableTotalByHStr(conf),
+        totalCompareHStr(conf),
+        labelCrosstab,
+        (OVERRIDE LONG(idPartition),LONG(0)),
+        (OVERRIDE (IF crosstabWoHeader(idPartition) THEN 1 ELSE 0),0),
+        (OVERRIDE (IF crosstabWoSummary(idPartition) THEN 1 ELSE 0),0)
+    );
+};
+
+
+
+
+META report2create(nameForm, nameReport)
+    FORM  ##nameForm nameReport
+        OBJECTS   conf = BReportConfig  PANEL
+        PROPERTIES  nameHeaderDetail(conf) PANEL ON CHANGE AFTER {
+            SEEK ##nameForm.conf =  currentBReportConfig();
+            //exec(conf);
+        },
+            editVariant 'Изменить' = {SHOW  formBReportConfigCard OBJECTS s = conf;
+                SEEK ##nameForm.conf =  currentBReportConfig();
+                //exec(conf);
+            },
+            selectVariant 'Выбрать вариант' = {
+                DIALOG formBReportConfigList OBJECTS  version = conf INPUT in FILTERS report(conf) == report(version) DO {
+                    bReportConfigGetWorkCopyOrNew(in, currentUser());
+                    SEEK ##nameForm.conf =  currentBReportConfig();
+                    //exec(conf);
+                }
+            } NOIMAGE
+        EVENTS ON INIT {
+            SEEK ##nameForm.conf = currentBReportConfig();
+        }
+    ;
+    DESIGN ##nameForm {
+        OBJECTS {
+            NEW header {
+                horizontal = TRUE;
+                lines = 1;
+                MOVE  PROPERTY (nameHeaderDetail(conf)) {fill = 1; charWidth = 150;}
+                MOVE  PROPERTY (editVariant);
+                MOVE  PROPERTY (selectVariant);
+            }
+        }
+        caption = '<font color="#330066">' + nameHeader(conf) + '</font>';
+        image = 'fa fa-table';
+        BOX (conf) {caption = NULL;}
+    }
+END
+
+
+META report2byFilterBool(nameForm, cube, nameFilterBool, pathScenario, toDate)
+    EXTEND FORM ##nameForm
+        OBJECTS   sline = (s = ##cube, part = BReportPartition, sec = BReportConfigSections)
+        REPORT    form(conf)
+        FILTERS enable(part) AND bReportConfig(part) == conf AND ##nameFilterBool(s, part)   // ОТБОР ЗАПИСЕЙ ДЛЯ КАЖДОГО РАЗДЕЛА
+        FILTERS enable(sec)  AND bReportConfig(sec)  == conf AND bRepIntervalSec(sec,  firstDayOfMonth(##toDate( date(s)) ) )  // ОТБОР ДАННЫХ ПО ПЕРИОДУ/СЕГМЕНТУ выбранным периодам negativeSign
+        FILTERS scenario(sec) == scenario(##pathScenario(s))
+        
+    PROPERTIES NOIMAGE READONLYIF TRUE
+        period         'Период'        =  name(period(s)),
+        date           'ДатаС'         = STRING( toChar( ##toDate(date(s)),'dd.MM.yyyy') ),
+        dateCode       'Дата.гр'       = STRING( toChar( ##toDate(date(s)),'yyyyMMdd')),
+        scenario      'Сценарий' = name(scenario(##pathScenario(s))),
+        scenarioCode  'Сценарий.гр' = name(scenario(##pathScenario(s))),
+
+        idPart        'id раздела, обязательный' = (OVERRIDE LONG(includeDataInGroup(part)),LONG(part)),  
+        namePart      'Раздел отчета' = name(part),
+        namePartCode  'Раздел отчета.гр' = (OVERRIDE id(part), name(part)),
+
+        nameGroupPart      'Группа раздела отчета'    = name(parent(part)), // 
+        nameGroupPartCode  'Группа раздела отчета.гр' = (OVERRIDE id(parent(part)), name(parent(part))),
+
+        nameSection      'Секция отчета'            = nameSection(sec),
+        nameSectionCode  'Секция отчета.гр'         = (OVERRIDE id(sec), nameSection(sec)),
+        isBaseSection    'Секция базового периода'  =  negativeSign(sec), // java.lang.Boolean
+        dateS    'Дата'             = ##toDate(date(s)),
+        month    'Месяц'            = month(biDate( ##toDate(date(s)))),
+        monthPos 'Месяц Pos'        = codeYearMonth(biDate( ##toDate(date(s)))),
+
+        quarterNumber 'Квартал Pos' = codeYearQuater(biDate( ##toDate(date(s)))),
+        quarter 'Квартал'           = quarter(biDate( ##toDate(date(s)))),
+
+        year     'Год'              = year(biDate( ##toDate(date(s)))),
+        yearS    'Год'              = (CONCAT '',year(biDate( ##toDate(date(s))))),
+        yearSpos 'Год pos'          =  (CONCAT '',year(biDate(##toDate(date(s)))))
+    ;
+END
+
+
+META report2byOwnDataset(nameForm, cube, nameFilterBool, pathScenario, toDate)
+    EXTEND FORM ##nameForm
+        OBJECTS   sline = (s = ##cube, sec = BReportConfigSections)
+        REPORT    form(conf)
+       
+        FILTERS enable(sec)  AND bReportConfig(sec)  == conf AND bRepIntervalSec(sec,  firstDayOfMonth(##toDate( date(s)) ) )  // ОТБОР ДАННЫХ ПО ПЕРИОДУ/СЕГМЕНТУ выбранным периодам negativeSign
+        FILTERS scenario(sec) == scenario(##pathScenario(s))
+
+        PROPERTIES NOIMAGE READONLYIF TRUE
+        period         'Период'        =  name(period(s)),
+            date           'ДатаС'         = STRING( toChar( ##toDate(date(s)),'dd.MM.yyyy') ),
+            dateCode       'Дата.гр'       = STRING( toChar( ##toDate(date(s)),'yyyyMMdd')),
+            scenario      'Сценарий' = name(scenario(##pathScenario(s))),
+            scenarioCode  'Сценарий.гр' = name(scenario(##pathScenario(s))),
+
+            idPart        'id раздела, обязательный' = (OVERRIDE LONG(includeDataInGroup(part(s))), LONG(part(s))),
+            namePart      'Раздел отчета' = name(part(s)),
+            namePartCode  'Раздел отчета.гр' = (OVERRIDE id(part(s)), name(part(s))),
+
+            nameGroupPart      'Группа раздела отчета'    = name(parent(part(s))), // 
+            nameGroupPartCode  'Группа раздела отчета.гр' = (OVERRIDE id(parent(part(s))), name(parent(part(s)))),
+
+            nameSection      'Секция отчета'            = nameSection(sec),
+            nameSectionCode  'Секция отчета.гр'         = (OVERRIDE id(sec), nameSection(sec)),
+            isBaseSection    'Секция базового периода'  =  negativeSign(sec), // java.lang.Boolean
+            dateS    'Дата'             = ##toDate(date(s)),
+            month    'Месяц'            = month(biDate( ##toDate(date(s)))),
+            monthPos 'Месяц Pos'        = codeYearMonth(biDate( ##toDate(date(s)))),
+
+            quarterNumber 'Квартал Pos' = codeYearQuater(biDate( ##toDate(date(s)))),
+            quarter 'Квартал'           = quarter(biDate( ##toDate(date(s)))),
+
+            year     'Год'              = year(biDate( ##toDate(date(s)))),
+            yearS    'Год'              = (CONCAT '',year(biDate( ##toDate(date(s))))),
+            yearSpos 'Год pos'          =  (CONCAT '',year(biDate(##toDate(date(s)))))
+    ;
+END
+
+// поля заголовка отчета
+META report2HeadersDes(nameFormReport)
+EXTEND FORM nameFormReport
+    PROPERTIES(conf) 
+    printNameReport = printNameReport, 
+    printPeriodsReport = printPeriodsReport, 
+    printFiltersReport = printFiltersReport, 
+    printColumnsReport = printColumnsReport, 
+    printRowsReport = printRowsReport
+;
+DESIGN nameFormReport {
+    PROPERTY (printNameReport) {hide = TRUE;}
+    PROPERTY (printPeriodsReport) {hide = TRUE;}
+    PROPERTY (printFiltersReport) {hide = TRUE;}
+    PROPERTY (printColumnsReport) {hide = TRUE;}
+    PROPERTY (printRowsReport) {hide = TRUE;}
+}
+END
+
+// Иерархия
+META reportBGroup(form, var, nameCol, nameObj, nameProp, headCol, isHide)
+    EXTEND FORM form 
+    PROPERTIES
+    nameCol##lev  'lev '##headCol = levelNumInt(nameObj(s)),
+    lev1##nameCol 'гр1 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),0)) BEFORE nameCol,
+    lev2##nameCol 'гр2 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),1)) BEFORE nameCol,
+    lev3##nameCol 'гр3 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),2)) BEFORE nameCol,
+    lev4##nameCol 'гр4 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),3)) BEFORE nameCol,
+    lev5##nameCol 'гр5 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),4)) BEFORE nameCol,
+    lev6##nameCol 'гр6 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),5)) BEFORE nameCol,
+    lev7##nameCol 'гр7 '##headCol = nameProp(getLevelObjWoItems(nameObj(var),7)) BEFORE nameCol
+    ;
+    DESIGN form {
+        PROPERTY (lev1##nameCol) {charWidth = 12; hide = FALSE;}
+        PROPERTY (lev2##nameCol) {charWidth = 12; hide = isHide;}
+        PROPERTY (lev3##nameCol) {charWidth = 12; hide = isHide;}
+        PROPERTY (lev4##nameCol) {charWidth = 12; hide = isHide;}
+        PROPERTY (lev5##nameCol) {charWidth = 12; hide = isHide;}
+        PROPERTY (lev6##nameCol) {charWidth = 12; hide = isHide;}
+        PROPERTY (lev7##nameCol) {charWidth = 12; hide = isHide;}
+    }
+END
+
+
+META report2createAndCalcFilter(nameFilter, DimClass, DimClassStr)
+    nameFilter##Enable =  DATA LOCAL BOOLEAN (TBOOLEAN, BReportPartition);
+    nameFilter##Filter = DATA LOCAL BOOLEAN (TBOOLEAN, BReportPartition, DimClass);
+
+    nameFilter##Set(BReportConfig rep) {
+        
+        nameFilter##Enable(n1,n2) <- NULL;
+        nameFilter##Filter(n1,n2,n3) <- NULL;
+
+        FOR enable(BReportPartition part) AND bReportConfig(part) == rep NOINLINE DO {
+            nameFilter##Enable(TTRUE, part) <- GROUP MAX TRUE IF partition(BReportPartitionFilter filt) = part
+                AND enable(filt) AND condition(filt) == BReportCondition.in AND idClass(column(filt)) == ##DimClassStr;
+
+            IF nameFilter##Enable(TTRUE, part) THEN {
+                FOR partition(BReportPartitionFilter filt) = part
+                    AND enable(filt) AND NOT filterParent(filt) AND condition(filt) == BReportCondition.in AND idClass(column(filt)) == ##DimClassStr
+                    AND DimClass dim AND isParent(dim, DimClass dg) AND lBrepSel(dg, filt) DO {
+                    nameFilter##Filter(TTRUE, part, dim) <- TRUE;
+                }
+            }
+
+            nameFilter##Enable(TFALSE, part) <- GROUP MAX TRUE IF partition(BReportPartitionFilter filt) = part
+                AND enable(filt) AND condition(filt) == BReportCondition.notIn AND idClass(column(filt)) == ##DimClassStr;
+
+            IF nameFilter##Enable(TFALSE, part) THEN {
+                FOR partition(BReportPartitionFilter filt) = part
+                    AND enable(filt) AND NOT filterParent(filt) AND condition(filt) == BReportCondition.notIn AND idClass(column(filt)) == ##DimClassStr
+                    AND DimClass dim AND isParent(dim, DimClass dg) AND lBrepSel(dg, filt) DO {
+                    nameFilter##Filter(TFALSE, part, dim) <- TRUE;
+                }
+            }
+        }
+    }
+END
+
+
+
+META report2createAndCalcFilterWoParent(nameFilter, DimClass, DimClassStr)
+    nameFilter##Enable =  DATA LOCAL BOOLEAN (TBOOLEAN, BReportPartition);
+    nameFilter##Filter = DATA LOCAL BOOLEAN (TBOOLEAN, BReportPartition, DimClass);
+
+    nameFilter##Set(BReportConfig rep) {
+
+        nameFilter##Enable(n1,n2) <- NULL;
+        nameFilter##Filter(n1,n2,n3) <- NULL;
+
+        FOR enable(BReportPartition part) AND bReportConfig(part) == rep NOINLINE DO {
+            nameFilter##Enable(TTRUE, part) <- GROUP MAX TRUE IF partition(BReportPartitionFilter filt) = part
+                AND enable(filt) AND condition(filt) == BReportCondition.in AND idClass(column(filt)) == ##DimClassStr;
+
+            IF nameFilter##Enable(TTRUE, part) THEN {
+                FOR partition(BReportPartitionFilter filt) = part
+                    AND enable(filt) AND NOT filterParent(filt) AND condition(filt) == BReportCondition.in AND idClass(column(filt)) == ##DimClassStr
+                    AND lBrepSel(DimClass dim, filt) DO {
+                    nameFilter##Filter(TTRUE, part, dim) <- TRUE;
+                }
+            }
+
+            nameFilter##Enable(TFALSE, part) <- GROUP MAX TRUE IF partition(BReportPartitionFilter filt) = part
+                AND enable(filt) AND condition(filt) == BReportCondition.notIn AND idClass(column(filt)) == ##DimClassStr;
+
+            IF nameFilter##Enable(TFALSE, part) THEN {
+                FOR partition(BReportPartitionFilter filt) = part
+                    AND enable(filt) AND NOT filterParent(filt) AND condition(filt) == BReportCondition.notIn AND idClass(column(filt)) == ##DimClassStr
+                    AND lBrepSel(DimClass dim, filt) DO {
+                    nameFilter##Filter(TFALSE, part, dim) <- TRUE;
+                }
+            }
+        }
+    }
+END
+ 

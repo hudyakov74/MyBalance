@@ -1,8 +1,8 @@
 MODULE DimensRawCFO;
 
-REQUIRE TaskTune,Dimens,ExtFormRequestList,TypeCFO,DimensCFO;
+REQUIRE TaskTune,Dimens,ExtFormRequestList,TypeCFO,DimensCFO; //, DimPlantProductLine
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimRawCFO 'Центры финансовой ответственности, загрузка';
 TABLE dimRawCFO(DimRawCFO);
@@ -12,7 +12,15 @@ FORM formDimRawCFOlist 'Центры финансовой ответственн
 FORM formDimRawCFOTreeList 'Центры финансовой ответственности, загрузка'; 
 @configDimWO(DimRawCFO);
 
-dimCFO = DATA DimCFO(DimRawCFO); 
+dimCFO = DATA DimCFO(DimRawCFO);
+//dimPlantProductLine = DATA DimPlantProductLine(DimRawCFO); 
+
 EXTEND FORM formDimRawCFOlist
-PROPERTIES dimCFO 'ЦФО' = name(dimCFO(d)) AFTER name(d)
+PROPERTIES dimCFO 'ЦФО' = name(dimCFO(d)) AFTER name(d)//,
+   // dimPlantProductLine 'Линия' = name(dimPlantProductLine(d))  
+;
+EXTEND FORM formDimRawCFOCard
+PROPERTIES 
+    dimCFO 'ЦФО' = name(dimCFO(c))//,
+   // dimPlantProductLine 'Линия' = name(dimPlantProductLine(c))
 ;

@@ -1,0 +1,103 @@
+MODULE FormKhpCostOld;
+// 
+//REQUIRE  Form, ReportList, CubeKhpCost;
+//
+//NAMESPACE KhpCost;
+//
+//// зарегистрируем форму как новый тип форм
+//EXTEND  CLASS TypeTask{
+//     KhpCost 'Затраты подразделений'
+//}
+//
+//FORM  formKhpCost 'Затраты подразделений';
+//@createFormReqPropertysBeforeOBJ(khpCost);
+//
+////getRootDimCostItems() 
+//khpCostInTree(CalcTask calcTask, DimCFO cfo,DimCostItems ci) = GROUP MAX CubeKhpCost any AS CubeKhpCost IF cfo==dimCFO(any)  AND ci==parent(dimensCostItems(any))  AND calc(calcTask) == calc(any) AND task(calcTask) = task(any) ;
+//
+//EXTEND FORM formKhpCost 
+//TREE  tree root = DimCFO,g = DimCostItems, s = CubeKhpCost
+//FILTERS root == dimCFO(s)   
+//FILTERS   dimensCostItems(khpCostInTree(  calcTask(s),   root, g)) 
+//FILTERS g    == parent(dimensCostItems(s))   
+//EVENTS ON INIT { EXPAND ALL TOP formKhpCost.root; }
+//;
+//@createFormReqPropertyAfterOBJ(CubeKhpCost, formKhpCost, s, calc, task, 'Затраты подразделений');
+//
+//newKhpCostTree 'Добавить/Добавить группу' (calcTask,root){
+//      
+//DIALOG formDimCostItemsTreeList  OBJECTS  t  = NULL INPUT retValue NULL  
+//    DO {
+//    IF isGroup(retValue) THEN 
+//    {
+//        FOR   isParent(DimCostItems costItem, retValue) AND NOT isGroup(costItem) NEW nC = CubeKhpCost DO {
+//            date(nC) <- toDateTime(calcDateBegin( calc(calcTask)));
+//            task(nC) <-  task(calcTask); 
+//            calc(nC) <- calc(calcTask); 
+//            dimensCostItems(nC) <-  costItem;
+//            dimCFO(nC) <- root;
+//        }
+//    }
+//    ELSE NEW nC = CubeKhpCost {
+//        date(nC) <- toDateTime(calcDateBegin(calc(calcTask)));
+//        task(nC) <- task(calcTask); 
+//        calc(nC) <- calc(calcTask); 
+//        dimensCostItems(nC) <-  retValue;
+//        dimCFO(nC) <- root;
+//        SEEK formDimCostItemsTreeList.t = nC;
+//        } 
+//    }
+//}
+// 
+//
+//
+//EXTEND FORM formKhpCost 
+//PROPERTIES DELETE(s),
+//dimCFO 'Подразделение' = name(root) READONLY, 
+//nameGroup = name(g) READONLY,
+//dimensCostItems 'Статья затрат' = name(dimensCostItems(s)),
+//
+//        
+//sumGroup 'Сумма' = (GROUP SUM value(CubeKhpCost s_) IF NOT stageZero(s_) AND dimCFO(s_) == root AND calc(calcTask)=calc(s_) AND task(calcTask) = task(s_))
+//            FOOTER (GROUP SUM value(CubeKhpCost s_) IF NOT stageZero(s_) AND calc(calcTask)=calc(s_) AND task(calcTask) = task(s_)) BACKGROUND #e7ffee ,
+//
+//sumGroupCI 'Сумма' = (GROUP SUM value(CubeKhpCost s_) 
+//        IF NOT stageZero(s_) AND dimCFO(s_) == root 
+//        AND  parent(dimensCostItems(s_)) == g 
+//        AND calc(calcTask)= calc(s_) 
+//        AND task(calcTask) = task(s_)) BACKGROUND #ffffe0,
+//
+//
+//sum      'Сумма' = value(s),
+//sumAll 'Итого' =  (GROUP SUM value(CubeKhpCost s_) IF NOT stageZero(s_) AND calc(calcTask)=calc(s_) AND task(calcTask) = task(s_)) READONLY  ,
+//
+//newKhpCostTree(calcTask,root)
+//FILTERS   checkedCFO(task(calcTask),root) // отмечены
+//  OR NOT (GROUP SUM 1 IF checkedCFO(task(calcTask),DimCFO cfo_)) //или совсем не отмечены
+//  OR  (GROUP SUM 1 IF root = dimCFO(CubeKhpCost s_) AND NOT stageZero(s_) AND calc(calcTask)=calc(s_) AND task(calcTask)= task(s_))  // или отнеcены затраты 
+//;
+// 
+//DESIGN formKhpCost {
+//    PROPERTY (dimCFO) {charWidth =80; pattern = '#,##0.00'; fontStyle = 'italic'; background = #e7ffee;}
+//    PROPERTY (dimensCostItems){ charWidth =80;}
+//    PROPERTY (sum) { charWidth =15; pattern = '#,##0.00';}
+//    PROPERTY (sumGroup) {charWidth =15; pattern = '#,##0.00'; fontStyle = 'italic'; background = #e7ffee; }
+//    PROPERTY (sumGroupCI) { charWidth =15; pattern = '#,##0.00' ;background = #ffffe0;  }
+//    PROPERTY (nameGroup) { charWidth =80;   background = #ffffe0;  }
+//     
+//TOOLBARRIGHT (TREE tree) { MOVE PROPERTY (newKhpCostTree(calcTask,root));
+//                           MOVE PROPERTY (sumAll);}
+//
+//OBJECTS {
+//         NEW tabPanel {        
+//            tabbed = TRUE;
+//            fill = 1; 
+//            align  = STRETCH;
+//            MOVE   BOX (TREE tree) {caption = 'Затраты'; }; 
+//         }
+//    }
+//}
+//
+//// Действия
+// @createLocalMenuOperation(CubeKhpCost,formKhpCost);
+//  

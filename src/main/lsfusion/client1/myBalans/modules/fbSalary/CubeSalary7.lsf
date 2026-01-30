@@ -1,0 +1,199 @@
+MODULE CubeSalary7;
+
+REQUIRE  Utils, CubeSalary7Coef, CalcTaskSheduler,   DimensNomenkl, DimensPartner,DimensCFO, DimensCostItems;
+//
+NAMESPACE MyBalance;
+
+CLASS CubeSalary7 '7 ПЛАН ФОТ';
+
+
+@createCube(cubeSalary7);
+
+dimCFO                  'ЦФО'                                       = DATA DimCFO(CubeSalary7);
+dimCostItems            'Статья затрат'                             = DATA DimCostItems(CubeSalary7);
+valueSum                'Сумма'                                     = DATA NUMERIC[20,2](CubeSalary7);
+date  'Дата' (CubeSalary7 s) = toDateTime(dateBegin(periodInCalc(period(s), calc(s)))) MATERIALIZED;
+
+INDEX calc(CubeSalary7 i), period(i), dimCFO(i), i;
+ 
+sumSalaryBy(Calc calc, Period p,  DimCFO dimCFO, DimCostItems dimensCostItems) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), period(s), dimCFO(s), dimCostItems(s);
+
+sumSalaryBy(Calc calc, Period p,  DimCFO dimCFO ) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), period(s), dimCFO(s);
+
+isInputCostFormSalary7( DimCostItems i ) =  itemsName(i) == DimCostItemsNamed.salary
+    OR itemsName(i) == DimCostItemsNamed.salary20;
+
+
+isDimCfoCostItemCubeSalary7Other(CalcTask ct, DimCFO p, DimCostItems c) =
+    GROUP MAX TRUE IF isParent(dimCFO(CubeSalary7 s), p) AND checkedCFO(task(ct), dimCFO(s)) AND isParent(dimCostItems(s), c) AND calcTask(s) != ct AND calc(s) == calc(ct);
+
+
+isAllInputCostFormSalary7( DimCostItems i ) =
+    itemsName(i) == DimCostItemsNamed.salary
+        OR itemsName(i) == DimCostItemsNamed.salary20
+        OR itemsName(i) == DimCostItemsNamed.salaryHired
+        OR itemsName(i) == DimCostItemsNamed.salaryTax20
+        OR itemsName(i) == DimCostItemsNamed.salaryTax
+        OR itemsName(i) == DimCostItemsNamed.salaryFund20
+        OR itemsName(i) == DimCostItemsNamed.salaryFund
+        OR itemsName(i) == DimCostItemsNamed.salaryTax9620
+        OR itemsName(i) == DimCostItemsNamed.salaryTax96
+;
+
+isCfoExistCubeSalary7(CalcTask ct, DimCFO cfo) = GROUP MAX TRUE BY calcTask(CubeSalary7 s), dimCFO(s);
+isCostItemsExistCubeSalary7(CalcTask ct, DimCostItems cfo) = GROUP MAX TRUE BY calcTask(CubeSalary7 s), dimCostItems(s);
+
+valueSumCubeSalary7(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost) = 
+    GROUP SUM(valueSum(CubeSalary7 s)) BY calcTask(s), period(s), dimCFO(s), dimCostItems(s);
+
+valueSumCubeSalary7(CalcTask ct, Period p) =
+    GROUP SUM(valueSum(CubeSalary7 s)) BY calcTask(s), period(s);
+
+valueSumCubeSalary7(Calc calc, CalcTask ct, DimCFO dimCFO, DimCostItems dimensCostItems) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), calcTask(s),  dimCFO(s), dimCostItems(s);
+
+valueSumCubeSalary7(Calc calc,   DimCFO dimCFO, DimCostItems dimensCostItems) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), dimCFO(s), dimCostItems(s);
+
+
+valueSumCubeSalary7(Calc calc, CalcTask ct, DimCFO dimCFO) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), calcTask(s),  dimCFO(s);
+
+valueSumCubeSalary7(Calc calc,   DimCFO dimCFO) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), dimCFO(s);
+
+valueSumCubeSalary7(Calc calc, Period p,  DimCFO dimCFO, DimCostItems dimCostItems) =
+    GROUP SUM valueSum(CubeSalary7 s) //IF NOT stageZero(s)  
+    BY calc(s), period(s), dimCFO(s), dimCostItems(s);
+
+
+cubeSalary7id(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost) =
+    GROUP MAX CubeSalary7 s BY calcTask(s), period(s), dimCFO(s), dimCostItems(s);
+
+
+newCubeSalary7(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost) {
+    currentCubeSalary7()  <- cubeSalary7id(ct, p, cfo,  cost);
+    IF NOT currentCubeSalary7() THEN
+        NEW new = CubeSalary7 {
+            calc(new) <- calc(ct);
+            task(new) <- task(ct);
+            dimCostItems(new) <- cost;
+            dimCFO(new) <- cfo;
+            period(new) <- p;
+            currentCubeSalary7() <- new;
+        }
+}
+
+reCalcValue(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost, NUMERIC[20,2] val) ABSTRACT;
+
+setValueSumfCubeSalary7(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost, NUMERIC[20,2] val) {
+    newCubeSalary7(ct, p, cfo,  cost);
+    valueSum(  currentCubeSalary7() ) <- val;
+    reCalcValue(ct, p, cfo,  cost, val);
+}
+
+reCalcValue(CalcTask ct, Period p, DimCFO cfo, DimCostItems cost, NUMERIC[20,2] val) + {
+    FOR calcTask(CubeSalary7Coef k) == ct AND valueKoef(k) >  0 AND  dimCostItems(k) == cost 
+        AND period(k) == p  NOINLINE DO {
+       setValueSumfCubeSalary7(ct, p, cfo, dimCostItemsTune(k) , round(val *  valueKoef(k) / 100.0,2));
+    }
+};
+
+
+reCalcAllValue(CalcTask ct) {
+    // Удалим все расчетное
+    DELETE CubeSalary7 s WHERE s IS CubeSalary7  AND calcTask(s) = ct AND NOT isInputCostFormSalary7(dimCostItems(s));
+     
+    FOR calcTask(CubeSalary7 s) == ct AND s IS CubeSalary7  AND isInputCostFormSalary7(dimCostItems(s))   
+     AND calcTask(CubeSalary7Coef k) == ct AND valueKoef(k) >  0 AND dimCostItems(k) == dimCostItems(s)
+     
+        AND period(k) == period(s) 
+        DO {
+        NEW new = CubeSalary7
+        {
+            calc(new) <- calc(ct);
+            task(new) <- task(ct);
+            dimCostItems(new) <- dimCostItemsTune(k);
+            dimCFO(new) <- dimCFO(s);
+            period(new) <- period(s);
+            currentCubeSalary7() <- new;
+            valueSum( currentCubeSalary7() ) <- round(valueSum(s) * valueKoef(k) / 100.0, 2);
+        }
+        // СТРАХОВЫЕ НА ФОНДЫ БЫЛИ ЗАКОДИРОВАНЫ ФОРМУЛОЙ
+        // ЕСЛИ ЭТО НАЧИСЛЕНЫ ФОНДЫ
+        IF itemsName(dimCostItemsTune(k)) == DimCostItemsNamed.salaryFund  THEN {
+            NEW new = CubeSalary7
+            {
+                calc(new) <- calc(ct);
+                task(new) <- task(ct);
+                dimCostItems(new) <-  getDimCostItemsByItem( DimCostItemsNamed.salaryTax96 );
+                dimCFO(new) <- dimCFO(s);
+                period(new) <- period(s);
+                currentCubeSalary7() <- new;
+                valueSum( currentCubeSalary7() ) <- round(valueSum(s) * valueKoef(k) / 100.0 
+                  *  
+                    (GROUP SUM  valueKoef(CubeSalary7Coef k2)  IF calcTask(k2) == ct 
+                                    AND  itemsName(dimCostItems(k2)) ==  DimCostItemsNamed.salary 
+                                    AND  itemsName(dimCostItemsTune(k2)) ==  DimCostItemsNamed.salaryTax 
+                    )
+                    / 100.0, 2)
+                ;
+            }
+        }
+        IF itemsName(dimCostItemsTune(k)) == DimCostItemsNamed.salaryFund20  THEN {
+            NEW new = CubeSalary7
+            {
+                calc(new) <- calc(ct);
+                task(new) <- task(ct);
+                dimCostItems(new) <-  getDimCostItemsByItem( DimCostItemsNamed.salaryTax9620 );
+                dimCFO(new) <- dimCFO(s);
+                period(new) <- period(s);
+                currentCubeSalary7() <- new;
+                valueSum( currentCubeSalary7() ) <- round(valueSum(s) * valueKoef(k) / 100.0  
+                    *  
+                            (GROUP SUM  valueKoef(CubeSalary7Coef k2)  IF calcTask(k2) == ct
+                                AND  itemsName(dimCostItems(k2)) ==  DimCostItemsNamed.salary20
+                                AND  itemsName(dimCostItemsTune(k2)) ==  DimCostItemsNamed.salaryTax20
+                                )
+                                / 100.0, 2)
+                ;
+            }
+        }
+    
+       }
+};
+
+isValueSumNotCorrect(CalcTask ct, NUMERIC[20,2] val,Period p, DimCFO cfo, DimCostItems cost) =
+    NOT 
+   (isInputCostFormSalary7(cost)
+    OR 
+    NOT isInputCostFormSalary7(cost) AND
+round(val,0) == 
+            round(
+                (GROUP SUM (valueSum(CubeSalary7 b)  * valueKoef(CubeSalary7Coef k) / 100.0)
+                         IF calcTask(k) == ct AND calcTask(b) == ct
+                          AND cost == dimCostItemsTune(k)
+                          AND dimCostItems(b) == dimCostItems(k)
+                          AND cfo = dimCFO(b)
+                          AND period(k) = p 
+                          AND period(b) = p 
+                )
+            ,0)
+   )
+;
+ 
+
+// список статей - коэфф
+// ввод по 2 статьям - статьи фильтруем ссылками константными, 
+// набор статей для коэфф фильтруем набором
+// соответствие  - делаем пересечением статьи затрта на статью затрат
+
+// результат расчета публикуем плоски

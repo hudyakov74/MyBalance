@@ -1,8 +1,8 @@
 MODULE DimensPartner;
 
-REQUIRE TaskTune, Utils,Dimens,ExtFormRequestList;
+REQUIRE TaskTune, Utils,Dimens,ExtFormRequestList; // ,DimSalesRegion, DimPartnerFinGroup;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimPartner 'Контрагенты';
 TABLE dimPartner(DimPartner);
@@ -13,8 +13,27 @@ FORM formDimPartnerTreeList 'Контрагенты';
 @configDimWO(DimPartner);
 
 // МЕСТО для доп. свойств
+// dimRegion  'Регион продаж'              = DATA DimSalesRegion(DimPartner);
+// dimPartnerFinGroup 'Группа покупателей' = DATA DimPartnerFinGroup(DimPartner);
+// 
+//EXTEND FORM formDimPartnerlist
+//PROPERTIES 
+//    dimRegion 'Регион продаж' = name(dimRegion(d)),
+//    dimPartnerFinGroup  'Группа покупателей'  = name(dimPartnerFinGroup(d));
+//
+// DESIGN formDimPartnerlist { 
+//    PROPERTY (dimRegion){charWidth = 12;}
+// }
+// 
+// 
+// EXTEND FORM  formDimPartnerCard
+// PROPERTIES 
+//    code(c),   
+//    dimRegion 'Регион продаж' = name(dimRegion(c)),
+//    dimPartnerFinGroup  'Группа покупателей'  = name(dimPartnerFinGroup(c))
+// ;  
  
-// добавление списка в CalcComposition
+ // добавление списка в CalcComposition
 TABLE dimPartnerTask(Task,DimPartner);
 
 

@@ -1,0 +1,196 @@
+MODULE ImportSalary7;
+
+REQUIRE  FormSalary7All, ExtUtil, ExtTypeRequest;//, DimItanStructure, DimItanConstant, ImportSaleFactF51, ImportSaleFactF53, ImportSaleFactF54;
+
+NAMESPACE MyBalance;
+
+EXTEND CLASS TypeRequest {
+    // загрузка 44
+    typeSalary7     'Импорт Итан. 7.1 Зарплата план'
+}
+
+
+descrMyBalance(TypeRequest d) += WHEN  d ==  TypeRequest.typeSalary7 THEN
+    ' Импорт Итан. 7.1 Зарплата план
+        - ордер из итана берется только указанный в задаче
+    
+      ';
+
+
+functionsImportFormSalary7 (CalcTask ct, ExtRequest extR) + {
+//
+//    IF type( extR ) == TypeRequest.typeSalary7 THEN {
+//        headers('Authorization') <- passwordBasicAuth(extSource(extR));
+//
+//        LOCAL typeScenario_ = DimItanConstantNamed();
+//        typeScenario_() <-  itanConstant(scenario(calc(ct)));
+//        IF   typeScenario_() THEN {
+//            LOCAL strScenarioFilter = STRING ();
+//            LOCAL strOrderListFilter = STRING ();
+//            strScenarioFilter()  <- GROUP CONCAT uuidInit(DimItanConstant c) IF itemsName(c) == typeScenario_(), '%par1%' ORDER c;
+//            strOrderListFilter() <- GROUP CONCAT uuidInit(DimItanStructure c) IF
+//                //itemsName(c) == DimItanStructureNamed.idItantargetedCosts30_2_6
+//                //AND (NOT dimItanStructure(task(ct)))
+//                //OR
+//                dimItanStructure(task(ct)) == c // Если прямо указан ордер дерева - то берем только его
+//                , '%par1%'
+//            ORDER c;
+//
+//            //1.     
+//            odataGet(extR,
+//                (  CONCAT '', textImportSaleFactF51() // Document_УБИ_БЮ_БюджетныйОрдер
+//                    //+ '&$filter=' 
+//                    // + ' and Элемент_Key eq guid\''               + uuidInit(getDimItanStructureByItem(DimItanStructureNamed.idItanFactCostCfo)) +'\''
+//                    , ' and Бюджет/БюджетнаяМодель_Key eq guid\''+ uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idMainMakfaModel))     +'\''
+//                    , ' and Бюджет/ДатаНачДанных ge datetime\'' + to1cDate0000(calcDateBegin(calc(ct))) + '\''
+//                    , ' and Бюджет/ДатаКонДанных le datetime\'' + to1cDate2359(calcDateEnd(calc(ct)))   + '\''
+//                    , 'and ('
+//                    , ' Бюджет/СегментДанных_Key eq guid\'' + replace(strScenarioFilter(),'%par1%','\' or Бюджет/СегментДанных_Key eq guid\'') + '\''
+//                    , ')'
+//                    , 'and ('
+//                    , ' Элемент_Key eq guid\'' + replace(strOrderListFilter(),'%par1%','\' or Элемент_Key eq guid\'') + '\''
+//                    , ')'
+//                    )
+//                , 'formImportSaleFactF51'
+//            );
+//            IMPORT formImportSaleFactF51 JSON FROM resultFile();
+//            FOR imported(INTEGER n) DO importedF51(n) <- TRUE;
+//            IF debugMode(extR) THEN SHOW formImportSaleFactF51 DOCKED NOWAIT;
+//
+//            //2.1 поднимем нужные классификаторы 
+//            LOCAL strAnalitListFilter = STRING ();
+//            strAnalitListFilter()  <- GROUP CONCAT uuidInit(DimItanConstant c), '%par1%'
+//                IF     itemsName(c) = DimItanConstantNamed.idTypeAnalitCfo
+//                    OR itemsName(c) = DimItanConstantNamed.idTypeAnalitCostItems
+//            //        OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPriceGroup
+////                    OR itemsName(c) = DimItanConstantNamed.idTypeAnalitNomenkl
+////                    OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPartner
+////                    OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPartnerSegment
+//                      OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPeriod 
+//            ORDER c
+//            ;
+//
+//            odataGet(extR,
+//                textImportSaleFactF54() + '&$filter=((Owner_Key eq guid\'' + replace(strAnalitListFilter(),'%par1%','\') or (Owner_Key  eq guid\'') + '\'))'
+//                ,'formImportSaleFactF54'
+//
+//            );
+//            IMPORT formImportSaleFactF54 JSON FROM resultFile();
+//            FOR imported(INTEGER n) DO importedF54(n) <- TRUE;
+//            IF debugMode(extR) THEN SHOW formImportSaleFactF54 DOCKED NOWAIT;
+//
+//            //
+////            // =========================
+////            // 4 ценовая
+////            // =========================          
+////            importStrDimNomenklCostGroup    (INTEGER i_)  <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPriceGroup));
+////            importUuidStrDimNomenklCostGroup(INTEGER i_)  <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPriceGroup));
+////            syncByUuidDimNomenklCostGroup();
+////
+////            // =========================
+////            // 6 группа клиентов
+////            // =========================          
+////            importStrDimPartnerFinGroup    (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPartnerSegment));
+////            importUuidStrDimPartnerFinGroup(INTEGER i_)    <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPartnerSegment));
+////            syncByUuidDimPartnerFinGroup();
+//
+//            // =========================
+//            //  ЦФО
+//            // =========================          
+//            importStrDimCFO    (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//            importUuidStrDimCFO(INTEGER i_)    <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//            syncByUuidDimCFO();
+//
+//            // =========================
+//            //  статьи затрат
+//            // =========================          
+//            importStrDimCostItems    (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//            importUuidStrDimCostItems(INTEGER i_)    <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//            syncByUuidDimCostItems();
+////
+////            // =========================
+////            //  клиенты
+////            // =========================          
+////            importStrDimPartner    (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPartner));
+////            importUuidStrDimPartner(INTEGER i_)    <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPartner));
+////            syncByUuidDimPartner();
+////
+////            // =========================
+////            //  номенклатура
+////            // =========================          
+////            importStrDimNomenkl     (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitNomenkl));
+////            importUuidStrDimNomenkl(INTEGER i_)    <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitNomenkl));
+////            syncByUuidDimNomenkl();
+//
+//            // ОСНОВНОЙ ИМПОРТ      
+//            strOrderListFilter() <- GROUP CONCAT ipmF51ref_Key(INTEGER c), '%par1%' ORDER c; // фильтр: выбрать документы с конкретнымии uid
+//            LOCAL strCfoListFilter = STRING (); // если в ордере обозначен список подразделений - добавляем его
+//            //   strCfoListFilter()  <- GROUP CONCAT uuidInit(DimCFO c), '%par1%' ORDER c IF checkedCFO(task(ct), c); 
+//
+//            IF importedF51(0) THEN {
+//                odataGet(extR,
+//                    textImportSaleFactF53(calcDateBegin(calc(ct))) // Document_УБИ_БЮ_БюджетныйОрдер
+//                        //+ ' and (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\''+ipmF51ref_Key(0)+'\') '
+//                        + ' and ('
+//                        + ' (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'' + replace(strOrderListFilter(), '%par1%', '\') or (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'') + '\')'
+//                        + ')'
+//                        + (IF strCfoListFilter() THEN ' and ( (Измерение2_Key eq guid\'' + replace(strCfoListFilter(), '%par1%', '\') or (Измерение2_Key  eq guid\'') + '\') )' ELSE '')
+//                    ,
+//                    'formImportSaleFactF53'
+//                );
+//                IMPORT formImportSaleFactF53 JSON FROM resultFile();
+//                FOR imported(INTEGER n) DO importedF53(n) <- TRUE;
+//                ipmF53value(INTEGER i_) <- toNumeric(ipmF53vznachieniie(i_));
+//                IF debugMode(extR) THEN SHOW formImportSaleFactF53 DOCKED NOWAIT;
+//
+//
+//                 DELETE CubeSalary7 d WHERE d  IS CubeSalary7 AND calcTask(d) == ct;
+//                 DELETE CubeSalary7Coef d WHERE d  IS CubeSalary7Coef AND calcTask(d) == ct;
+////
+////                //
+////                //            // сумма к распределению      'Показатель, 30.2.6 Адресные затраты. Общие суммы'ipmF53vpokazatiel_Key
+//                FOR [GROUP MAX TRUE  IF   ipmF53value(INTEGER i1) > 0.0 AND ipmF53TableID(i1) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablSalary7Coef))
+//                BY ipmF53dim4_Key(i1), ipmF53dateData(i1)
+//                   ]
+//                    ( STRING dCost, DATETIME d)
+//                    AND periodType(PeriodCalendar cl) = periodType(calc(ct)) AND dateBegin(cl) <= toDate(d) AND dateEnd(cl) >= toDate(d)
+//                    
+//                    NEW  n = CubeSalary7Coef DO {
+//                    calc(n) <- calc(ct);
+//                    task(n) <- task(ct);
+//                    period(n) <- period(cl);
+//                    dimCostItemsTune(n) <- GROUP MAX importDimCostItems (INTEGER i) IF ipmF54ref_Key(i) == dCost;
+//                    dimCostItems(n)     <- GROUP MAX DimCostItems c IF filterFormSalary7lev1(c, (GROUP MAX importDimCostItems (INTEGER i) IF ipmF54ref_Key(i) == dCost) );
+//
+//                    valueKoef(n) <- (GROUP SUM ipmF53value(INTEGER i)
+//                        IF ipmF53dim4_Key(i) == dCost AND ipmF53dateData(i) == d
+//                            AND ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablSalary7Coef))
+//                        ) ;
+//                }
+//                
+//                FOR [GROUP MAX TRUE  IF   ipmF53value(INTEGER i1) > 0.0 AND ipmF53TableID(i1) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablSalary7))
+//                BY ipmF53dim3_Key(i1), ipmF53dim4_Key(i1), ipmF53dateData(i1)
+//                ]
+//                    ( STRING dCfo, STRING dCost, DATETIME d)
+//                    AND periodType(PeriodCalendar cl) = periodType(calc(ct)) AND dateBegin(cl) <= toDate(d) AND dateEnd(cl) >= toDate(d)
+//
+//                    NEW  n = CubeSalary7 DO {
+//                    calc(n) <- calc(ct);
+//                    task(n) <- task(ct);
+//                    period(n) <- period(cl);
+//                    dimCFO(n)           <- GROUP MAX importDimCFO (INTEGER i) IF ipmF54ref_Key(i) == dCfo;
+//                    dimCostItems(n)     <- GROUP MAX importDimCostItems (INTEGER i) IF ipmF54ref_Key(i) == dCost;
+//
+//                    valueSum(n) <- (GROUP SUM ipmF53value(INTEGER i)
+//                        IF  ipmF53dim3_Key(i) == dCfo AND ipmF53dim4_Key(i) == dCost AND ipmF53dateData(i) == d
+//                            AND ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablSalary7))
+//                        ) ;
+//                }
+//            }
+//        }
+//        ELSE
+//            {
+//                MESSAGE 'не заполнена константа в сценариях';
+//            }
+//    }
+};

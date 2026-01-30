@@ -1,18 +1,23 @@
 MODULE ExtRequest;
 
-REQUIRE ExtSource,ExtSectionRequest,ExtTypeRequest;
+REQUIRE ExtSource, ExtSectionRequest, ExtTypeRequest, Utils;
 
-NAMESPACE ExtSystem; 
+NAMESPACE MyBalance;
+
+
 
 CLASS  ExtRequest 'Процедуры импорта';
 TABLE extRequest(ExtRequest);
-section 'Секция' = DATA SectionRequest(ExtRequest)  CHARWIDTH 10;
-type 'Тип импорта' = DATA TypeRequest(ExtRequest) CHARWIDTH 10;
+section 'Секция' = DATA SectionRequest(ExtRequest)  CHARWIDTH 10; // Секция привязана жестко к форме - можно было тип формы использовать
+type 'Тип импорта' = DATA TypeRequest(ExtRequest) CHARWIDTH 10; // Тип определяет конкретную операцию  
 name 'Наименование' = DATA STRING[150](ExtRequest) IN id CHARWIDTH 20;
 extSource 'Источник' = DATA ExtSource (ExtRequest)   CHARWIDTH 10;
 dimFirm 'Организация' = DATA DimFirm(ExtRequest);
 
 debugMode 'отладка' = DATA INTEGER (ExtRequest);
+
+currentExtRequest = DATA LOCAL NESTED ExtRequest();
+
 
 CLASS  ExtRequestDebug 'отладка';
 extRequest    = DATA ExtRequest(ExtRequestDebug) NONULL IN id CHARWIDTH 1;
@@ -20,6 +25,9 @@ name 'Имя'    =  DATA STRING (ExtRequestDebug);
 reqResult 'Данные ответа' = DATA STRING (ExtRequestDebug);
 
 
+dimErPermission 'Доступ' = DATA BOOLEAN (ExtRequest, UserRole);
+hasCurrentUserDimErPermission(ExtRequest r) = GROUP MAX TRUE IF dimErPermission(r, UserRole ur) AND has(currentUser(),ur);
+/// FILTERS hasCurrentUserDimErPermission(Er) OR NOT dimFirm(c)
 CLASS  ExtRequestParam 'Процедуры импорта';
 TABLE extRequestPAram(ExtRequestParam);
 extRequest    = DATA ExtRequest(ExtRequestParam) NONULL IN id CHARWIDTH 1;
@@ -30,6 +38,14 @@ valueStr 'Параметр строка' = DATA STRING(ExtRequestParam) CHARWIDT
 ValueDate 'Параметр дата' = DATA DATE(ExtRequestParam) CHARWIDTH 20;
 ValueInt 'Параметр целое' = DATA INTEGER (ExtRequestParam) CHARWIDTH 20;
 ValueNum 'Параметр число' = DATA NUMERIC[18,4](ExtRequestParam) CHARWIDTH 20;
+
+
+extRequestDescription(SectionRequest sr) =
+    (GROUP 
+        CONCAT '* Процедура импорта: '+name(ExtRequest n AS ExtRequest)+ '\n СЕКЦИЯ' + (CONCAT '\n ', staticCaption(sr), name(extSource(n)), name(dimFirm(n))) + ':\n' + (OVERRIDE descrMyBalance(type(n)),'')    
+        IF section(n) == sr,'\n=====\n' 
+        ORDER name(n));
+
 
 FORM extRequestList 'Процедуры и операции'
 OBJECTS er = ExtRequest
@@ -48,14 +64,24 @@ FILTERS   extRequest(param) = er
 OBJECTS s = ExtRequestDebug  
 PROPERTIES  name(s), 
     // reqResult(s),
-                loadFromFile = {
+                loadFromFile 'загрузить результат' = {
                      INPUT f = FILE  DO {
                          fileToString(f);
                          reqResult(s) <- resultString();
                      }
                 },
+        saveToFile 'выгрузить результат' = {
+            stringToFile(reqResult(s));     
+       WRITE  CLIENT DIALOG resultFile() TO 'req.json' ;
+        },
     NEW (s), DELETE (s), EDIT (s)
-FILTERS   extRequest(s) = er   
+FILTERS   extRequest(s) = er
+
+    OBJECTS ur = UserRole 
+    PROPERTIES 
+    dimErPermission(er, ur),
+    name(ur) READONLY
+    
     
 LIST ExtRequest OBJECT er
 ; 
@@ -67,10 +93,21 @@ EDIT  ExtRequestDebug OBJECT s;
 DESIGN formExtRequestDebug {PROPERTY (reqResult(s)){charHeight=20;}}
     
 
+  
 
 
 
 DESIGN extRequestList {
+    OBJECTS {
+        NEW tabPAnel{
+            tabbed = TRUE;
+            fill = 0.2;
+            MOVE BOX (param) {fill = 1; }
+            MOVE BOX (s) {fill = 1; }
+            MOVE BOX (ur) {fill = 1; }
+        }
+    }
+    
     PROPERTY (section) { charWidth = 5; }
     PROPERTY (type) { charWidth = 5; }
     PROPERTY (nameExtSrc) { charWidth = 5; }
@@ -85,10 +122,19 @@ odataGet(ExtRequest er, STRING req, STRING reqName) {
         stringToFile(GROUP MAX reqResult(ExtRequestDebug ss) IF reqName == name(ss) AND extRequest(ss) == er);
     }   
     ELSE TRY {
-         EXTERNAL HTTP GET (CONCAT '',conectString(extSource(er)), req) HEADERS headers TO resultFile;
+        IF debugMode(er) THEN printToLog(CONCAT ',',req,toChar(currentDateTimeMillis(), 'YYYY-MM-DD HH24:MI:SS.MS'));
+        
+        EXTERNAL HTTP GET (CONCAT '',conectString(extSource(er)), replace(req,'\n','')  ) HEADERS headers TO resultFile;
+        
+        IF debugMode(er) THEN
+            {
+                printToLog(CONCAT ',','Завершен',toChar(currentDateTimeMillis(), 'YYYY-MM-DD HH24:MI:SS.MS'));
+            }
+        MESSAGE  statusHttp() NOWAIT LOG;
         
          IF debugMode(er) == 1 AND reqName != '' THEN {
-             printToLog(CONCAT '',conectString(extSource(er)), req);
+             
+             printToLog(CONCAT '',conectString(extSource(er)), replace(req,'\n',''));
              fileToString(resultFile());
              NEWSESSION NESTED (resultString) {
                 LOCAL d = ExtRequestDebug();
@@ -105,6 +151,7 @@ odataGet(ExtRequest er, STRING req, STRING reqName) {
     }
     CATCH {
          printToLog(CONCAT ', ','http return', statusHttp(), req);
+         MESSAGE  CONCAT ', ','Ошибка запроса (если 401 проверь headers(Authorization) <-)',reqName,statusHttp() LOG;
     }
     
-}
+} 

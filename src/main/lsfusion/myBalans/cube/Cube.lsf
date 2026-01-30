@@ -1,5 +1,5 @@
 // убрал - упростил генерацию
 MODULE Cube;
 
-NAMESPACE Cube;
+NAMESPACE MyBalance;
  

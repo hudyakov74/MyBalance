@@ -6,16 +6,27 @@ import lsfusion.server.logics.action.controller.context.ExecutionContext;
 import lsfusion.server.logics.classes.ValueClass;
 import lsfusion.server.logics.property.classes.ClassPropertyInterface;
 import lsfusion.server.physics.dev.integration.internal.to.InternalAction;
+import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFCreationHelper;
+import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.streaming.SXSSFCreationHelper;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.lang.Math.abs;
 
@@ -85,6 +96,19 @@ public class XlsCreateRowOutlineXls extends InternalAction {
         // сам уровень берется как abs от числа в ячейке
         Integer allLevelsRequired = (Integer) getParam(5, context); // инициация всех уровней согласно порядковому номеру уровня, или можно пропускать
         Integer columnForTab = (Integer) getParam(6, context); //  колонка стиль которой будем оформлять со смещением
+        Integer fastFilterFirstRow;
+        try {
+            fastFilterFirstRow = (Integer) getParam(7, context); //  строка с которой активируем быстрые фильтры
+        } catch (java.lang.ArrayIndexOutOfBoundsException e) {
+            fastFilterFirstRow = 0;
+        };
+        Integer fastFilterLastColumn;
+        try {
+            fastFilterLastColumn = (Integer) getParam(8, context); //  колонка до которой активируем быстрые фильтры
+        } catch (java.lang.ArrayIndexOutOfBoundsException e) {
+            fastFilterLastColumn = 0;
+        };
+
 
         Map<Integer, Map<Integer, Integer>> ol = new HashMap<>();
         for (int i = 0; i < 20; i++) ol.put(i, new HashMap<>());
@@ -118,6 +142,7 @@ public class XlsCreateRowOutlineXls extends InternalAction {
             //--
 
             for (Sheet sheet : workbook) {
+                if (fastFilterLastColumn != null && fastFilterLastColumn > 0) sheet.setAutoFilter(new CellRangeAddress(fastFilterFirstRow, sheet.getLastRowNum() , 0, fastFilterLastColumn));
                 //for (Row removingRow : sheet)
                 for (rowIndex = 0; sheet.getLastRowNum() > rowIndex; rowIndex++)
                 {   removingRow = sheet.getRow(rowIndex);

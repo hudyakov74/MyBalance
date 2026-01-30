@@ -2,7 +2,7 @@ MODULE DimCategory;
  
 REQUIRE CoreMenu,  Utils;
 
-NAMESPACE Dimens; 
+NAMESPACE MyBalance; 
 //? === Категории === 
 // это справочник наименований категорий к которому можно привязать любой объект (сделано для справочников)
 // связку делаем через объявление композиции boolean??

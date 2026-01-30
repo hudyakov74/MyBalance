@@ -1,0 +1,62 @@
+MODULE ActionSalary7;
+ 
+REQUIRE FormSalary7, PeriodCompare;
+
+NAMESPACE MyBalance;
+
+
+@createLocalMenuOperation2(CubeSalary7, formSalary7, TypeTask.Salary7);
+
+cubeSalary7Copy(CalcTask calcTask, Calc retValue) {
+    DELETE CubeSalary7 c  WHERE c IS  CubeSalary7 AND  calc(c) == calc(calcTask) AND task(c) == task(calcTask);
+    DELETE CubeSalary7Coef c WHERE c IS  CubeSalary7Coef AND  calc(c) == calc(calcTask) AND task(c) == task(calcTask);
+    
+    FOR CubeSalary7 c AS CubeSalary7 AND calc(c) = retValue
+        AND ( period1(INTEGER periodCal) AND period2(periodCal) )
+        AND period(c) == period(period1(periodCal)) // период источника по таблице
+        //  AND type(task(c)) == type(task(calcTask))
+        AND (task(c)) == (task(calcTask))  
+        NEW n = CubeSalary7 DO {
+            task(n) <- task(calcTask);
+            period(n) <- period( period2(periodCal) );
+            calc(n) <- calc(calcTask);
+            dimCFO(n) <- dimCFO(c) ;
+            dimCostItems(n) <- dimCostItems(c) ;
+            valueSum(n) <- valueSum(c) ;
+    }
+    
+    FOR CubeSalary7Coef c AS CubeSalary7Coef AND calc(c) = retValue
+        AND ( period1(INTEGER periodCal) AND period2(periodCal) )
+        AND period(c) == period(period1(periodCal)) // период источника по таблице
+        //  AND type(task(c)) == type(task(calcTask))
+        AND (task(c)) == (task(calcTask))
+        NEW n = CubeSalary7Coef DO {
+            task(n) <- task(calcTask);
+            period(n) <- period( period2(periodCal) );
+            calc(n) <- calc(calcTask);
+            dimCostItems(n) <- dimCostItems(c) ;
+            dimCostItemsTune(n) <- dimCostItemsTune(c) ;
+            valueKoef(n) <- valueKoef(c) ;
+    }
+};
+
+
+
+operationCubeSalary7 (CalcTask ct,  MenuOperationsCubeSalary7 mn) + {
+    CASE
+        WHEN mn  = MenuOperationsCubeSalary7.copy  THEN{
+            DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                    cubeSalary7Copy(ct, retValue);
+                }
+            }
+        }
+};
+ 
+descrMyBalance(LogicCalc d) += WHEN d == MenuOperationsCubeSalary7.copy THEN
+    ' Копирование   ордера!!!!
+';
+
+
+@bulkTaskCopy(TypeTask.Salary7, cubeSalary7Copy);
+ 

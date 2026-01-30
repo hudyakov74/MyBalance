@@ -1,8 +1,8 @@
 MODULE DimensCostItems;
 
-REQUIRE TaskTune,Dimens,TypeCostItem;
+REQUIRE TaskTune, Dimens, TypeCostItem; //, DimCfu, DimBdrItemGroup, DimBdrItem;
 
-NAMESPACE Dimens;
+NAMESPACE MyBalance;
 
  // создание класса и таблицы хранения
 CLASS DimCostItems 'Статьи затрат' ;
@@ -28,14 +28,74 @@ checkedCostItems 'выбрано' = DATA BOOLEAN  (Task,DimCostItems) TABLE dimC
 // специфичные реквизиты для данного справочника
 refKey 'Ref_Key' = DATA STRING[36] (DimCostItems) IN id INDEXED;
 doNotUseImportItem 'Не импортировать статью из буфера' =  DATA BOOLEAN (DimCostItems);
-typeCostItem 'Группа затрат' = DATA TypeCostItem(DimCostItems);
+typeCostItem 'Тип затрат' = DATA TypeCostItem(DimCostItems);
 variableCost 'Переменные затраты' = DATA BOOLEAN (DimCostItems);
-EXTEND FORM formDimCostItemslist
-PROPERTIES typeCostItem = name(typeCostItem(d)), variableCost(d), doNotUseImportItem(d)
+//collapsedToBdr 'Сворачивать в бдр' = DATA BOOLEAN (DimCostItems);
+
+//dimBdrItem              'Статьи калькуляции'    = DATA DimBdrItem       (DimCostItems);
+//dimBdrItemGroup         'Группы статей БДР'     = DATA DimBdrItemGroup  (DimCostItems);
+
+EXTEND FORM formDimCostItemsCard
+PROPERTIES(c) doNotUseImportItem,typeCostItem,variableCost;//,dimBdrItem,dimBdrItemGroup
 ;
+
+EXTEND FORM formDimCostItemslist
+PROPERTIES 
+    typeCostItem       'Группа затрат'      = name(typeCostItem(d)), 
+    variableCost(d), //collapsedToBdr(d),
+    doNotUseImportItem(d)
+//        ,
+//    dimBdrItem        'Статьи БДР'          = name(dimBdrItem(d)),
+//    dimBdrItemGroup   'Группы статей БДР'   = name(dimBdrItemGroup(d))
+;
+DESIGN formDimCostItemslist{
+    PROPERTY (typeCostItem)     {charWidth = 15;}
+  
+//    PROPERTY (dimBdrItem)       {charWidth = 15;}
+//    PROPERTY (dimBdrItemGroup)  {charWidth = 15;}
+}
 
 // функции имен уровней иерархии - для отчетов
 dimCostItemsLev1 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 1);
 dimCostItemsLev2 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 2);
 dimCostItemsLev3 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 3);
 dimCostItemsLev4 (DimCostItems s) =              (GROUP  MAX DimCostItems parent  IF   (s) == n AND levelInt( n, parent) AND levelNumInt(parent) == 4);
+
+
+EXTEND CLASS DimCostItemsNamed {
+    // ссылки зп - хитровыдуманная связка в итане, для рабоыт алгоритма загрузки  
+    mainTurnColapse 'Основная сверточная статья',
+    salary 'Заработная плата',
+    salary20 'Заработная плата, производство (20 счет)',
+    salaryHired 'Услуги наемного персонала',
+    salaryFund 'Резерв на отпуск, годовая премия',
+    salaryFund20 'Резерв на отпуск, годовая премия, производство (20 счет)',
+    salaryTax 'Страховые взносы с ЗП осн.',
+    salaryTax20 'Страховые взносы с ЗП производство (20 счет)',
+    salaryTax96 'Страховые взносы 96 с ЗП осн.',
+    salaryTax9620 'Страховые взносы 96 с ЗП производство (20 счет)',
+    saleBonus   'Премии, скидки покупателям (Бонусы)',
+    saleMarket  'Информационные, маркетинговые услуги...',
+    saleMerch   'Услуги мерчендайзинга',
+    saleStrateg 'Стратегическое',
+    saleAd      'Затраты на рекламу',
+    delivery  'Доставка',
+    deliveryInt  'Доставка Внутренняя',
+    deliveryRzd  'Доставка Доп.Расходы РЖД',
+    amort20 'Амортизация 20 счет',
+    amort   'Амортизация',
+    costPurchasedGoods 'Себестоимость покупного товара',
+
+    interestOnLoans 'Проценты по займам и кредитам', 
+     
+    commercialAddresSertific   'Расходы на сертификацию,ГХИ, Инспекции,ТПП (адресные)',
+    commercialAddresPalets   'Расходы на внешнюю упаковку (поддоны) (адресные)',
+    commercialAddresCustoms   'Таможенные платежи и сборы (адресные)',
+    commercialAddresInsurance   'Страхование лимита дебиторской задолженности (адресные)',
+    
+    raw 'Сырье',
+    pack 'Тара',
+    deffective 'Брак' 
+    
+}
+

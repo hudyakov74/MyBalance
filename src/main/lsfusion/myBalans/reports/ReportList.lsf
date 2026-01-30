@@ -1,11 +1,23 @@
 MODULE ReportList;
 
-REQUIRE CalcTask, ReportClassList, ReportGroupTable, TypeTask, MainMenu, DimensFirm;
+REQUIRE CalcTask, ReportClassList,CalendarConstant, ReportGroupTable, TypeTask, MainMenu, DimensFirm, Time;
  
-NAMESPACE Reports;
+NAMESPACE MyBalance;
 fileXLS = DATA LOCAL EXCELFILE();
-// xlsCreateRowOutlineV2(file,NegativeRed,fixColumn,fixRow, columnNumLevel, flagNegativeLevelHide, columnLevelTabbed)
-xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
+fileXLSError = DATA LOCAL TEXT();
+
+//параметры xlsCreateRowOutlineV2 
+//                        0              1           2      3               4                   5  
+// xlsCreateRowOutlineV2(file, NegativeRed, fixColumn, fixRow, columnNumLevel,  allLevelsRequired, 
+//6                         7                   8                    9                    10             11
+//columnForTab, columnTreeIndexIndention, fastFilterFirstRow, fastFilterLastColumn, columnGroupIndexRow, deleteModeRow)
+
+xlsDeleteFirstLines 'Удалить строки сверху' INTERNAL 'XlsDeleteFirstLines' (EXCELFILE, STRING);
+                                                                                                      // 1       2        3          4       5          6        7        8       9          10     11
+xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER,   INTEGER);
+xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER,   INTEGER, INTEGER, INTEGER, INTEGER);
+xlsCreateRowOutlineV2 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineV2' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER,   INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER);
+
 xlsCreateRowOutlineXls 'Добавление сворачивающихся групп' INTERNAL 'XlsCreateRowOutlineXls' (EXCELFILE, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER); 
 xlsMergeCorrect 'Корректировка после mergeExcel' INTERNAL 'XlsMergeCorrect'  (EXCELFILE, EXCELFILE);
 // СПИСОК ОТЧЕТОВ

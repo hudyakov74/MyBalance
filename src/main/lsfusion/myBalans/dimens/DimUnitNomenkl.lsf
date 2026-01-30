@@ -2,7 +2,7 @@ MODULE DimUnitNomenkl;
  
 REQUIRE Dimens;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 //
 
 CLASS DimUnitNomenkl 'Единицы измерения';

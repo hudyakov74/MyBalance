@@ -2,7 +2,7 @@ MODULE PeriodCalendar;
 
 REQUIRE PeriodType, Period, Utils;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 CLASS PeriodCalendar  'Календарь периода';
 TABLE periodCalendar (PeriodCalendar);
@@ -25,7 +25,7 @@ periodIfInDateRange 'есть ли период в диапазоне дат' (P
                                           AND  period(c) == p; 
 periodCalendarIfInDateRange 'есть ли период в диапазоне дат' (Period p, DATE d1, DATE d2) = 
                                     GROUP MAX PeriodCalendar c IF d1 <= dateBegin(c) AND d2 >= dateEnd(c)
-                                          AND  period(c) == p; 
+                                          AND  period(c) == p;
 
 periodGetByDate(PeriodType pt, DATE d) = GROUP LAST PeriodCalendar c AS PeriodCalendar 
                                      IF d>=dateBegin(c) AND d<=dateEnd(c) AND periodType(c) == pt  ORDER DESC dateBegin(c);
@@ -53,7 +53,6 @@ periodPosition(PeriodCalendar p, DATE dbegin) =
 
 EXTEND FORM periodForm
 OBJECTS pCalendar = PeriodCalendar
-
 PROPERTIES (pCalendar)  dateBegin, dateEnd, workingDays, NEW ,DELETE 
 PROPERTIES nameP 'период' = namePeriod(period(pCalendar))
 ORDERS dateBegin(pCalendar)
@@ -61,20 +60,31 @@ FILTERS periodType(pCalendar) = g
 ;
 
 DESIGN periodForm {
-OBJECTS {
-NEW panel  {
-         fill = 1; 
-         align  = STRETCH;
-         MOVE   BOX (g); 
-            
-         NEW calendarPeriod  {        
-            tabbed = TRUE;
-            fill = 1; 
+    OBJECTS {
+        NEW panel  {
+            fill = 1;
             align  = STRETCH;
-            MOVE   BOX (p); 
-            MOVE   BOX (pCalendar);
-         }
-     } 
-     }
+            MOVE   BOX (g);
 
+            NEW calendarPeriod  {
+                tabbed = TRUE;
+                fill = 1;
+                align  = STRETCH;
+                MOVE   BOX (p);
+                MOVE   BOX (pCalendar);
+            }
+        }
+    }
+}
+
+
+FORM periodFormList
+    OBJECTS pCalendar = PeriodCalendar
+    PROPERTIES nameP 'период' = namePeriod(period(pCalendar))
+    PROPERTIES (pCalendar)  dateBegin, dateEnd
+    ORDERS dateBegin(pCalendar)
+LIST PeriodCalendar OBJECT pCalendar
+;
+DESIGN periodFormList {
+    PROPERTY (nameP){charWidth = 15;}
 }

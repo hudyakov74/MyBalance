@@ -2,8 +2,7 @@ MODULE CalcSequence;
  
 REQUIRE  Calc,ExtRequest;
 
-NAMESPACE Budget;
-
+NAMESPACE MyBalance;
 CLASS  CalcSequence 'Последовательность расчета';
 TABLE  calcSequence(CalcSequence);
 name 'Наименование' = DATA STRING[100] (CalcSequence) CHARWIDTH 10 IN id;

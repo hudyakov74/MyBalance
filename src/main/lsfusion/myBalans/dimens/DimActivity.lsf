@@ -2,7 +2,7 @@ MODULE DimActivity;
   
 REQUIRE TaskTune, Dimens, DimensCFO, DimensCostItems;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimActivity 'Виды деятельности';
 TABLE dimActivity(DimActivity);

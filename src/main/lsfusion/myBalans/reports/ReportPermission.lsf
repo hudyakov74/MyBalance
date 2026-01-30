@@ -2,5 +2,5 @@ MODULE ReportPermission;
 
 REQUIRE ReportList,Security;
 
-NAMESPACE Reports;
+NAMESPACE MyBalance;
 

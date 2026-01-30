@@ -1,0 +1,79 @@
+MODULE FormUppCostPlan;
+
+REQUIRE  Utils, CubeCostFactImport, ExtTypeRequest, CubeUppCostPlan, ReportList;
+
+NAMESPACE  MyBalance;
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+    UppCostPlan 'Заявки на расходование УПП'
+}
+
+FORM  formUppCostPlan 'Заявки на расходование УПП';
+@createFormReqPropertysBeforeOBJ(uppCostPlan);
+
+EXTEND FORM formUppCostPlan
+    OBJECTS s =  CubeUppCostPlan;
+
+@createFormReqPropertyAfterOBJ(CubeUppCostPlan,formUppCostPlan,s,calc,task,'Заявки на расходование УПП');
+
+EXTEND FORM formUppCostPlan
+    FILTERGROUP versS  FILTER 'актуал./все' NOT versionNum(s) DEFAULT
+PROPERTIES deleteFormUppCostPlanByFilter(calcTask)
+PROPERTIES NOIMAGE  READONLY 
+versionNum(s),
+typeUppCostPlanName(s),
+date(s),
+number(s),
+responsibleCfo(s),
+responsiblePlant(s),
+responsibleCfoIsWork(s),
+responsibleFio(s),
+responsibleDepartment(s),
+nomenkl(s),
+isService(s),
+consumerCfo(s),
+consumerDimCfoName(s) CHANGEABLE,
+consumerCostItems(s),
+consumerDimCostItemsName(s) CHANGEABLE,
+consumerDateUse(s),
+sum(s) FOOTER (GROUP SUM sum( CubeUppCostPlan s_) IF [FILTER formUppCostPlan.s](s_)),
+ndsRate(s) CHANGEABLE,
+sumWoNds(s) FOOTER (GROUP SUM sumWoNds( CubeUppCostPlan s_) IF [FILTER formUppCostPlan.s](s_)),
+sumCompare(s) FOOTER (GROUP SUM sumCompare( CubeUppCostPlan s_) IF [FILTER formUppCostPlan.s](s_)),
+diffCompare(s) FOOTER (GROUP SUM diffCompare( CubeUppCostPlan s_) IF [FILTER formUppCostPlan.s](s_))
+    
+    FILTERGROUP notFilled FILTER 'Показать незаполненное' NOT ( consumerDimCfoName(s) AND consumerDimCostItemsName(s) );
+;
+
+DESIGN formUppCostPlan {
+    PROPERTY (typeUppCostPlanName(s)){charWidth = 15;}
+   // PROPERTY (date(s)){charWidth = 15;}
+    PROPERTY (number(s)){charWidth = 5;}
+    PROPERTY (responsibleCfo(s)){charWidth = 15;}
+    PROPERTY (responsiblePlant(s)){charWidth = 15;}
+    //PROPERTY (responsibleCfoIsWork(s)){charWidth = 15;}
+    PROPERTY (responsibleFio(s)){charWidth = 15;}
+    PROPERTY (responsibleDepartment(s)){charWidth = 15;}
+    PROPERTY (nomenkl(s)){charWidth = 15;}
+    //PROPERTY (isService(s)){charWidth = 15;}
+    PROPERTY (consumerCfo(s)){charWidth = 15;}
+    PROPERTY (consumerDimCfoName(s)){charWidth = 15; background = #eeeeee;}
+    PROPERTY (consumerCostItems(s)){charWidth = 15;}
+    PROPERTY (consumerDimCostItemsName(s)){charWidth = 15; background = #eeeeee;}
+    PROPERTY (consumerDateUse(s)){charWidth = 15;}
+    PROPERTY (sum(s))        {charWidth = 10;  pattern='#,##0.00';fontStyle = 'bold'; }
+    PROPERTY (ndsRate(s))    {charWidth = 10;  pattern='#,##0.00';}
+    PROPERTY (sumWoNds(s))   {charWidth = 10;  pattern='#,##0.00'; fontStyle = 'bold';}
+    PROPERTY (sumCompare(s)) {charWidth = 10;  pattern='#,##0.00';}
+    PROPERTY (diffCompare(s)){charWidth = 10;  pattern='#,##0.00';}
+    
+    TOOLBARRIGHT (s){ MOVE PROPERTY (deleteFormUppCostPlanByFilter(calcTask));}
+}
+ 
+
+// Действия
+@createLocalMenuOperation(CubeUppCostPlan,formUppCostPlan);
+
+
+@addMenuImportExport(formUppCostPlan, 'УПП Импорт данных заявок на расходы', TypeTask.UppCostPlan);

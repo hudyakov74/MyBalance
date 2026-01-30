@@ -1,0 +1,478 @@
+MODULE ImportCostItan;
+ 
+REQUIRE  FormKhpCost, Form, ReportList, CubeKhpCost, CubeKhpCostDistrib, ExtUtil,
+        
+        DimensCostItems, DimensCFO;
+
+NAMESPACE MyBalance;
+
+
+descrMyBalance(TypeRequest d) += WHEN  d ==  TypeRequest.typeFormKhpCostImport THEN
+    ' Импорт Итан. 
+    В ордере 3 раздела
+    1. Раздел затрат тянем только в части введенных затрат, функциональные бюджеты откидиываем.
+    2. Раздел коэфф распределения - полностью - беру к распределения, производственный не качаю - надо подумать
+    3. раздел прямых ручных - полностью суммы для сверки в отчеты затрат. - не качаю во всех  аналитиках - только для производства нужны
+    ';
+
+EXTEND CLASS TypeRequest {
+    importCapitalAssets 'Импорт Амортизаици ОС в затратный ордер'
+}
+
+descrMyBalance(TypeRequest d) += WHEN  d ==  TypeRequest.typeFormKhpCostImport THEN '
+В годовом должен быть ордер расчета амортизаици
+из итана импортируем из него
+ордер (тип) должен быть указан в настройке ордера. 
+';
+
+//
+//importKhpCostCapitalAssets (CalcTask ct, ExtRequest extR) {
+//    headers('Authorization') <- passwordBasicAuth(extSource(extR));
+//    // шаг1 - выбираем набор документов первичных
+//    
+// 
+//    LOCAL typeScenario_ = DimItanConstantNamed();
+//    //    CASE EXCLUSIVE 
+//    //        WHEN  
+//
+//    //            typeScenario_() <- DimItanConstantNamed.idPlanScenario;
+//    //        WHEN  type(extR) ==  TypeRequest.typeFormKhpCostPlanYear THEN 
+//    //            typeScenario_() <- DimItanConstantNamed.idPlanYearScenario;    
+//    //        // WHEN  type(extR) ==  TypeRequest.typeFormKhpCostPlanMonth THEN 
+//    //     ELSE   typeScenario_() <- DimItanConstantNamed.idFactScenario;
+//    typeScenario_() <- itanConstant(scenario(calc(ct)));
+//
+//    LOCAL strScenarioFilter = STRING ();
+//    LOCAL strOrderListFilter = STRING ();
+//
+//    strScenarioFilter() <- GROUP CONCAT uuidInit(DimItanConstant c) IF itemsName(c) == typeScenario_(), '%par1%' ORDER c;
+//    strOrderListFilter() <- GROUP CONCAT uuidInit(DimItanStructure c) IF  
+//        // itemsName(c) == DimItanStructureNamed.idItanDeliveryTarif
+//        //AND (NOT dimItanStructure(task(ct)))
+//        // OR
+//        // itemsName(c) == DimItanStructureNamed.idItanDelivery
+//        //OR
+//        dimItanStructure(task(ct)) == c // Если прямо указан ордер дерева - то берем только его
+//        , '%par1%'
+//    ORDER c;
+//
+//
+//
+//    //1.     
+//    odataGet(extR,
+//        textImportSaleFactF51() // Document_УБИ_БЮ_БюджетныйОрдер
+//            //+ '&$filter=' 
+//            // + ' and Элемент_Key eq guid\''               + uuidInit(getDimItanStructureByItem(DimItanStructureNamed.idItanFactCostCfo)) +'\''
+//            + ' and Бюджет/БюджетнаяМодель_Key eq guid\'' + uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idMainMakfaModel)) + '\''
+//            + ' and Бюджет/ДатаНачДанных ge datetime\'' + to1cDate0000(calcDateBegin(calc(ct))) + '\''
+//            + ' and Бюджет/ДатаКонДанных le datetime\'' + to1cDate2359(calcDateEnd(calc(ct))) + '\''
+//            + 'and ('
+//            + ' Бюджет/СегментДанных_Key eq guid\'' + replace(strScenarioFilter(), '%par1%', '\' or Бюджет/СегментДанных_Key eq guid\'') + '\''
+//            + ')'
+//            + 'and ('
+//            + ' Элемент_Key eq guid\'' + replace(strOrderListFilter(), '%par1%', '\' or Элемент_Key eq guid\'') + '\''
+//            + ')'
+//        , 'formImportI1Pl'
+//    );
+//    IMPORT formImportSaleFactF51 JSON FROM resultFile();
+//    FOR imported(INTEGER n) DO importedF51(n) <- TRUE;
+//    IF debugMode(extR) THEN SHOW formImportSaleFactF51 DOCKED NOWAIT;
+//
+//    //2. циклами с повторами?   
+//    //2.1 поднимем классификаторы полностью || по идее можно ограничиться необходимыми!!! нужно
+//    LOCAL strAnalitListFilter = STRING ();
+//    strAnalitListFilter() <- GROUP CONCAT uuidInit(DimItanConstant c), '%par1%'
+//        IF itemsName(c) = DimItanConstantNamed.idTypeAnalitCfo
+//            OR itemsName(c) = DimItanConstantNamed.idTypeAnalitCostItems
+//            OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPeriod ORDER c
+//    ;
+//    odataGet(extR,
+//        textImportSaleFactF54() + '&$filter=((Owner_Key eq guid\'' + replace(strAnalitListFilter(), '%par1%', '\') or (Owner_Key  eq guid\'') + '\'))'
+//        , 'formImportSaleFactF54'
+//    );
+//    IMPORT formImportSaleFactF54 JSON FROM resultFile();
+//    FOR imported(INTEGER n) DO importedF54(n) <- TRUE;
+//    IF debugMode(extR) THEN SHOW formImportSaleFactF54 DOCKED NOWAIT;
+//
+//    //2.2 
+//
+//    strOrderListFilter() <- GROUP CONCAT ipmF51ref_Key(INTEGER c), '%par1%' ORDER c; // фильтр: выбрать документы с конкретнымии uid
+//    LOCAL strCfoListFilter = STRING (); // если в ордере обозначен список подразделений - добавляем его
+//    //   strCfoListFilter() <- GROUP CONCAT uuidInit(DimCFO c), '%par1%' ORDER c IF checkedCFO(task(ct), c);
+//
+//    IF importedF51(0) THEN {
+//        odataGet(extR,
+//            textImportSaleFactF53(calcDateBegin(calc(ct))) // Document_УБИ_БЮ_БюджетныйОрдер
+//                //+ ' and (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\''+ipmF51ref_Key(0)+'\') '
+//                + ' and ('
+//                + ' (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'' + replace(strOrderListFilter(), '%par1%', '\') or (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'') + '\')'
+//                + ')'
+//            //           + (IF strCfoListFilter() THEN ' and ( (Измерение2_Key eq guid\'' + replace(strCfoListFilter(), '%par1%', '\') or (Измерение2_Key  eq guid\'') + '\') )' ELSE '')
+//            ,
+//            'formImportSaleFactF53'
+//        );
+//        IMPORT formImportSaleFactF53 JSON FROM resultFile();
+//        FOR imported(INTEGER n) DO importedF53(n) <- TRUE;
+//      
+//        ipmF53value(INTEGER i_) <- toNumeric(ipmF53vznachieniie(i_));
+//        IF debugMode(extR) THEN SHOW formImportSaleFactF53 DOCKED NOWAIT;
+//
+//        // 1 загоняем полные справочники затрат и ЦФО по uuid  - справочники со стороны бухгалтерии буферные
+//
+//        // =========================
+//        // обновление статей затрат
+//        // =========================     
+//        importStrDimCostItems (INTEGER i_) <- ipmF54name(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//        importUuidStrDimCostItems(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//        syncByUuidDimCostItems();
+//    
+//        // =========================
+//        // обновление ЦФО
+//        // =========================     
+//        importStrDimCFO (INTEGER i_) <- ipmF54name(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//        importUuidStrDimCFO(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//        syncByUuidDimCFO();
+//      
+//        // =======================
+//        // =======================   
+//  
+//        //    
+//        DELETE CubeKhpCost cost WHERE cost IS CubeKhpCost AND calc(cost) == calc(ct) AND task(cost) == task(ct);
+//
+//        //CubeKhpCost
+//        //FOR    [GROUP SUM ipmF53value(INTEGER i) BY  ipmF53dim3_Key(i), ipmF53dim4_Key(i)]
+//        //    (STRING d3finPartner, STRING  d4costNom)
+//
+//        FOR [GROUP SUM ipmF53value(INTEGER i)
+//            IF  ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTabl )) // только по указанным таблицам 
+//            AND ipmF53vpokazatiel_Key(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorAmortization)) // только по указанным показателям
+//            BY ipmF53dateData(i), ipmF53dim5_Key(i),  ipmF53dim7_Key(i)]
+//            (DATETIME aDate, STRING aCfo, STRING aCost)
+//
+//            INLINE NEW n = CubeKhpCost DO {
+//
+//            calc(n) <- calc(ct);
+//            task(n) <- task(ct);
+//
+//            dimCFO(n)      <- GROUP MAX importDimCFO(INTEGER ii)       IF ipmF54ref_Key(ii) == aCfo;
+//            dimCostItem(n) <- GROUP MAX importDimCostItems(INTEGER ii) IF ipmF54ref_Key(ii) == aCost;
+//
+//            value(n) <- GROUP SUM ipmF53value(INTEGER i1) IF  ipmF53TableID(i1) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTabl )) // только по указанным таблицам 
+//                                                          AND ipmF53vpokazatiel_Key(i1) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorAmortization)) // только по указанным показателям
+//                                                          AND ipmF53dateData(i1) == aDate AND ipmF53dim5_Key(i1) == aCfo AND  ipmF53dim7_Key(i1) == aCost;
+//            // в первый период
+//            period(n) <- period(periodGetByDate(periodType(calc(ct)), toDate(aDate))); // period(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))); //ipmF53dim4 !!!
+//            date(n)   <- aDate;
+//        }
+//
+//    }
+//}
+ 
+
+functionsImportFormKhpCost(CalcTask ct, ExtRequest extR) + {
+//   headers('Authorization') <- passwordBasicAuth(extSource(extR));
+//    // шаг1 - выбираем набор документов первичных
+//    // шаг 2 - данные по фильтру регистратора - иначе тормоза
+//   // набор сценариев периодов 
+//    CASE
+//        WHEN  TypeRequest.importCapitalAssets  =  type(extR) THEN {
+//            importKhpCostCapitalAssets(ct, extR);
+//        }
+//
+//        WHEN TypeRequest.typeFormKhpCostImport  =  type(extR) THEN {
+//        LOCAL typeScenario_ = DimItanConstantNamed();
+//        //    CASE EXCLUSIVE 
+//        //        WHEN  
+//
+//        //            typeScenario_() <- DimItanConstantNamed.idPlanScenario;
+//        //        WHEN  type(extR) ==  TypeRequest.typeFormKhpCostPlanYear THEN 
+//        //            typeScenario_() <- DimItanConstantNamed.idPlanYearScenario;    
+//        //        // WHEN  type(extR) ==  TypeRequest.typeFormKhpCostPlanMonth THEN 
+//        //     ELSE   typeScenario_() <- DimItanConstantNamed.idFactScenario;
+//        typeScenario_() <- itanConstant(scenario(calc(ct)));
+//
+//        LOCAL strScenarioFilter = STRING ();
+//        LOCAL strOrderListFilter = STRING ();
+//
+//        strScenarioFilter() <- GROUP CONCAT uuidInit(DimItanConstant c) IF itemsName(c) == typeScenario_(), '%par1%' ORDER c;
+//        strOrderListFilter() <- GROUP CONCAT uuidInit(DimItanStructure c) IF
+//                NOT dimItanStructure(task(ct))  AND
+//                (
+//                    itemsName(c) == DimItanStructureNamed.idItanFactCostCfo
+//                    OR itemsName(c) == DimItanStructureNamed.idItanFactCostCfoNegative
+//                )
+//            OR dimItanStructure(task(ct)) == c
+//
+//            , '%par1%' ORDER c;
+//
+//            strOrderListFilter() <- GROUP CONCAT uuidInit(DimItanStructure c) IF
+//                // itemsName(c) == DimItanStructureNamed.idItanDeliveryTarif
+//                //AND (NOT dimItanStructure(task(ct)))
+//                // OR
+//                // itemsName(c) == DimItanStructureNamed.idItanDelivery
+//                //OR
+//                dimItanStructure(task(ct)) == c // Если прямо указан ордер дерева - то берем только его
+//                , '%par1%'
+//            ORDER c;    
+//            
+//        //1.     
+//        odataGet(extR,
+//            textImportSaleFactF51() // Document_УБИ_БЮ_БюджетныйОрдер
+//                //+ '&$filter=' 
+//                // + ' and Элемент_Key eq guid\''               + uuidInit(getDimItanStructureByItem(DimItanStructureNamed.idItanFactCostCfo)) +'\''
+//                + ' and Бюджет/БюджетнаяМодель_Key eq guid\'' + uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idMainMakfaModel)) + '\''
+//                + ' and Бюджет/ДатаНачДанных ge datetime\'' + to1cDate0000(calcDateBegin(calc(ct))) + '\''
+//                + ' and Бюджет/ДатаКонДанных le datetime\'' + to1cDate2359(calcDateEnd(calc(ct))) + '\''
+//                + 'and ('
+//                + ' Бюджет/СегментДанных_Key eq guid\'' + replace(strScenarioFilter(), '%par1%', '\' or Бюджет/СегментДанных_Key eq guid\'') + '\''
+//                + ')'
+//                + 'and ('
+//                + ' Элемент_Key eq guid\'' + replace(strOrderListFilter(), '%par1%', '\' or Элемент_Key eq guid\'') + '\''
+//                + ')'
+//            , 'formImportI1Pl'
+//        );
+//        IMPORT formImportSaleFactF51 JSON FROM resultFile();
+//        FOR imported(INTEGER n) DO importedF51(n) <- TRUE;
+//        IF debugMode(extR) THEN SHOW formImportSaleFactF51 DOCKED NOWAIT;
+//
+//        //2. циклами с повторами?   
+//        //2.1 поднимем классификаторы полностью || по идее можно ограничиться необходимыми!!! нужно
+//        LOCAL strAnalitListFilter = STRING ();
+//        strAnalitListFilter() <- GROUP CONCAT uuidInit(DimItanConstant c), '%par1%'
+//            IF itemsName(c) = DimItanConstantNamed.idTypeAnalitCfo
+//                OR itemsName(c) = DimItanConstantNamed.idTypeAnalitCostItems
+//                OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPlantLine
+//                OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPlantProduct
+//                OR itemsName(c) = DimItanConstantNamed.idTypeAnalitPeriod ORDER c
+//        ;
+//
+//        odataGet(extR,
+//            textImportSaleFactF54() + '&$filter=((Owner_Key eq guid\'' + replace(strAnalitListFilter(), '%par1%', '\') or (Owner_Key  eq guid\'') + '\'))'
+//            , 'formImportSaleFactF54'
+//
+//        );
+//        IMPORT formImportSaleFactF54 JSON FROM resultFile();
+//        FOR imported(INTEGER n) DO importedF54(n) <- TRUE;
+//        IF debugMode(extR) THEN SHOW formImportSaleFactF54 DOCKED NOWAIT;
+//
+//        //2.2 
+//
+//        strOrderListFilter() <- GROUP CONCAT ipmF51ref_Key(INTEGER c), '%par1%' ORDER c; // фильтр: выбрать документы с конкретнымии uid
+//        LOCAL strCfoListFilter = STRING (); // если в ордере обозначен список подразделений - добавляем его
+//     //   strCfoListFilter() <- GROUP CONCAT uuidInit(DimCFO c), '%par1%' ORDER c IF checkedCFO(task(ct), c);
+//
+//        IF importedF51(0) THEN {
+//            odataGet(extR,
+//                textImportSaleFactF53(calcDateBegin(calc(ct))) // Document_УБИ_БЮ_БюджетныйОрдер
+//                    //+ ' and (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\''+ipmF51ref_Key(0)+'\') '
+//                    + ' and ('
+//                    + ' (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'' + replace(strOrderListFilter(), '%par1%', '\') or (cast(Recorder,\'Document_УБИ_БЮ_БюджетныйОрдер\') eq guid\'') + '\')'
+//                    + ')'
+//         //           + (IF strCfoListFilter() THEN ' and ( (Измерение2_Key eq guid\'' + replace(strCfoListFilter(), '%par1%', '\') or (Измерение2_Key  eq guid\'') + '\') )' ELSE '')
+//                ,
+//                'formImportSaleFactF53'
+//            );
+//            IMPORT formImportSaleFactF53 JSON FROM resultFile();
+//            FOR imported(INTEGER n) DO importedF53(n) <- TRUE;
+//            // синхронизация кодов    
+//
+//            FOR ipmF53dim2_Key(INTEGER i_)
+//                DO ipmF53dim2code(i_) <- GROUP MAX ipmF54code(INTEGER ii_)
+//                IF ipmF53dim2_Key(i_) == ipmF54ref_Key(ii_)
+//                    AND ipmF53dim2_Key(i_) != '00000000-0000-0000-0000-000000000000'
+//
+//            ;
+//            ipmF53dim1code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim1_Key(i_) AND ipmF53dim1_Key(i_) AND ipmF53dim1_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim2code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim2_Key(i_) AND ipmF53dim2_Key(i_) AND ipmF53dim2_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim3code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim3_Key(i_) AND ipmF53dim3_Key(i_) AND ipmF53dim3_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim4code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim4_Key(i_) AND ipmF53dim4_Key(i_) AND ipmF53dim4_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim5code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim5_Key(i_) AND ipmF53dim5_Key(i_) AND ipmF53dim5_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim6code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim6_Key(i_) AND ipmF53dim6_Key(i_) AND ipmF53dim6_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim7code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim7_Key(i_) AND ipmF53dim7_Key(i_) AND ipmF53dim7_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53dim8code(INTEGER i_) <- GROUP MAX ipmF54code(INTEGER ii_) IF ipmF54ref_Key(ii_) == ipmF53dim8_Key(i_) AND ipmF53dim8_Key(i_) AND ipmF53dim8_Key(i_) != '00000000-0000-0000-0000-000000000000';
+//            ipmF53value(INTEGER i_) <- toNumeric(ipmF53vznachieniie(i_));
+//            IF debugMode(extR) THEN SHOW formImportSaleFactF53 DOCKED NOWAIT;
+//
+//            // 1 загоняем полные справочники затрат и ЦФО по uuid  - справочники со стороны бухгалтерии буферные
+//
+//            // перенос всех элементов
+//            // отражение иерархии
+//            // пометка групп
+//
+//            // =========================
+//            // 'Вид аналитики: Номенклатура производства',
+//            // =========================     
+//            importStrDimNomenklPlant (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPlantProduct));
+//            importUuidStrDimNomenklPlant(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPlantProduct));
+//            syncByUuidDimNomenklPlant();
+//            
+//            // =========================
+//            // 'Вид аналитики: Производственные линии',
+//            // =========================     
+//            importStrDimPlantProductLine (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPlantLine));
+//            importUuidStrDimPlantProductLine(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitPlantLine));
+//            syncByUuidDimPlantProductLine();
+//            // =========================
+//            // обновление статей затрат
+//            // =========================     
+//            importStrDimCostItems (INTEGER i_) <- ipmF54name(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//            importUuidStrDimCostItems(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCostItems));
+//            syncByUuidDimCostItems();
+//            //    иерархия: uid родителя формы загрузка связываем с ней же
+//            FOR ipmF54ref_Key(INTEGER i) == uuidInit(DimCostItems dn)
+//                AND ipmF54ref_Key(INTEGER j) == uuidInit(DimCostItems dp)
+//                AND ipmF54Parent_Key(i) == ipmF54ref_Key(j)
+//                AND ipmF54Parent_Key(i)
+//                AND ipmF54Parent_Key(i) != ''
+//                AND ipmF54Parent_Key(i) != '00000000-0000-0000-0000-000000000000'
+//                AND NOT (parent(dn) == dp)
+//                DO {
+//                parent(dn) <- dp;
+//                isGroup(dp) <- TRUE;
+//            }
+//            // =======================
+//            // =======================
+//
+//            // =========================
+//            // обновление ЦФО
+//            // =========================     
+//            importStrDimCFO (INTEGER i_)    <- ipmF54name(i_)    IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//            importUuidStrDimCFO(INTEGER i_) <- ipmF54ref_Key(i_) IF ipmF54Owner_Key(i_) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeAnalitCfo));
+//            syncByUuidDimCFO();
+//            //    иерархия: uid родителя формы загрузка связываем с ней же
+//            FOR ipmF54ref_Key(INTEGER i) == uuidInit(DimCFO dn)
+//                AND ipmF54ref_Key(INTEGER j) == uuidInit(DimCFO dp)
+//                AND ipmF54Parent_Key(i) == ipmF54ref_Key(j)
+//                AND ipmF54Parent_Key(i)
+//                AND ipmF54Parent_Key(i) != ''
+//                AND ipmF54Parent_Key(i) != '00000000-0000-0000-0000-000000000000'
+//                AND NOT (parent(dn) == dp)
+//                DO {
+//                parent(dn) <- dp;
+//                isGroup(dp) <- TRUE;
+//            }
+//            // =======================
+//            // =======================   
+//            LOCAL valueSignCorrected = NUMERIC(INTEGER);
+//            valueSignCorrected(INTEGER i) <- ipmF53value(i) *
+//                    IF
+//                    (GROUP MAX TRUE IF
+//                        ipmF51ref_Key(INTEGER i53) == ipmF53recoder(i)
+//                            AND ipmF51Element_Key(i53) == uuidInit(DimItanStructure c)
+//                            AND itemsName(c) == DimItanStructureNamed.idItanFactCostCfoNegative)
+//                    THEN -1.0 ELSE 1.0;
+//
+//            ;
+//
+//            //    
+//            DELETE CubeKhpCost cost WHERE cost IS CubeKhpCost AND calc(cost) == calc(ct) AND task(cost) == task(ct);
+//            DELETE CubeKhpCostDistrib cost WHERE cost IS CubeKhpCostDistrib AND calc(cost) == calc(ct) AND task(cost) == task(ct);
+//            DELETE CubeKhpCostManual cost WHERE cost IS CubeKhpCostManual AND calc(cost) == calc(ct) AND task(cost) == task(ct);
+//            
+//            //CubeKhpCost
+//            FOR importedF53(INTEGER i)   
+//                   AND checkedCFO(task(ct), GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim2_Key(i)) // только по указанным подразделениям
+//                   AND ipmF53TableID(i)         == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablCostSum )) // только по указанным таблицам 
+//                   AND ipmF53vpokazatiel_Key(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorCostSum)) // только по указанным показателям
+//                   AND  valueSignCorrected(i) !=0
+//                INLINE NEW n = CubeKhpCost DO {
+//
+//                calc(n) <- calc(ct);
+//                task(n) <- task(ct);
+//
+//                dimCFO(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim2_Key(i);
+//                dimCostItem(n) <- GROUP MAX importDimCostItems(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim1_Key(i);
+//
+//                value(n) <- valueSignCorrected(i);
+//                // в первый период
+//                period(n) <- period(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))); //ipmF53dim4 !!!
+//                date(n) <- toDateTime(dateBegin(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))));
+//            }
+//
+//            //CubeKhpCostDistrib
+//            FOR importedF53(INTEGER i)
+//                AND checkedCFO(task(ct), GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim3_Key(i)) // только по указанным подразделениям
+//              //  AND ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablCostSum )) // только по указанным таблицам 
+//                AND  ipmF53vpokazatiel_Key(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorCostSumCoeff)) // только по указанным показателям
+//                AND  ipmF53value(i) !=0
+//                INLINE NEW n = CubeKhpCostDistrib DO {
+//
+//                calc(n) <- calc(ct);
+//                task(n) <- task(ct);
+//
+//                dimCFO(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim3_Key(i);
+//                dimCfoDistrib(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim4_Key(i);
+//                
+//                value(n) <- ipmF53value(i);
+//                // в первый период
+//                period(n) <- period(periodGetByDate(periodType(calc(ct)),toDate(ipmF53dateData(i)))); //period(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))); //ipmF53dim4 !!!
+//                date(n)   <- ipmF53dateData(i);
+//            }
+//
+//            //CubeKhpCostDistrib idTypeIndicatorCostFlag
+//            FOR importedF53(INTEGER i)
+//                AND checkedCFO(task(ct), GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim3_Key(i)) // только по указанным подразделениям
+//                //  AND ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablCostSum )) // только по указанным таблицам 
+//                AND  ipmF53vpokazatiel_Key(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorCostFlag)) // только по указанным показателям
+//                AND  ipmF53value(i) != 0
+//                INLINE NEW n = CubeKhpCostDistrib DO {
+//
+//                calc(n) <- calc(ct);
+//                task(n) <- task(ct);
+//
+//                dimCFO(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim3_Key(i);
+//                dimCfoDistrib(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim4_Key(i);
+//
+//                issueBased(n)  <- TRUE; // ipmF53value(i);
+//                // в первый период
+//                period(n) <- period(periodGetByDate(periodType(calc(ct)),toDate(ipmF53dateData(i)))); //period(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))); //ipmF53dim4 !!!
+//                date(n)   <- ipmF53dateData(i);
+//            }
+//            //CubeKhpCostManual
+//            FOR importedF53(INTEGER i)
+//                AND checkedCFO(task(ct), GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim7_Key(i)) // только по указанным подразделениям
+//                //  AND ipmF53TableID(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorTablCostSum )) // только по указанным таблицам 
+//                AND  ipmF53vpokazatiel_Key(i) == uuidInit(getDimItanConstantByItem(DimItanConstantNamed.idTypeIndicatorCostSumDirect)) // только по указанным показателям
+//                AND  ipmF53value(i) !=0
+//                INLINE NEW n = CubeKhpCostManual DO {
+//
+//                calc(n) <- calc(ct);
+//                task(n) <- task(ct);
+//                // в первый период
+//                period(n) <- period(periodGetByDate(periodType(calc(ct)),toDate(ipmF53dateData(i)))); //period(periodGetByName(periodType(calc(ct)), ipmF53dim4(i), calcDateBegin(calc(ct)), calcDateEnd(calc(ct)))); //ipmF53dim4 !!!
+//                date(n)   <- ipmF53dateData(i);
+//                dimCFO(n) <- GROUP MAX importDimCFO(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim7_Key(i);
+//              //  dimCfoPlant(n)   <- dimCfo(GROUP MAX importDimPlantProductLine(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim5_Key(i));
+//                dimPlantProductLine(n) <-  GROUP MAX importDimPlantProductLine(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim5_Key(i);
+//                dimNomenklPlant(n) <-  GROUP MAX importDimNomenklPlant(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim3_Key(i);
+//                dimCostItem(n) <- GROUP MAX importDimCostItems(INTEGER ii) IF ipmF54ref_Key(ii) == ipmF53dim4_Key(i);
+//
+//                cubePlantProduct(n) <- ipmF53dim6(i);
+//
+//                value(n) <- ipmF53value(i);
+//                
+//            }
+//
+//        }
+//    }
+}
+
+
+execFormActionImport(Calc calc, Task task) + {
+    
+    IF TypeTask.KhpCost =  type(task) AND  select(task) THEN {
+        DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.sectionFormKhpCost, firm = dimFirm(calc), er INPUT extReq_ FLOAT CANCEL DO {
+            TRY {
+                FOR select(Task task_) AND TypeTask.KhpCost = type(task_) DO {
+                    checkOrCreateCalcTask(calc, task_);
+                    functionsImportFormKhpCost(getCalcTask(calc, task_), extReq_);
+                }
+                APPLY;
+                MESSAGE 'Выполнено...';
+            } 
+                CATCH {
+                CANCEL;
+            }
+        }
+    }
+};

@@ -1,0 +1,709 @@
+MODULE FormKhpCost;
+
+REQUIRE  Form, ReportList, CubeKhpCost, CubeKhpCostManual, CubeKhpCostDistrib, ExtUtil, CubeSalary7,
+        //CubeEnergoRes,
+        UserEvents; //, CubePlantProduct, PlantSpecProduct;
+
+NAMESPACE MyBalance;
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+     KhpCost 'Затраты подразделений'
+}
+
+
+descrMyBalance(TypeTask d) +=
+    WHEN d == TypeTask.KhpCost THEN
+    ' 
+    - импортируются все затраты - в т.ч. функциональные
+    1. в оригинале вводятся часть по статьям затрат
+    2. Некоторые функциональные бюджеты сюда добавляются (расчетами), надо отделить цифры функц. бюджетов? 
+    3. есть таблица ввода доп расходов (не сделана) 
+    
+    4. ДОБАВИТЬ коэффициенты распределения затрат, они используются для всех подразделений   (вспомогательные распределяются)
+    
+    5. копирование данных бюджетов 
+';
+
+
+
+FORM  formKhpCost 'Затраты подразделений';
+
+@createFormReqPropertysBeforeOBJ(khpCost);
+
+EXTEND FORM formKhpCost 
+OBJECTS s = CubeKhpCost;
+
+@createFormReqPropertyAfterOBJ(CubeKhpCost, formKhpCost, s, calc, task, 'Затраты подразделений');
+
+EXTEND FORM formKhpCost 
+PROPERTIES deleteByFilter 'Удалить видимое'  = deleteFormKhpCostByFilter(calcTask)  
+PROPERTIES  DELETE (s), newS 'Добавить ' = {NEW c = CubeKhpCost {calc(c) <- calc(calcTask); task(c) <- task(calcTask);}},
+    calcTask 'код документа' = calcTask(s) ON CHANGE {openTask(calc(s), task(s)); },  
+    period 'Период' = namePeriod(period(s)),
+    date = date(s),
+    dimCFO  'Подразделение'      = name(dimCFO(s)),
+    dimCFOtype  'Тип подр.'      = name(typeCFO(dimCFO(s))) READONLY,
+        
+    dimensCostItems  'Статья затрат' = name(dimCostItem(s)),
+ 
+    value 'Сумма' =  value(s) FOOTER (GROUP SUM value(CubeKhpCost s_) IF [FILTER formKhpCost.s](s_)),
+//    valueDistd 'Распределено' =       sumProductCubePlantProductBy(calc( calcTask(s) ), period(s), dimCFO(s), dimCostItem(s) ),  // FOOTER (GROUP SUM value(CubeKhpCost s_) IF [FILTER formKhpCost.s](s_)),
+//    valueDiff 'разн.' =  value(s) (-) sumProductCubePlantProductBy(calc( calcTask(s) ), period(s), dimCFO(s), dimCostItem(s) ),  // FOOTER (GROUP SUM value(CubeKhpCost s_) IF [FILTER formKhpCost.s](s_)),
+//    
+                
+    Apply 'Сохранить' = {APPLY NESTED LOCAL;}
+   
+// FILTERGROUP showErr FILTER 'Показать нераспределенные'  NOT  (value(s) (-) sumProductCubePlantProductBy(calc( calcTask(s) ), period(s), dimCFO(s), dimCostItem(s) )) == 0
+;
+
+DESIGN  formKhpCost {
+    PROPERTY (formApply()){hide = TRUE;}
+    TOOLBARRIGHT {
+        MOVE PROPERTY (Apply) AFTER PROPERTY(formApply());
+    }
+    TOOLBARRIGHT (s) {
+        MOVE PROPERTY (deleteByFilter); 
+        MOVE PROPERTY (newS); 
+    }
+    PROPERTY  (period)  {charWidth = 12; }
+    PROPERTY  (dimCFO)  {charWidth = 12; }
+    PROPERTY  (dimCFOtype)  {charWidth = 12; }
+    PROPERTY  (dimensCostItems)  {charWidth = 12; }
+    PROPERTY  (value) {charWidth = 13; pattern = '#,##0.00'; }
+//    PROPERTY  (valueDistd) {charWidth = 13; pattern = '#,##0.00'; }
+//    PROPERTY  (valueDiff) {charWidth = 13; pattern = '#,##0.00'; }
+}
+
+// раздел сравнения расхождений
+// выводим матрицы коэфф распределения
+// показываем коэфф заданный
+//            реальное распределение
+//            коэфф расчетный
+EXTEND FORM formKhpCost
+//    OBJECTS diffCfo = (diffDimCfo 'Cверка' = DimCFO, diffP = Period)
+//    FILTERS periodInCalc(diffP, calc(calcTask))
+//    FILTERS sumKhpCostBy(calc(calcTask), diffP, diffDimCfo) OR sumSalaryBy(calc(calcTask), diffP, diffDimCfo)
+//    PROPERTIES READONLY 
+//    diffPeriod  'Период' = name(diffP),
+//    diffDimCfoType  'Тип' = name(typeCFO(diffDimCfo)),
+//    diffDimCfoPlant  'Площадка' = name(dimCfu(diffDimCfo)),
+//    diffDimCfo  'Подразделение'= name(diffDimCfo),
+//    diffSumCost 'Сумма затрат' = sumKhpCostBy(calc(calcTask), diffP, diffDimCfo) (+) sumSalaryBy(calc(calcTask), diffP, diffDimCfo) (+) sumEnergoBy(calc(calcTask), diffP, diffDimCfo)
+//                FOOTER (GROUP SUM sumKhpCostBy(calc(calcTask),Period diffP_, DimCFO diffDimCfo_) (+) sumSalaryBy(calc(calcTask), diffP_, diffDimCfo_) (+) sumEnergoBy(calc(calcTask), diffP_, diffDimCfo_) IF [FILTER formKhpCost.diffCfo](diffDimCfo_,diffP_)),
+//        
+//    diffSumPlant 'Сумма пр-во' =  sumProductCubePlantProductBy(calc(calcTask), diffP, diffDimCfo)
+//                FOOTER (GROUP SUM sumProductCubePlantProductBy(calc(calcTask),Period diffP_,DimCFO diffDimCfo_) IF [FILTER formKhpCost.diffCfo](diffDimCfo_,diffP_)),
+//        
+//    diffSum     'Отклонение'   = sumKhpCostBy(calc(calcTask), diffP, diffDimCfo) (+) sumSalaryBy(calc(calcTask), diffP, diffDimCfo) (+) sumEnergoBy(calc(calcTask), diffP, diffDimCfo)
+//                                                                                 (-)  sumProductCubePlantProductBy(calc(calcTask), diffP, diffDimCfo)
+//                FOOTER (
+//                        (GROUP SUM sumKhpCostBy(calc(calcTask),Period diffP_, DimCFO diffDimCfo_) (+) sumSalaryBy(calc(calcTask), diffP_, diffDimCfo_) (+) sumEnergoBy(calc(calcTask), diffP_, diffDimCfo_) IF [FILTER formKhpCost.diffCfo](diffDimCfo_,diffP_))
+//                        (-)
+//                        (GROUP SUM sumProductCubePlantProductBy(calc(calcTask),Period diffP_,DimCFO diffDimCfo_) IF [FILTER formKhpCost.diffCfo](diffDimCfo_,diffP_))
+//                        ),
+//    diffEmpty '' = '' DRAW diffCfo GRID
+//    ORDERS diffDimCfoPlant, diffDimCfoType, diffDimCfo
+//    
+//    
+//    OBJECTS dfCfoPlant 'Расшифровка' = DimCFO , diffCfoDescrPeriod = Period 
+//    FILTERS isDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant) // OR еесть распред   
+//    FILTERS periodInCalc(diffCfoDescrPeriod, calc(calcTask))
+//    PROPERTIES READONLY
+//    dfDimCfoPlant  'Площадка' = name(dimCfu(dfCfoPlant)),
+//    dfDimCfo  'Подразделение' = name(dfCfoPlant),    
+//    dfKoeff   'Назнач. коэфф' =   sumKhpCostDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant) (+) sumPlantProductValuePerc(calc(calcTask), diffDimCfo, dfCfoPlant, diffP),
+//    dfKoeffPlant 'Выпуск'     = sumPlantProductValue(calc(calcTask), dfCfoPlant, diffP) IF issueBasedKhpCostDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant) BACKGROUND #ffcccc IF issueBasedKhpCostDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant),
+//    dfSumPlan 'Сумма расч.'   =  (sumKhpCostBy(calc(calcTask), diffP, diffDimCfo) (+) sumSalaryBy(calc(calcTask), diffP, diffDimCfo) (+) sumEnergoBy(calc(calcTask), diffP, diffDimCfo))
+//                                 * 
+//                                 
+//                                   (
+//                                   sumKhpCostDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant) (+) round(sumPlantProductValuePerc(calc(calcTask), diffDimCfo, dfCfoPlant, diffP),3)
+//                                   )
+//                                   / (GROUP SUM (sumKhpCostDistribBy(calc(calcTask), diffDimCfo, DimCFO dfCfoPlant_) (+) sumPlantProductValuePerc(calc(calcTask), diffDimCfo, dfCfoPlant_, diffP)) IF [FILTER formKhpCost.dfCfoPlant] (dfCfoPlant_))
+//                                         
+//                                
+//                              ,
+//    dfSumFact 'Сумма распределено' = sumProductCubePlantProductBy(calc(calcTask), diffP, diffDimCfo, dfCfoPlant) 
+//                                FOOTER  (GROUP SUM sumProductCubePlantProductBy(calc(calcTask), diffP, diffDimCfo, DimCFO dfCfoPlant_) IF [FILTER formKhpCost.dfCfoPlant] (dfCfoPlant_)),
+//    dfSumDiff 'Разн' = // повтор двух посл 
+//                                (sumKhpCostBy(calc(calcTask), diffP, diffDimCfo) (+) sumSalaryBy(calc(calcTask), diffP, diffDimCfo) (+) sumEnergoBy(calc(calcTask), diffP, diffDimCfo))
+//                                *
+//                               (
+//                                sumKhpCostDistribBy(calc(calcTask), diffDimCfo, dfCfoPlant) (+)  round(sumPlantProductValuePerc(calc(calcTask), diffDimCfo, dfCfoPlant, diffP),3)
+//                                )
+//                                / (GROUP SUM (sumKhpCostDistribBy(calc(calcTask), diffDimCfo, DimCFO dfCfoPlant_) (+) sumPlantProductValuePerc(calc(calcTask), diffDimCfo, dfCfoPlant_, diffP)) IF [FILTER formKhpCost.dfCfoPlant] (dfCfoPlant_))
+//                                
+//                                (-)
+//                                sumProductCubePlantProductBy(calc(calcTask), diffP, diffDimCfo, dfCfoPlant)
+//        ,  
+//    dfEmpty '' = '' DRAW dfCfoPlant GRID
+//    ORDERS dfDimCfoPlant, dfDimCfo
+;
+//
+//DESIGN formKhpCost{
+//    PROPERTY  (diffPeriod)  {charWidth = 10; }
+//    PROPERTY  (diffDimCfoType)  {charWidth = 10; }
+//    PROPERTY  (diffDimCfoPlant)  {charWidth = 10; }
+//    PROPERTY  (diffDimCfo)  {charWidth = 20; }
+//    PROPERTY  (diffSumCost) {charWidth = 13; pattern = '#,##0.00'; } 
+//    PROPERTY  (diffSumPlant) {charWidth = 13; pattern = '#,##0.00'; } 
+//    PROPERTY  (diffSum) {charWidth = 13; pattern = '#,##0.00'; }
+//    
+//    PROPERTY  (dfDimCfoPlant)  {charWidth = 10; }
+//    PROPERTY  (dfDimCfo)  {charWidth = 10; }
+//    PROPERTY  (dfKoeff)  {charWidth = 10; pattern = '#,##0.000'; }
+//    PROPERTY  (dfKoeffPlant)    {charWidth = 10; pattern = '#,##0'; }
+//    PROPERTY  (dfSumPlan)    {charWidth = 10; pattern = '#,##0'; }
+//    PROPERTY  (dfSumFact)    {charWidth = 10; pattern = '#,##0'; }
+//    PROPERTY  (dfSumDiff)    {charWidth = 10; pattern = '#,##0'; fontStyle = 'bold';}
+//    
+//    
+//    PROPERTY  (diffEmpty) {charWidth = 1; fill = 100; } 
+//    PROPERTY  (dfEmpty)   {charWidth = 1; fill = 100; } 
+//}
+
+// преднастроенные группы 
+isShowDimFormKhpCost(CalcTask ct, DimCostItems d) =   GROUP MAX checkedCostItems(task(ct), DimCostItems chld) IF isParent(chld, d);
+isShowDimFormKhpCfo(CalcTask ct, DimCFO d)       =    GROUP MAX checkedCFO(task(ct), DimCFO chld) IF isParent(chld, d);
+
+// окрыта/закрыта папка
+foldedCostFormKhpCost = DATA LOCAL BOOLEAN(DimCostItems);
+foldedCfoFormKhpCost = DATA LOCAL BOOLEAN(DimCFO);
+
+// колонки к показу
+formKhpCostColumns = DATA LOCAL NESTED STRING (STRING);
+
+formKhpCostShowCurr = DATA LOCAL NESTED BOOLEAN ();
+
+//показывать ли папку в зависимости от открытости родителей
+isShowFoldedFormKhpCost(DimCostItems p) =  NOT GROUP MAX foldedCostFormKhpCost(DimCostItems parent) IF isParent(p, parent) AND p != parent; 
+isShowFoldedFormKhpCost(DimCFO p) = NOT GROUP MAX foldedCfoFormKhpCost(DimCFO parent) IF isParent(p, parent) AND p != parent;
+
+
+
+headColumnDateFormKhpCost  'Название колонки' (CalcTask calcTask, Period p, STRING name) =  
+    IF (GROUP LAST STRING nameCol IF formKhpCostColumns(nameCol) ORDER DESC nameCol) == name THEN 
+    STRING (toChar(dateBegin(periodInCalc(p, calc(calcTask))), 'TMMon YY')) + ' ' + formKhpCostColumns(name+'Name')
+    ELSE '\n' + formKhpCostColumns(name+'Name');
+
+
+formKhpCostfillModeString = DATA LOCAL NESTED BOOLEAN ();
+EXTEND FORM formKhpCost // дерево
+ OBJECTS tCfo = DimCFO 
+    PROPERTIES BACKGROUND (IF isGroup(tCfo) THEN #ececc3)     
+            foldedPgFormSalePlan '+' = CASE WHEN NOT isGroup(tCfo) THEN NULL WHEN foldedCfoFormKhpCost(tCfo) THEN '+' ELSE  '-' 
+                ON CHANGE     { foldedCfoFormKhpCost(tCfo) <- NOT foldedCfoFormKhpCost(tCfo); }
+                GRID, // колонка дерева
+            nameFg 'ЦФО' = tabName(tCfo)  READONLY   // наименования
+       
+    FILTERS NOT isHide(tCfo) OR isDimCfoCubeKhpCost(calcTask, tCfo) // не скрытые или есть в плане с данными
+    FILTERS isShowFoldedFormKhpCost(tCfo)  // свернутые не показываем в любом случае
+    FILTERGROUP filterPg FILTER 'отбор/Все'  isShowDimFormKhpCfo(calcTask, tCfo) OR isDimCfoCubeKhpCost(calcTask, tCfo) DEFAULT // преднастроенные или в плане ИЛИ отключаем=  все
+    PROPERTIES
+          levelFg1 '1+' = {foldedCfoFormKhpCost(DimCFO all_) <- levelNumInt(all_) >= 0;},
+          levelFg2 '2+' = {foldedCfoFormKhpCost(DimCFO all_) <- levelNumInt(all_) >= 1;},
+          levelFg3 '3+' = {foldedCfoFormKhpCost(DimCFO all_) <- levelNumInt(all_) >= 2;},
+          openFgAll '++'= {foldedCfoFormKhpCost(DimCFO all_) <- NULL; }
+    // порядок
+    PROPERTIES pos(tCfo), nameOrderFull(tCfo)
+    ORDERS     pos(tCfo), nameOrderFull(tCfo)
+    
+    
+   //=====================
+   // НИЖНЯЯЯ ТАБЛИЦА
+   //=====================
+      
+ OBJECTS tMainBott = ( part = INTEGER, tCost = DimCostItems)
+    FILTERS part = 0 OR part = 1 OR part = 2  OR part = 3
+    PROPERTIES BACKGROUND (IF isGroup(tCost) THEN #ececc3)  
+              foldedCgFormSalePlan '+' = CASE WHEN NOT isGroup(tCost) THEN NULL WHEN foldedCostFormKhpCost(tCost) THEN '+' ELSE  '-' 
+                  ON CHANGE     { foldedCostFormKhpCost(tCost) <- NOT foldedCostFormKhpCost(tCost); }
+                  GRID,
+              nameCg 'Статьи затрат' = tabName(tCost)  READONLY   
+  
+    
+    FILTERS NOT isHide(tCost) OR isDimCostItemCubeKhpCost(calcTask, tCost) // не скрытые
+    FILTERS isShowFoldedFormKhpCost(tCost)
+    
+    FILTERGROUP filterCg1nn   NONULL 
+                         FILTER  'Отбор по заполненным' ( (isShowDimFormKhpCost(calcTask, tCost) AND part = 0)
+                                          OR (isDimCfoCostItemCubeKhpCost(calcTask, tCfo ,tCost)             AND part = 0 )  
+                                          OR isDimCfoCostItemCubeKhpCostOther(calcTask, tCfo ,tCost)       AND part = 1   //NOT formKhpCostShowCurr()
+                                         // OR isDimNomenklEnergoDimCfoEnergoResOther(calcTask, tCfo ,tCost) AND part = 2  //NOT formKhpCostShowCurr()
+                                          OR isDimCfoCostItemCubeSalary7Other (calcTask, tCfo ,tCost)      AND part = 3   //NOT formKhpCostShowCurr()
+                             )  
+                         DEFAULT
+                         
+                         FILTER  'Все статьи затрат (без функц бюдж.)' 
+                            ((part = 0)
+//                             OR (isDimCfoCostItemCubeKhpCost(calcTask, tCfo ,tCost)            AND part = 0)  
+//                             OR (isDimCfoCostItemCubeKhpCostOther(calcTask, tCfo ,tCost)       AND part = 1) //AND  NULL //NOT formKhpCostShowCurr()
+//                             OR (isDimNomenklEnergoDimCfoEnergoResOther(calcTask, tCfo ,tCost) AND part = 2) //AND  NULL //NOT formKhpCostShowCurr()
+//                             OR (isDimCfoCostItemCubeSalary7Other (calcTask, tCfo ,tCost)      AND part = 3) //AND  NULL //NOT formKhpCostShowCurr()
+                             ) 
+                          
+    
+   
+  
+
+    //   EVENTS ON FILTERGROUPS filterCg {
+//        FILTERGROUPS formKhpCost.filterCg;
+//        MESSAGE filterGroups() LOG ;
+       // IF NOT filterGroups() THEN filterGroups() <- 2;
+   // }
+                            
+    PROPERTIES
+          part '' = VALUE (part),
+          levelCg1 '1+' = {foldedCostFormKhpCost(DimCostItems all_) <- levelNumInt(all_) >= 0;},
+          levelCg2 '2+' = {foldedCostFormKhpCost(DimCostItems all_) <- levelNumInt(all_) >= 1;},
+          levelCg3 '3+' = {foldedCostFormKhpCost(DimCostItems all_) <- levelNumInt(all_) >= 2;},
+          openCgAll '++'= {foldedCostFormKhpCost(DimCostItems all_) <- NULL; }    
+        // порядок
+    PROPERTIES pos(tCost), nameOrderFull(tCost), formKhpCostShowOther 'Данные только текущего ордера' = formKhpCostShowCurr()
+    ORDERS     part, pos(tCost), nameOrderFull(tCost)
+  
+    OBJECTS p = Period 
+    FILTERS periodInCalc(p, calc(calcTask))
+    
+    // КОЛОНКИ ТАБЛИЦЫ
+    EVENTS ON INIT {
+        // объявим колонки
+        formKhpCostColumns(str_) <- NULL;
+        formKhpCostColumns('1sum')    <- '+';
+        formKhpCostColumns('1sumName')  <- 'Сумма';
+        // если форма вообще пустая - добавим запись с 0 TODO косячек
+        IF NOT (GROUP MAX TRUE IF calcTask(CubeKhpCost cc) == calcTask)  THEN {
+            NEW n = CubeKhpCost {
+                calc(n) <- calc(calcTask);
+                task(n) <- task(calcTask);
+                date(n) <- toDateTime(calcDateBegin(calc(calcTask)));
+            }
+        }
+        
+    }
+    EVENTS ON APPLY {
+        formKhpCostColumns(str_) <- NULL;
+         
+        formKhpCostColumns('1sum')    <- '+';
+        formKhpCostColumns('1sumName')  <- 'Сумма';
+    }
+    
+    PROPERTIES  colF1 'Сумма'  = IF formKhpCostColumns('1sum') THEN TRUE ON CHANGE { formKhpCostColumns('1sum') <- IF formKhpCostColumns('1sum') THEN NULL ELSE '+';}   
+               
+    // верхнее поле ИТОГИ - только чтение
+    PROPERTIES   
+        
+    valueCfoAll 'Итого' = 
+            
+            sign(task(s)) * ( 
+                    (GROUP SUM value(CubeKhpCost c_) IF  calcTask(c_) == calcTask AND isParent(dimCFO(c_), tCfo ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) )
+                    (+)
+                    (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) != calcTask AND  calc(c_) == calc(calcTask) AND isParent(dimCFO(c_), tCfo ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+//                    (+)
+//                    (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM valueSum(CubeEnergoRes c_) IF  calc(c_) == calc(calcTask) AND isParent(dimCFO(c_), tCfo ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                    (+)
+                    (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM valueSum(CubeSalary7 c_) IF  calc(c_) == calc(calcTask) AND isParent(dimCFO(c_), tCfo ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                )
+            FOOTER sign(task(s)) * (
+                    (GROUP SUM value(CubeKhpCost c_) IF  calcTask(c_) == calcTask AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) )
+                    (+)
+                    (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM value(CubeKhpCost c_) IF  calcTask(c_) != calcTask AND  calc(c_) == calc(calcTask) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                    (+)
+//                    (IF formKhpCostShowCurr() THEN 0 ELSE  (GROUP SUM valueSum(CubeEnergoRes c_) IF  calc(c_) == calc(calcTask) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) )) 
+//                    (+)
+                    (IF formKhpCostShowCurr() THEN 0 ELSE  (GROUP SUM valueSum(CubeSalary7 c_) IF  calc(c_) == calc(calcTask) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                )
+
+            BACKGROUND (IF isGroup(tCfo) THEN #ececc3)
+            DRAW tCfo GRID STICKY 
+            SHOWIF (periodGetByDate(periodType(calc(calcTask)), calcDateBegin(calc(calcTask))) != periodGetByDate(periodType(calc(calcTask)), calcDateEnd(calc(calcTask))))
+            ,
+    
+    valueCostAll 'Итого' = 
+            sign(task(s)) * 
+            (
+                (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) == calcTask AND isParent(dimCFO(c_), tCfo) AND isParent( dimCostItem(c_), tCost ) AND part = 0 )
+                (+)
+                (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask) AND isParent(dimCFO(c_), tCfo) AND isParent( dimCostItem(c_), tCost ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND part = 1 ))
+                (+)
+//                (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM valueSum(CubeEnergoRes c_) IF calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask) AND isParent(dimCFO(c_), tCfo) AND isParent( dimCostItems(c_), tCost ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND part = 2 ))
+//                (+)
+                (IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM valueSum(CubeSalary7 c_) IF calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask) AND isParent(dimCFO(c_), tCfo) AND isParent( dimCostItems(c_), tCost ) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND part = 3 ))
+                )
+            FOOTER sign(task(s)) * (
+                (  GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) == calcTask  AND isParent(dimCFO(c_), tCfo) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) )
+                (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE (  GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask)  AND isParent(dimCFO(c_), tCfo) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                (+)
+//(IF formKhpCostShowCurr() THEN 0 ELSE (  GROUP SUM valueSum(CubeEnergoRes c_) IF calc(c_) == calc(calcTask) AND isParent(dimCFO(c_), tCfo) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+//                (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM valueSum(CubeSalary7 c_) IF calc(c_) == calc(calcTask) AND isParent(dimCFO(c_), tCfo) AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+                 
+                
+                )
+            BACKGROUND (IF isGroup(tCost) THEN #ececc3 )
+            FOREGROUND IF  part > 0 THEN #0000ff
+            DRAW tMainBott GRID STICKY
+            SHOWIF (periodGetByDate(periodType(calc(calcTask)), calcDateBegin(calc(calcTask))) != periodGetByDate(periodType(calc(calcTask)), calcDateEnd(calc(calcTask))))
+            ,    
+        
+        
+    valueCostF = sign(task(s)) *
+        (
+        (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) == calcTask AND period(c_) == p AND isParent( dimCFO(c_), tCfo )  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_) ) )
+        (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE (GROUP SUM value(CubeKhpCost c_) IF  calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask)  AND period(c_) == p AND isParent( dimCFO(c_), tCfo )  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_) ) ))
+        (+)
+//(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM valueSum(CubeEnergoRes c_) IF  calc(c_) == calc(calcTask) AND period(c_) == p AND isParent( dimCFO(c_), tCfo )  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_) )) )
+//        (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM valueSum(CubeSalary7 c_) IF  calc(c_) == calc(calcTask) AND period(c_) == p AND isParent( dimCFO(c_), tCfo )  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_) )))
+        )         
+        FOOTER     sign(task(s)) * (
+            ( GROUP SUM value(CubeKhpCost c_)      IF calcTask(c_) == calcTask AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) )
+            (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM value(CubeKhpCost c_)      IF  calcTask(c_) != calcTask AND calc(c_)  == calc(calcTask) AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+            (+)
+//(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM valueSum(CubeEnergoRes c_) IF calc(c_) == calc(calcTask) AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+//            (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE ( GROUP SUM valueSum(CubeSalary7 c_) IF calc(c_) == calc(calcTask) AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) ))
+            )
+        SHOWIF formKhpCostColumns('1sum') 
+        COLUMNS planGroupFg (p) HEADER headColumnDateFormKhpCost(calcTask, p, '1sum')  BACKGROUND (IF isGroup(tCfo) THEN #ececc3 ) DRAW tCfo  GRID 
+           
+ 
+    // нижние
+    PROPERTIES
+      valueCostFc =  sign(task(s)) *
+    (
+        (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) == calcTask AND period(c_) == p AND isParent( dimCFO(c_), tCfo) AND isParent( dimCostItem(c_), tCost )  AND part == 0 ) 
+        (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE   (GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) != calcTask AND period(c_) == p AND  calc(c_) == calc(calcTask) AND isParent( dimCFO(c_), tCfo)  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_))  AND  isParent( dimCostItem(c_), tCost ) AND part = 1))
+        (+)
+//(IF formKhpCostShowCurr() THEN 0 ELSE    (GROUP SUM valueSum(CubeEnergoRes c_) IF calcTask(c_) != calcTask AND period(c_) == p AND  calc(c_) == calc(calcTask) AND isParent( dimCFO(c_), tCfo)  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_))  AND  isParent( dimCostItems(c_), tCost ) AND part = 2))
+//        (+)
+(IF formKhpCostShowCurr() THEN 0 ELSE    (GROUP SUM valueSum(CubeSalary7 c_) IF calcTask(c_) != calcTask AND period(c_) == p AND  calc(c_) == calc(calcTask) AND isParent( dimCFO(c_), tCfo)  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_))  AND  isParent( dimCostItems(c_), tCost ) AND part = 3))
+    )
+         FOOTER sign(task(s)) * ( 
+             (
+                ( GROUP SUM value(CubeKhpCost c_) IF  calcTask(c_) == calcTask  AND period(c_) == p  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND isParent( dimCFO(c_), tCfo)))
+                 (+)
+                 (IF formKhpCostShowCurr() THEN 0 ELSE   ( GROUP SUM value(CubeKhpCost c_) IF calcTask(c_) != calcTask AND  calc(c_) == calc(calcTask) AND period(c_) == p AND period(c_) == p  AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND isParent( dimCFO(c_), tCfo)))
+                 (+)
+//                 (IF formKhpCostShowCurr() THEN 0 ELSE   (GROUP SUM valueSum(CubeEnergoRes c_) IF calc(c_) == calc(calcTask) AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND isParent( dimCFO(c_), tCfo)))
+//                 (+)
+                 (IF formKhpCostShowCurr() THEN 0 ELSE   (GROUP SUM valueSum(CubeSalary7 c_)   IF calc(c_) == calc(calcTask) AND period(c_) == p AND isShowDimFormKhpCfo(calcTask, dimCFO(c_)) AND isParent( dimCFO(c_), tCfo)))
+             )
+         SHOWIF formKhpCostColumns('1sum') 
+       
+         ON CHANGE {
+             IF NOT isGroup(tCost) AND NOT isGroup(tCfo) AND part == 0 THEN {
+                 INPUT inp =  GROUP SUM sign(task(s)) * value(CubeKhpCost c_) IF calcTask(c_) == calcTask AND period(c_) == p AND isParent( dimCFO(c_), tCfo)  AND  isParent( dimCostItem(c_), tCost ) 
+                 DO  {
+                     FOR periodInCalc(Period p_, calc(calcTask)) AND pos(p_) >= pos(p) AND (formKhpCostfillModeString() OR p_ == p) DO {
+                         IF  GROUP MAX CubeKhpCost c_ IF calcTask(c_) == calcTask AND period(c_) == p_ AND dimCFO(c_) == tCfo AND dimCostItem(c_) == tCost THEN
+                             {
+                                     value(CubeKhpCost c_) <- sign(task(s)) * inp WHERE calcTask(c_) == calcTask AND period(c_) == p_ AND dimCFO(c_) == tCfo AND dimCostItem(c_) == tCost; //!! дублей строк не должно быть
+                             }
+                             ELSE NEW  n = CubeKhpCost {
+                                 calc(n)    <- calc(calcTask);
+                                 task(n)    <- task(calcTask);
+                                 dimCFO(n)  <- tCfo;
+                                 dimCostItem(n) <- tCost;
+                                 period(n) <- p_;
+                                 date(n) <- toDateTime(dateBegin(periodCalendarIfInDateRange(p_,calcDateBegin(calc(calcTask)),calcDateEnd(calc(calcTask)))));
+                                 value( n) <- sign(task(s)) * inp; 
+                             }
+                     }
+                 }
+             }
+         }
+         ON CONTEXTMENU 'Вкл.запол.вправо' {
+             formKhpCostfillModeString() <- TRUE;
+         }
+         ON CONTEXTMENU 'Выкл.запол.вправо' {
+             formKhpCostfillModeString() <- NULL;
+         } 
+         
+         
+         FOREGROUND IF  part > 0 THEN #0000ff
+         ON GROUPCHANGE {}
+         COLUMNS planGroupFg (p) HEADER headColumnDateFormKhpCost(calcTask, p, '1sum')  BACKGROUND (IF isGroup(tCost) THEN #ececc3 ELSE IF NOT isGroup(tCfo) THEN #ffffee) DRAW tMainBott  GRID
+;
+
+
+
+
+
+DESIGN formKhpCost {
+     TOOLBARRIGHT (tMainBott) {MOVE PROPERTY (formKhpCostShowOther);}
+    TOOLBARLEFT (tCfo) {
+        MOVE PROPERTY (levelFg1);
+        MOVE PROPERTY (levelFg2);
+        MOVE PROPERTY (levelFg3);
+        MOVE PROPERTY (openFgAll);
+    }
+    panelFirstHorizontal {
+
+        NEW panelColumns {
+            horizontal = TRUE;
+            lines = 1;
+            caption = 'Колонки';
+            MOVE PROPERTY (colF1){ panelCommentFirst = TRUE;};
+
+        }
+    }
+
+    TOOLBARLEFT (tMainBott) {
+        MOVE PROPERTY (levelCg1);
+        MOVE PROPERTY (levelCg2);
+        MOVE PROPERTY (levelCg3);
+        MOVE PROPERTY (openCgAll);
+    }
+    PROPERTY (foldedPgFormSalePlan) {charWidth = 2; fontStyle = 'bold'; fill = 0;}
+    PROPERTY (nameFg) {charWidth = 30;}
+
+    PROPERTY (valueCfoAll) {charWidth = 15; pattern = '#,##0.00#'; fontStyle = 'bold';}
+    PROPERTY (valueCostAll) {charWidth = 15; pattern = '#,##0.00#'; fontStyle = 'bold';}
+
+    PROPERTY (valueCostF) {charWidth = 15; pattern = '#,##0.00#'; }
+    // PROPERTY (valueSaleSumNdsF)   {charWidth = 15;  pattern = '#,##0.00#';  }
+    PROPERTY (pos(tCfo)) {hide = TRUE;}
+    PROPERTY (nameOrderFull(tCfo)) {hide = TRUE;}
+
+    PROPERTY (foldedCgFormSalePlan) {charWidth = 2; fontStyle = 'bold'; fill = 0;}
+    PROPERTY (nameCg) {charWidth = 30;}
+    PROPERTY (valueCostFc) {charWidth = 15; pattern = '#,##0.00#'; }
+    PROPERTY (pos(tCost)) {hide = TRUE;}
+    PROPERTY (nameOrderFull(tCost)) {hide = TRUE;}
+    PROPERTY (part) {hide = TRUE;}
+}
+
+
+
+
+    //таблица коэфф распределения 
+EXTEND  FORM formKhpCost 
+    OBJECTS  distr = CubeKhpCostDistrib
+    FILTERS calc(calcTask) == calc(distr) 
+    FILTERGROUP distrTask FILTER 'текущ/все' task(calcTask) == task(distr) DEFAULT 
+    PROPERTIES DELETE(distr), NEW(distr),
+    ddate = date(distr),
+    dperiod        'Период'                   = namePeriod(period(distr)), 
+    ddimCFO        'Подразделение'            = name(dimCFO(distr)),
+    ddimCfoDistrib 'Подразделение получатель' = name(dimCfoDistrib(distr)),
+    dvalue         'Вес'                      = value(distr),
+    issueBased     'База выпуска'             = issueBased(distr)
+;
+
+DESIGN formKhpCost {
+    PROPERTY (ddimCFO) {charWidth = 15;}
+    PROPERTY (ddimCfoDistrib) {charWidth = 15;}
+    PROPERTY (dvalue) {charWidth = 15; pattern = '#,##0.00#'; }
+}
+
+
+// таблица введенных вручную
+EXTEND  FORM formKhpCost
+    OBJECTS  manual = CubeKhpCostManual
+    FILTERS calc(calcTask) == calc(manual) AND task(calcTask) == task(manual)
+    PROPERTIES DELETE(manual),
+    newManual 'Добавить'  = {
+       NEW n =  CubeKhpCostManual {
+           calc(n) <- calc(calcTask);
+           task(n) <- task(calcTask);
+           date(n) <- toDateTime(calcDateBegin(calc(calcTask)));
+           includeInCost(n) <- TRUE;
+           
+           SEEK formKhpCost.manual = n;
+       }
+    },
+        newCopy 'Скопировать'  = {
+            NEW n =  CubeKhpCostManual {
+                calc(n) <- calc(calcTask);
+                task(n) <- task(calcTask);
+                date(n) <-  date(manual);
+                includeInCost(n) <- TRUE;
+                dimCFO(n)               <-  dimCFO(manual);
+                dimCostItem(n)          <-  dimCostItem(manual);
+//                dimPlantProductLine(n)  <-  dimPlantProductLine(manual);
+//                dimNomenklPlant(n)      <-  dimNomenklPlant(manual);
+
+                SEEK formKhpCost.manual = n;
+            }
+        },
+        //NEW(manual),
+                   
+    mdate                    'дата операции'        = date(manual),                 
+    mdimCfo                  'Подразделение'        = name(dimCFO(manual)),          
+   // mDimCfoPlant             'Подразделение пр-ва'  = name(dimCfoPlant(manual)),          
+    mdimCostItem             'Статья затрат'        = name(dimCostItem(manual)),
+//    mDimPlantProductLine 'Производственная линия' =  name(dimPlantProductLine(manual)),
+//    mDimNomenklPlant     'Продукт'                =  name(dimNomenklPlant(manual)),
+  //  mCubePlantProduct 'Способ производства (имя спецфк.)'           =  cubePlantProduct(manual),
+// mdimNomenklCostGroup     'Ценовая группа'       = name(dimNomenklCostGroup(manual)),  
+   // mdimPartnerFinGroup      'Сегмент покупателей'  = name(dimPartnerFinGroup(manual)),
+    mvalue                   'Сумма' = value(manual),
+    mIncludeInCost 'Вычитать' = includeInCost(manual)
+;
+
+EXTEND FORM formKhpCost 
+ TREE  distrTree  typeCost = INTEGER, cfoCost = DimCFO
+    FILTERS  typeCost == 1 OR typeCost == 2
+    OBJECTS cfoTarget = DimCFO
+    OBJECTS dtPeriod = Period
+    FILTERS periodInCalc(dtPeriod, calc(calcTask))
+ FILTERS (checkedCFO(task(calcTask), cfoCost) OR (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND dimCFO(dd) == cfoCost))
+          AND
+    (
+     typeCost == 1 AND (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND NOT issueBased(dd) AND dimCFO(dd) == cfoCost)
+     OR     
+     typeCost == 2 AND (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND     issueBased(dd) AND dimCFO(dd) == cfoCost)
+    )
+    FILTERGROUP  cfoDest FILTER 'заполн.'
+                            (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND dimCfoDistrib(dd) == cfoTarget AND dimCFO(dd) == cfoCost) DEFAULT
+                            //(checkedCFOplant(task(calcTask), cfoTarget)
+                     FILTER 'по настройке' checkedCFOplant(task(calcTask), cfoTarget) OR  (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND dimCfoDistrib(dd) == cfoTarget AND dimCFO(dd) == cfoCost)
+    
+    
+            
+    PROPERTIES 
+        dtPart 'Тип' = IF  typeCost == 1 THEN 'РАСПРЕДЕЛЕНИЕ ПО КОЭФФИЦИЕНТАМ'  ELSE 'РАСПРЕДЕЛЕНИЕ ПО ВЫПУСКАМ' BACKGROUND #ccffcc,     
+        dtNameCost 'Затраты' =  name(cfoCost) BACKGROUND  #ffffee,
+        dtNameCostCoeffConst 'Пост.коэф' =  distrCoeffConst(cfoCost) BACKGROUND  #ffffee,
+       
+        dtName  'Произв.'    =  name(cfoTarget),
+        dtIssueBased 'По показателям выпуска' = (GROUP MAX issueBased(CubeKhpCostDistrib dd) IF calcTask(dd) = calcTask AND  period(dd) == dtPeriod AND cfoCost == dimCFO(dd) AND cfoTarget== dimCfoDistrib(dd))
+            COLUMNS period (dtPeriod) HEADER (toChar(dateBegin(periodInCalc(dtPeriod, calc(calcTask))), 'TMMon YY')) + ', по вып.'
+            ON CHANGE {
+                INPUT inp =  (GROUP MAX issueBased(CubeKhpCostDistrib dd) IF calcTask(dd) = calcTask AND  period(dd) == dtPeriod AND cfoCost == dimCFO(dd) AND cfoTarget== dimCfoDistrib(dd)) DO {
+                    LOCAL isNew = BOOLEAN ();
+                    IF (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND dimCFO(dd) == cfoCost AND dimCfoDistrib(dd) == cfoTarget AND value(dd) != 0 ) THEN {
+                        ASK 'Найдены настройки распределения по коэффициентам. при продолжении они будут стерты ?' contin = YESNO DO {
+                            IF contin THEN {
+                                DELETE CubeKhpCostDistrib dd WHERE dd IS CubeKhpCostDistrib AND dimCFO(dd) == cfoCost;
+                                isNew() <- TRUE;
+                            }
+                        }
+                    }
+                    ELSE {
+                        DELETE CubeKhpCostDistrib dd WHERE dd IS CubeKhpCostDistrib AND dimCFO(dd) == cfoCost AND dimCfoDistrib(dd) == cfoTarget AND period(dd) == dtPeriod;
+                        isNew() <- TRUE;
+                    }
+                    IF isNew() THEN NEW n = CubeKhpCostDistrib {
+                        calc(n) <- calc(calcTask);
+                        task(n) <- task(calcTask);
+                        period(n) <- dtPeriod;
+
+                        date(n) <-  toDateTime(dateBegin( periodInCalc(dtPeriod, calc(calcTask)) ));
+                        dimCFO(n) <- cfoCost;
+                        dimCfoDistrib(n) <- cfoTarget;
+                        issueBased(n) <- inp;
+                    }
+                }
+            },
+        dtValue =   (GROUP MAX value(CubeKhpCostDistrib dd) IF calcTask(dd) = calcTask AND  period(dd) == dtPeriod AND cfoCost == dimCFO(dd) AND cfoTarget== dimCfoDistrib(dd) )
+            COLUMNS period (dtPeriod) HEADER 'вес'
+            ON CHANGE {
+                INPUT inp =  (GROUP MAX value(CubeKhpCostDistrib dd) IF calcTask(dd) = calcTask AND  period(dd) == dtPeriod AND cfoCost == dimCFO(dd) AND cfoTarget== dimCfoDistrib(dd) ) DO {
+                    LOCAL isNew = BOOLEAN ();
+                    IF (GROUP MAX TRUE IF calcTask(CubeKhpCostDistrib dd) == calcTask AND dimCFO(dd) == cfoCost AND dimCfoDistrib(dd) == cfoTarget AND issueBased(dd) ) THEN {
+                        ASK 'Найдены настройки распределения по выпускам пр-ва. при продолжении они будут стерты ?' contin = YESNO DO {
+                            IF contin THEN {
+                                DELETE CubeKhpCostDistrib dd WHERE dd IS CubeKhpCostDistrib AND dimCFO(dd) == cfoCost;
+                                isNew() <- TRUE;
+                            }
+                        }
+                    }
+                    ELSE {
+                        DELETE CubeKhpCostDistrib dd WHERE dd IS CubeKhpCostDistrib AND dimCFO(dd) == cfoCost AND dimCfoDistrib(dd) == cfoTarget AND period(dd) == dtPeriod;
+                        isNew() <- TRUE;
+                    }
+                    IF isNew() THEN NEW n = CubeKhpCostDistrib {
+                        calc(n) <- calc(calcTask);
+                        task(n) <- task(calcTask);
+                        period(n) <- dtPeriod;
+
+                        date(n) <-  toDateTime(dateBegin( periodInCalc(dtPeriod, calc(calcTask)) ));
+                        dimCFO(n) <- cfoCost;
+                        dimCfoDistrib(n) <- cfoTarget;
+                        value(n) <- inp;
+                    }
+                }
+            },
+        dtEmpty = '' DRAW cfoTarget GRID 
+       
+;
+
+
+DESIGN formKhpCost {
+    TOOLBARRIGHT(manual) {MOVE PROPERTY (newManual);
+                          MOVE PROPERTY (newCopy);
+    }
+    // distrTree
+    PROPERTY (dtPart) {fontStyle = 'bold'; }
+    PROPERTY (dtNameCost) {}
+    PROPERTY (dtNameCostCoeffConst) {charWidth = 10; fill = 0.01;}
+    
+    PROPERTY (dtName) {charWidth = 30; fill = 0.01;}
+    PROPERTY (dtValue) {charWidth = 10; pattern = '#,##0.00'; fill = 0.01;}
+    PROPERTY (dtIssueBased) {charWidth = 3; fill = 0.01; }
+    PROPERTY (dtEmpty) {charWidth = 1; fill = 1;}
+
+    // manual
+    PROPERTY (mdimCfo) {charWidth = 15;}
+    //PROPERTY (mDimCfoPlant) {charWidth = 15;}
+    PROPERTY (mdimCostItem) {charWidth = 15;}
+//    PROPERTY (mDimPlantProductLine) {charWidth = 15;}
+//    PROPERTY (mDimNomenklPlant) {charWidth = 15;}
+  //  PROPERTY (mCubePlantProduct) {charWidth = 15;}
+    PROPERTY (mvalue) {charWidth = 15; pattern = '#,##0.00'; }
+}
+
+
+
+DESIGN formKhpCost {
+    // TOOLBARRIGHT (groups){MOVE PROPERTY (delAllView);}
+    OBJECTS {
+        NEW tabPanel {
+            tabbed = TRUE;
+            fill = 1;
+            NEW panel1 {
+                caption = 'Затраты подразделений';
+                fill = 1;
+                horizontal = FALSE ;
+                lines = 1;
+                MOVE BOX (tCfo){fill = 0.2;};
+                MOVE BOX (tMainBott){ 
+                    fill = 0.8;
+                };
+            }
+            MOVE BOX (manual) {caption = 'Затраты прямые';};
+            
+            NEW panelDistr { 
+                caption = 'Затраты. База распределения';
+                fill = 1;
+                MOVE BOX (TREE distrTree){fill = 0.3;};
+                MOVE BOX ( cfoTarget);
+            }
+            NEW panelDiff {
+                caption = 'Затраты. Сверка';
+                fill = 1;
+//                MOVE BOX (diffCfo);
+//                MOVE BOX (dfCfoPlant){fill = 0.3;};
+            }
+            NEW panel2 {
+                caption = 'Таблицы';
+                fill = 1;
+                tabbed = TRUE;
+              
+            MOVE BOX (s) {caption = 'Полная таблица';};
+            MOVE BOX (distr) {caption = 'Затраты. База распределения';};
+           
+            }
+        }
+    } 
+}
+
+@addMenuImportExport(formKhpCost,'Импорт затрат подразделений (факт) из Итан', TypeTask.KhpCost);
+

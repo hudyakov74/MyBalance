@@ -1,0 +1,54 @@
+MODULE CubeSalary7Coef;
+
+REQUIRE  CalcTaskSheduler, DimensNomenkl, DimensPartner,DimensCFO,   DimensCostItems;
+
+NAMESPACE MyBalance;
+
+CLASS CubeSalary7Coef '7 ПЛАН ФОТ. Коэффициенты';
+
+
+@createCube(CubeSalary7Coef);
+
+dimCostItems           'Статья базы расчета'                             = DATA DimCostItems(CubeSalary7Coef);
+dimCostItemsTune       'Статья начисления'                               = DATA DimCostItems(CubeSalary7Coef);
+valueKoef               'Коэффициент'                                    = DATA NUMERIC[20,4](CubeSalary7Coef);
+
+
+
+
+cubeSalary7CoefRef (CalcTask ct, Period p, DimCostItems b, DimCostItems t) 
+        = GROUP MAX CubeSalary7Coef s IF calcTask(s) == ct AND period(s) = p AND dimCostItems(s) = b AND  dimCostItemsTune(s) == t;
+
+
+
+setCubeSalary7Coef (CalcTask ct, Period p, DimCostItems b, DimCostItems t, NUMERIC[20,4] inp) {
+    currentCubeSalary7Coef() <- cubeSalary7CoefRef(ct, p, b, t);
+    IF NOT currentCubeSalary7Coef() THEN NEW n = CubeSalary7Coef {
+        calc(n) <- calc(ct);
+        task(n) <- task(ct);
+        period(n) <- p;
+        dimCostItems(n) <- b;
+        dimCostItemsTune(n) <- t;
+        currentCubeSalary7Coef() <- n;
+    }
+    valueKoef(currentCubeSalary7Coef()) <- inp;
+}
+
+
+valueKoefCubeSalary7Coef(CalcTask ct, Period period,  DimCostItems b, DimCostItems t) =
+    (GROUP SUM valueKoef(CubeSalary7Coef c_)
+        IF
+        valueKoef(c_) > 0.0
+            AND calcTask(c_) == ct
+            AND period(c_)   == period
+            AND dimCostItems(c_) == b 
+            AND  dimCostItemsTune(c_) == t
+        )
+        /
+        (GROUP SUM 1
+            IF valueKoef(CubeSalary7Coef c_) > 0.0
+                AND calcTask(c_) == ct
+                AND period(c_)   == period
+                AND dimCostItems(c_) == b
+                AND dimCostItemsTune(c_) == t
+            );

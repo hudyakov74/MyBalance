@@ -1,0 +1,41 @@
+MODULE ActionCategoryBaseDistr;
+
+REQUIRE FormCategoryBaseDistr;
+
+EXTEND  CLASS  MenuOperationsCubeCategoryBaseDistr{
+    fillCubeCategoryBaseDistr 'Заполнить по категории привязанного алгоритма' 
+}
+ 
+operationCubeCategoryBaseDistr  (CalcTask ct,  MenuOperationsCubeCategoryBaseDistr m) + {
+    CASE  EXCLUSIVE 
+        WHEN m == MenuOperationsCubeCategoryBaseDistr.copy THEN {
+            DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                FOR calc(CubeCategoryBaseDistr s) = retValue ORDER num(s), s  NEW new = CubeCategoryBaseDistr DO {
+                     calc(new) <- calc(ct);           
+                     task(new) <- task(ct);           
+                     num(new) <- num(s);           
+                     dimCategorySource(new) <- dimCategorySource(s);           
+                     dimCategoryDestination1(new) <- dimCategoryDestination1(s);           
+                     coeff(new) <- coeff(s);           
+            }
+        }
+    }
+    WHEN m == MenuOperationsCubeCategoryBaseDistr.fillCubeCategoryBaseDistr THEN 
+        
+        MESSAGE ( GROUP SUM 1 IF categoryGroup(categoryDistrMain(tuneCalc(ct)), DimCategoryItemsNamed s) ) NOWAIT LOG;
+        MESSAGE ( GROUP SUM 1 IF categoryGroup(categoryDistrMain(tuneCalc(ct)), DimCategoryItemsNamed s)  AND itemsName(DimCategory source) == s) NOWAIT LOG;
+        MESSAGE ( GROUP SUM 1 IF categoryGroup(categoryDistrMain(tuneCalc(ct)), DimCategoryItemsNamed s)  AND itemsName(DimCategory source) == s        AND categoryGroup(source,  DimCategory dest) ) NOWAIT LOG;
+        MESSAGE ( GROUP SUM 1 IF categoryGroup(categoryDistrMain(tuneCalc(ct)), DimCategoryItemsNamed s)  AND itemsName(DimCategory source) == s        AND categoryGroup(source,  DimCategory dest) ) NOWAIT LOG;
+        
+        FOR categoryGroup(categoryDistrMain(tuneCalc(ct)), DimCategory source) AND source IS DimCategory
+        AND categoryGroup(source, Object dest) //AND dest IS DimCategory   
+            ORDER posCt(source), source, posCt(dest), dest
+                NEW new = CubeCategoryBaseDistr DO  {
+                     calc(new) <- calc(ct);           
+                     task(new) <- task(ct);           
+                     num(new) <- 1 (+) (GROUP MAX num(CubeCategoryBaseDistr s_) IF calcTask(s_) == ct);           
+                     dimCategorySource(new)       <-  source;           
+                     dimCategoryDestination1(new) <-  dest;           
+                     coeff(new) <- 1.0;        
+    }
+} ;

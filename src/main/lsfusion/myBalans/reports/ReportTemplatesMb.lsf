@@ -2,7 +2,7 @@ MODULE ReportTemplatesMb;
 
 REQUIRE ReportList;
  
-NAMESPACE Reports; 
+NAMESPACE MyBalance; 
  
 // шаблоны xls для дополнения отчетов
 CLASS MbReportTemplates;
@@ -59,7 +59,7 @@ mergeExcelTemplates(ReportList reportList) {
 }
 mergeExcelTemplatesOpen(ReportList reportList){
     mergeExcelTemplates(reportList);
-    open(mergedExcel());
+    open(mergedExcel(),   name(reportList) );
 }
 
            

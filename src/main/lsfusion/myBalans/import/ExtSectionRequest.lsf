@@ -1,10 +1,9 @@
 MODULE ExtSectionRequest;
 
-NAMESPACE ExtSystem; 
+NAMESPACE MyBalance; 
 
 CLASS SectionRequest 'Раздел импорта' {
-   
-   // type2 'импорт ...'
+   dimSync 'Синхронизация справочников'
 }
 FORM SectionRequestList 'Раздел импорта' 
 OBJECTS s = SectionRequest PROPERTIES(s) READONLY staticCaption

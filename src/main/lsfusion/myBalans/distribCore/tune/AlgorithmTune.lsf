@@ -2,7 +2,7 @@ MODULE AlgorithmTune;
 
 REQUIRE DistribTuneRef, CalcTask;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 runAlgorithmTuneSub 'Запуск алгоритма распределения' ABSTRACT LIST(DistribTuneRefSub, CalcTask,  INTEGER);
 

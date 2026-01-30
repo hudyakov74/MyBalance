@@ -2,7 +2,7 @@ MODULE CalendarConstant;
 
 REQUIRE Utils, Time;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 
 numberMonthCalendarConstant '{time.number.month}' (Month m) = CASE EXCLUSIVE 
@@ -31,7 +31,7 @@ cc_periodId	= FORMULA INTEGER PG 'select extract(year from age(($1), date \'2017
 CLASS CalendarConstant;
 TABLE calendarConstant(CalendarConstant);
 date 'Дата' = DATA DATE (CalendarConstant) INDEXED;
-uniDate = GROUP AGGR CalendarConstant c BY date(c);
+biDate = GROUP AGGR CalendarConstant c BY date(c);
 
 year            'Год'               (CalendarConstant c) = extractYear(date(c)) MATERIALIZED TABLE calendarConstant;
 quarterNumber   'Номер квартала'    (CalendarConstant c) = cc_extractQuarter(date(c)) MATERIALIZED TABLE calendarConstant;

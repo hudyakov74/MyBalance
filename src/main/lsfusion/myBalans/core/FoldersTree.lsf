@@ -9,3 +9,4 @@ NAMESPACE MyBalance;
 folderClosed = DATA BOOLEAN (INTEGER, User); // для года
 folderClosed = DATA BOOLEAN (Task, CalcVariant, User);
 
+

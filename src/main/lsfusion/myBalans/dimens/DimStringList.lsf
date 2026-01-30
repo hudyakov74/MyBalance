@@ -1,0 +1,53 @@
+MODULE DimStringList;
+
+REQUIRE System;
+
+NAMESPACE MyBalance;
+// Справочник строк, только чтение и добавление
+
+CLASS DimStringList;
+TABLE dimStringList(DimStringList);
+EXTEND CLASS  DimStringList{
+    empty '<>'
+}
+
+importStrDimStringList     = DATA LOCAL STRING (INTEGER, INTEGER);
+importStrCodeDimStringList = DATA LOCAL STRING (INTEGER, INTEGER);
+ 
+importDimStringList        = DATA LOCAL DimStringList(INTEGER, INTEGER);
+
+code 'Код'          = DATA ISTRING[100] (DimStringList) TABLE dimStringList;
+name 'Наименование' = DATA ISTRING[512] (DimStringList) TABLE dimStringList;
+
+CONSTRAINT name(DimStringList d_) AND DimStringList.empty == d_ MESSAGE 'Наименование корневого элемента не редактируется';
+
+syncByNameDimStringList(INTEGER row) {
+    FOR importDimStringList(INTEGER i, row) DO importDimStringList(i, row) <- NULL;
+
+    FOR [GROUP MAX importStrDimStringList(INTEGER n, row) BY importStrDimStringList(n, row)](STRING nm) 
+        AND NOT (GROUP MAX DimStringList p IF name(p) == nm)
+        AND nm != ''
+        NEW  new = DimStringList DO {
+        name(new) <- nm;
+    }
+    // синхронизируем по имени
+    FOR importStrDimStringList(INTEGER n, row) = name(DimStringList p) DO {
+        importDimStringList(n, row) <- p;
+    }
+}
+
+syncByNameCodeDimStringList(INTEGER row) {
+    importDimStringList(INTEGER i, row) <- NULL;
+
+    FOR [GROUP MAX (CONCAT '',importStrDimStringList(INTEGER n, row),importStrCodeDimStringList(n, row))  BY importStrDimStringList(n, row),importStrCodeDimStringList(n, row)](STRING nm, STRING code) 
+        AND NOT (GROUP MAX DimStringList p IF name(p) == nm AND code == code(p))
+        AND (CONCAT '',nm,code) != '' 
+        NEW  new =  DimStringList DO {
+        name(new) <- nm;
+        code(new) <- code;
+    }
+    // синхронизируем по имени и коду
+    FOR importStrDimStringList(INTEGER n, row) = name(DimStringList p) AND importStrCodeDimStringList(n, row) == code(p) DO {
+        importDimStringList(n, row) <- p;
+    }
+}         

@@ -2,7 +2,7 @@ MODULE DistribTuneRef;
 
 REQUIRE Dimens;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 CLASS DistribTuneRef 'Список алгоритмов распределения'; 
 TABLE distribTuneRef(DistribTuneRef);
@@ -67,11 +67,14 @@ OBJECTS sub = DistribTuneRefSub
     name(sub),               
     itemsNameSub 'Алгоритм' = name(itemsName(sub)),
     categoryDistrMainSub 'Категория отборов алгоритма' = nameCategory(categoryDistr(sub)),
-    categoryResultNamed  'Категория разультата'  = staticCaption(categoryResultNamed(sub))
-
+    categoryResultNamed  'Категория результата'  = staticCaption(categoryResultNamed(sub))
     ORDERS orderSub   
  
 ;
+
+DESIGN formDistribTuneReflist{
+    PROPERTY (name(sub)){charWidth = 8;}
+}
 
 EXTEND FORM  formDistribTuneRefCard
     OBJECTS sub = DistribTuneRefSub

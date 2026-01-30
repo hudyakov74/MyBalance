@@ -2,12 +2,33 @@ MODULE ExtUtil;
  
 REQUIRE Utils,Time;
 
-NAMESPACE ExtSystem;
- 
-substrFromRegExp (TEXT p1, STRING p2) = FORMULA TEXT PG 'substring($1, $2)'; 
-mb_daysInclBetweenDates(DATE dateMax, DATE dateMin) = daysBetweenDates(dateMax, dateMin) +1;
-//DATE_PART('day', end - start)
+NAMESPACE MyBalance;
 
+CLASS ABSTRACT LocalVars; 
+
+// ОФОРМЛЕНИЕ
+htmlBold(STRING s) =  '<b>'+s+'</b>';
+htmlColor(STRING s, STRING colorString) =    '<font color="'+colorString+'">'
+    + s
+    + '</font>';
+;
+
+// СТРОКИ
+trimDeltn(STRING  s) = regexpReplace(trim(replace(replace(s,'\n',' '),'\t',' ')),'( ){2,}', ' ',''); //   без перевода строк, табуляций и двойных пробелов
+ 
+substrFromRegExp (TEXT p1, STRING p2) = FORMULA TEXT PG 'substring($1, $2)';
+textValue2JsonFile(TEXT t) = IF  left(t,1) == '['  THEN   FILE(CSVFILE ('\{ "value":' + t + ' \}')) ELSE  FILE(CSVFILE ('\{ "value":[' + t + '] \}')) ;
+
+stringToLenLeftSym (STRING st, INTEGER l, STRING ins) =  STRING (repeat(ins, MAX 0,(l - length(st))) + st);
+stringToLenLeft 'Дополнить слева' (STRING st, INTEGER l) =   stringToLenLeftSym(st, l, '0') ;
+
+
+//ДАты
+countMonthExcl(DATE d1, DATE d2) =  extractYear(d2) - extractYear(d1) + extractMonthNumber(d2) - extractMonthNumber(d1);
+mb_daysInclBetweenDates(DATE dateMax, DATE dateMin) = daysBetweenDates(dateMax, dateMin) +1;
+
+
+// ДЛЯ 1с
 to1cDate0000(DATE d) = toChar(d,'YYYY-MM-DD')+'T00:00:00';
 to1cDate2359(DATE d) = toChar(d,'YYYY-MM-DD')+'T23:59:59';
 dateTimeTo1cDate(DATETIME d) =  toChar(d,'YYYY-MM-DD')+'T'+toChar(d,'HH24:MI:SS');
@@ -15,28 +36,46 @@ dateTimeTo1cDate(DATETIME d) =  toChar(d,'YYYY-MM-DD')+'T'+toChar(d,'HH24:MI:SS'
 date1cToDateTime(STRING s) = toDateTimeFormat(s,'YYYY-MM-DDTHH24:MI:SS');
 date1cToDate(STRING s) = DATE(date1cToDateTime(s));
 
-textValue2JsonFile(TEXT t) = IF  left(t,1) == '['  THEN   FILE(CSVFILE ('\{ "value":' + t + ' \}')) ELSE  FILE(CSVFILE ('\{ "value":[' + t + '] \}')) ;
-
 docNumberFrom1cPr(STRING s) =  substrFromRegExp(s,'([^[:space:]]+)(?= от)');
 docDateFrom1cPr(STRING s) =   toDateFormat(substrFromRegExp(s,'[0-3]\\d\\.[0-1]\\d\\.[1-2]\\d\\d\\d'),'DD.MM.YYYY');
 
-stringToLenLeftSym (STRING st, INTEGER l, STRING ins) =  STRING (repeat(ins, MAX 0,(l - length(st))) + st);
-stringToLenLeft 'Дополнить слева' (STRING st, INTEGER l) =   stringToLenLeftSym(st, l, '0') ;
-//CLASS ExtImportDataTmp;
-//description = DATA LOCAL BPSTRING[100] (ExtImportDataTmp) DEFAULTCOMPARE 'CONTAINS' IN id;
-extDataDescription = DATA LOCAL ISTRING[100] (INTEGER) DEFAULTCOMPARE 'CONTAINS' IN id;
+//   Начиная с PostgreSQL 15
+regexpSubstr (STRING string, STRING regexp, INTEGER startPosition, INTEGER position) = FORMULA STRING 'regexp_substr($1,$2,$3,$4,\'\',1)';
+regexpCount  (STRING string, STRING regexp) = FORMULA INTEGER 'regexp_count($1,$2)';
+ 
+// ФОРМЫ вспомогательные
+extDataDescription = DATA LOCAL ISTRING[100] (INTEGER) DEFAULTCOMPARE '=*' IN id;
+
+FORM formXlsxLoad 'Выбор файла xlsx'
+    PROPERTIES ff 'Загрузите файл нажав на поле' = rawFile();
+DESIGN formXlsxLoad {
+    size  = (400,200);
+    PROPERTY(ff) {charWidth  = 12;}
+}
+
 
 FORM formExtDataSelect 'Выбор элемента' 
 OBJECTS  o = INTEGER 
 PROPERTIES READONLY extDataDescription(o)
 FILTERS extDataDescription(o);
  
-formDateFromTo1 = DATA LOCAL DATE ();
-formDateFromTo2 = DATA LOCAL DATE ();
+formInteger = DATA LOCAL INTEGER ();
+formDateFromTo1 = DATA LOCAL NESTED DATE ();
+formDateFromTo2 = DATA LOCAL NESTED DATE ();
+formDateFromTo1caption = DATA LOCAL STRING[50]();
+formDateFromTo2caption = DATA LOCAL STRING[50]();
+
 FORM formDateFromTo 'Выбор периода'
 PROPERTIES PANEL 
-d1 'Дата с' = formDateFromTo1(),
-d2 'по' = formDateFromTo2(); 
+d1  = formDateFromTo1(),
+d2 'по'     = formDateFromTo2(); 
+
+DESIGN formDateFromTo{
+    horizontal = FALSE;
+    lines = 1;
+    PROPERTY (d1 ) {caption = OVERRIDE formDateFromTo1caption(),'Дата с';}
+    PROPERTY (d2 ) {caption = OVERRIDE formDateFromTo2caption(),'по';}
+}
  
 FORM formDateTime 'Дата с временем'
 OBJECTS d = (d1 = DATETIME) PANEL 
@@ -44,11 +83,35 @@ PROPERTIES
 d1 'Время: ' = VALUE (d1)
 ;  
  
+numberMonthByRusName (STRING pn) = CASE
+    WHEN lower(trim(pn)) == 'январь'  THEN 1
+    WHEN lower(trim(pn)) == 'февраль'  THEN 2
+    WHEN lower(trim(pn)) == 'март'  THEN 3
+    WHEN lower(trim(pn)) == 'апрель'  THEN 4
+    WHEN lower(trim(pn)) == 'май'  THEN 5
+    WHEN lower(trim(pn)) == 'июнь'  THEN 6
+    WHEN lower(trim(pn)) == 'июль'  THEN 7
+    WHEN lower(trim(pn)) == 'август'  THEN 8
+    WHEN lower(trim(pn)) == 'сентябрь'  THEN 9
+    WHEN lower(trim(pn)) == 'октябрь'  THEN 10
+    WHEN lower(trim(pn)) == 'ноябрь'  THEN 11
+    WHEN lower(trim(pn)) == 'декабрь'  THEN 12 ;
+
+getLastDateByNameMonth(DATE d, STRING pn) =  GROUP MAX DATE dt IF iterate(dt, sumMonth(d, -12), d) AND extractDay(dt) == 1 AND 
+                                                          extractMonthNumber(dt) >= numberMonthByRusName(pn);
+
+
  
-META addMenuImportExport(formName, ImportProcDescription) 
+META addMenuImportExport(formName, ImportProcDescription, typeTask) 
 EXTEND CLASS SectionRequest {
     section###formName  ImportProcDescription
 }
+
+descrSectionRequest(TypeTask t) += WHEN t = typeTask THEN
+    CONCAT '',
+        '\n ИМПОРТ/ЭКСПОРТ ФОРМЫ:\n',
+         extRequestDescription(SectionRequest.section###formName),   
+        '\n===========================\n';
 
 functionsImport###formName  ABSTRACT (CalcTask,ExtRequest);
 
@@ -102,3 +165,14 @@ PROPERTIES() IN message EXTID 'message'
     odata_error_value EXTID 'value'; 
 DESIGN odata_error {PROPERTY (odata_error_value()){charWidth = 150;} }
 
+
+col1ListFromExcel = DATA LOCAL STRING (INTEGER);
+col2ListFromExcel = DATA LOCAL STRING (INTEGER);
+col3ListFromExcel = DATA LOCAL STRING (INTEGER);
+
+loadListFromExcel() {
+     INPUT f = EXCELFILE DO { // запрашиваем диалог по выбору файла
+            open(f); // открываем выбранный файл
+            IMPORT XLS NOHEADER FROM f TO col1ListFromExcel = A, col2ListFromExcel = B, col3ListFromExcel = C;
+     }
+}

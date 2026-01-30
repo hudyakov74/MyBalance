@@ -2,7 +2,7 @@ MODULE Calc;
 
 REQUIRE TaskTune, Utils, Time, PeriodCalendar, DimensFirm, FoldersTree;
 
-NAMESPACE Calc;
+NAMESPACE MyBalanceCalc;
 
 
 // --- шапка расчета объединяющая книги --------------------
@@ -28,7 +28,7 @@ dimFirm     'Организация' = DATA DimFirm(Calc);
 
 description 'Комментарий' = DATA STRING[1000] (Calc) IN base;
 periodType 'Используемые периоды'  =  DATA PeriodType (Calc) NONULL;
-scenario 'Сценарий' = DATA Scenario(Calc ) NONULL;
+scenario 'Сценарий' = DATA Scenario( Calc ) NONULL;
 calcVariant 'Вид расчета'  = DATA CalcVariant(Calc) NONULL;
 
 // Характеристики бюджета используемые между ордерами
@@ -67,17 +67,24 @@ name 'Наименование' (Calc c)   =  STRING[80] (CONCAT  ', ', nameCalc
                                         ;// DATA STRING[254] (Calc) IN id;
                                         
   
-getPeriodByDate(Calc c,DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodType(p) == periodType (c) 
+getPeriodByDate(Calc c, DATE d) =  GROUP MAX period(PeriodCalendar p) IF periodType(p) == periodType (c) 
                                                                                 AND d >= dateBegin(p) 
                                                                                 AND d<= dateEnd(p);
+getFirstPeriod(Calc c) = getPeriodByDate(c, calcDateBegin(c));
+getEndPeriod(Calc c) = getPeriodByDate(c, calcDateEnd(c));
+
+getCountPeriodsInDates(Calc c, DATE d1, DATE d2) =  GROUP SUM 1 IF period(PeriodCalendar p) AND periodType(p) == periodType (c)
+    AND d1 >= dateBegin(p)
+    AND d2 <= dateEnd(p);
  
 openCalcCard ABSTRACT (Calc);
  
 readOnlyTitleCalc(Calc c) = calcVersionNum(c) != NULL; 
 
-FORM calcList 'Реестр расчетов' 
+FORM calcList 'Журнал бюджетов' 
 OBJECTS c = Calc LAST 
-;   
+;
+folderChecked 'Отметка текущего бюджета для удобства работы' = DATA BOOLEAN (Calc, User);
 
 // Папки по годам +++
 calcFolderOpenStatus(Calc c) = NOT folderClosed(extractYear(calcDateBegin(c)), currentUser());
@@ -101,8 +108,9 @@ DESIGN calcList {
 
 EXTEND FORM  calcList
 //PROPERTIES opn 'Открыть' = {  IF calcFolderOpenStatus(c)  THEN openCalcCard(c); } GRID IMAGE 'images/folder_table.png' FIRST
-PROPERTIES ON CHANGE {IF calcFolderOpenStatus(c)  THEN openCalcCard(c);} 
-           // n01 'Дата' = calcDate(c),
+PROPERTIES NOIMAGE folderCheked '' = folderChecked(c, currentUser()) ON CHANGE {INPUT i_ = folderChecked(c, currentUser()) DO { folderChecked(c, currentUser()) <- i_;};}
+PROPERTIES NOIMAGE ON CHANGE {IF calcFolderOpenStatus(c)  THEN openCalcCard(c);}  BACKGROUND colorBackground(scenario(c)) IF calcFolderOpenStatus(c) FOREGROUND colorForeground(scenario(c))  
+// n01 'Дата' = calcDate(c),
             n03     'Сценарий'      = IF calcFolderOpenStatus(c) THEN nameScenario(scenario(c))        ELSE ' ' ,
             nameCV  'Вид расчета'   = IF calcFolderOpenStatus(c) THEN nameCalcVariant(calcVariant(c))  ELSE ' ' ,
             begDate 'с'             = IF calcFolderOpenStatus(c) THEN calcDateBegin(c), 
@@ -115,20 +123,26 @@ ORDERS folderYear, begDate, n03
  ;
 
 DESIGN calcList {
-      BOX (c) {caption = NULL; collapsible = FALSE;}
+      BOX (c) {caption = ''; collapsible = FALSE;}
    //   PROPERTY(n01) { charWidth=14; } 
-      PROPERTY(n03) { charWidth=10; }
-      PROPERTY(nameCV) { charWidth=10; }
-      PROPERTY(begDate) { charWidth=14; } 
-      PROPERTY(endDate) { charWidth=14; } 
-      PROPERTY(dimFirm) { charWidth=10; } 
-      PROPERTY(n02) { charWidth=50; } 
+      PROPERTY(n03)     { charWidth = 10; tag = 'div'; }
+      PROPERTY(nameCV)  { charWidth = 10; tag = 'div'; }
+      PROPERTY(begDate) { charWidth = 14; tag = 'div'; } 
+      PROPERTY(endDate) { charWidth = 14; tag = 'div'; } 
+      PROPERTY(dimFirm) { charWidth = 10; tag = 'div'; } 
+      PROPERTY(n02)     { charWidth = 50; tag = 'div'; } 
 };
+
+
+
+
+
+
  
-FORM calcListSelect 'Реестр расчетов' 
+FORM calcListSelect 'Журнал бюджетов' 
 OBJECTS c = Calc LAST 
-PROPERTIES  READONLY 
-          //  n01 'Дата' = calcDate(c),
+PROPERTIES  READONLY BACKGROUND colorBackground(scenario(c)) FOREGROUND colorForeground(scenario(c))
+//  n01 'Дата' = calcDate(c),
             n03 'Сценарий' = nameScenario(scenario(c))  ,
             nameCV 'Вид расчета' = nameCalcVariant(calcVariant(c))  ,
             begDate 'с'  = calcDateBegin(c), 
@@ -149,12 +163,19 @@ DESIGN calcListSelect {
       PROPERTY(dimFirm) { charWidth=10; } 
       PROPERTY(n02) { charWidth=50; } 
 };
+
+
+execFormActionImport(Calc calc, Task  task) ABSTRACT LIST;
+execFormActionCopy(Calc calc, TypeTask typeTask, CalcVariant cv, Calc calcInput) ABSTRACT LIST;
+execFormActionCopyFromCalcTask(Calc curCalc, Task task) ABSTRACT;
   
-  
- openTask ABSTRACT (Calc, Task);
+paramStringOpenTask = DATA LOCAL NESTED STRING();
+openTask ABSTRACT (Calc, Task);
  
 FORM  reportListExecCalc 'Список отчетов'
 OBJECTS  calc = Calc PANEL; // предварительное объявление формы выбора отчета
+
+
 
 // ================ОСНОВНАЯ ФОРМА================================================
 FORM calcCard 'Расчет' 
@@ -174,13 +195,30 @@ PROPERTIES n02 'Комментарий' = description(curCalc),
            showReportList 'Отчеты'= {SHOW reportListExecCalc OBJECTS calc = curCalc WAIT FLOAT;},
            ro '' = readOnlyHeader(curCalc)
 EVENTS ON APPLY BEFORE {readOnlyHeader(curCalc) <- TRUE;}
-      
-PROPERTIES  ON CHANGE { openTask(curCalc, task); }
+PROPERTIES  select 'v' = select(task)  ON CHANGE {
+                                                    INPUT inp = select(task) DO {
+                                                        FOR [FILTER calcCard.task](Task t_) AND  isParent (t_, task) DO select(t_)  <- inp; 
+                                                    } ;
+                                                 }    
+                                       ON CONTEXTMENU 'Выполнить импорт (С сохранением сразу)' {
+                                            execFormActionImport(curCalc, task);
+                                       }                                       
+                                       ON CONTEXTMENU 'Выполнить копирование (С сохранением сразу)' {
+                                           execFormActionCopyFromCalcTask(curCalc, task);
+//                                           DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+//                                               DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = curCalc READONLY DO {
+//                                                    execFormActionCopy(curCalc, task, retValue);
+//                                               }
+//                                           }
+                                       }
+PROPERTIES  ON CHANGE { openTask(curCalc, task ); }
+//            openTask = {openTask(curCalc, task);} GRID READONLYIF isGroup(task) IMAGE IF isGroup(task)  THEN 'images/table_multiple.png' ELSE 'images/table_edit.png',  
             nameTaskTab(task) FOREGROUND  IF isGroup(task) THEN groupFontColor(),
-            nameCol 'тип' = nameCalcBook(type(task)), 
-            canonicalName(task), pos(task) // hide
+            nameCol 'тип' = nameCalcBook(type(task)) 
+PROPERTIES            canonicalName(task), pos(task) // hide
 
 FILTERS calcVariant(curCalc) == calcVariant(task) AND hasCurrentUserTaskPermission(task) 
+FILTERGROUP enableScenario FILTER 'текущий сценарий' enableScenario(task, scenario(curCalc)) DEFAULT
 ORDERS  pos(task)//, canonicalName(task)  
 ; 
 // открываем форму расчета с деревом задач
@@ -192,21 +230,21 @@ openCalcCard (Calc c_) + {
 
   
 DESIGN calcCard   { //nameTask
-caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBegin(curCalc)) ;
+caption =   htmlColor (nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBegin(curCalc)), 'green');  
 
     PROPERTY (nameTaskTab(task)) {charWidth = 60;}
-    PROPERTY (nameCol) {charWidth = 40;}
+    PROPERTY (nameCol) {charWidth = 20;}
     PROPERTY (pos(task)) {hide =TRUE;}
     PROPERTY (canonicalName(task)){hide=TRUE;}
     PROPERTY (pos(task)){hide=TRUE;}
  
   PANEL (curCalc) {
-        caption = NULL;
+        caption = '';
         NEW pan1 {
             lines = 10;
             MOVE PROPERTY(firm) { charWidth=14; align = STRETCH;};
  //           MOVE PROPERTY(n01) { charWidth=14; align = STRETCH;};
-            MOVE PROPERTY(n04) { charWidth=14; align = STRETCH;};
+            MOVE PROPERTY(n04) { charWidth=10; align = STRETCH;};
             MOVE PROPERTY(n03) { charWidth=14; align = STRETCH;};
         }
         NEW pan2 {
@@ -217,10 +255,7 @@ caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBe
             MOVE PROPERTY(n1) { charWidth=14; align = STRETCH;}
             MOVE PROPERTY(n02) { charWidth = 50; align = STRETCH;}
             MOVE PROPERTY(ro); 
-            
         }
-    
-        
   }
    OBJECTS {
       NEW tabPanelcalc {
@@ -232,3 +267,28 @@ caption =    nameScenario(scenario(curCalc)) + ': ' + toDateDDMMYYYY( calcDateBe
     }
 };
   
+META bulkTaskCopy(typeTaskStatic, nameProc)
+// копирование массовое
+execFormActionCopy (Calc calc, TypeTask typeTask, CalcVariant cv, Calc calcInput) + {
+    LOCAL count = INTEGER ();
+    IF typeTaskStatic = typeTask THEN {
+        FOR select(Task task_) AND typeTaskStatic = type(task_) AND calcVariant(task_) == cv NOINLINE DO {
+            checkOrCreateCalcTask(calc, task_);
+            IF taskChecked(getCalcTask(calc, task_)) THEN
+                {
+                    MESSAGE CONCAT ' ', 'НЕ СКОПИРОВАНО: бюджет отмечен как проверен', nameTask( task_ ) LOG;
+                }
+                ELSE {
+                    APPLY {
+                        nameProc(getCalcTask(calc, task_), calcInput);
+                    }
+                    count() <- count() (+) 1;
+                    MESSAGE CONCAT ' ','скопировано', nameTask( task_ ) LOG;
+                }
+        }
+        
+        IF count() THEN MESSAGE CONCAT ' ', 'Выполнено копирование ордеров',count(),'шт.', staticCaption(typeTaskStatic) LOG;
+   }
+};
+    
+END

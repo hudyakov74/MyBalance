@@ -1,0 +1,130 @@
+MODULE BReportConfigColumns;
+
+REQUIRE BReportConfig, Utils;
+
+NAMESPACE MyBalance;
+
+boolToPM(BOOLEAN b) = IF b THEN '+' ELSE '-';
+PMTOBool(STRING b) = b == '+';
+
+textColumnToClipboard(BReportConfigColumns c) = 
+CONCAT '`\n`',
+(OVERRIDE name(c), ' '),
+(OVERRIDE name(unit(c)), ' '),
+(OVERRIDE (CONCAT '',ratio(unit(c))), ' '),
+(OVERRIDE idPosName(c), ' '),
+(OVERRIDE idPosRef(c), ' '),
+(OVERRIDE idNameName(c), ' '),
+(OVERRIDE idClass(c), ' '),
+(OVERRIDE boolToPM(isMesuare(c)), ' '),
+(OVERRIDE idNameRef(c), ' '),
+(OVERRIDE commentary(c), ' '),
+(OVERRIDE boolToPM(disableTotalByH(c)), ' '),
+(OVERRIDE boolToPM(totalCompareH(c)), ' '),
+(OVERRIDE boolToPM(dockToPreviuosHeader(c)), ' '),
+(OVERRIDE dockToPreviuosHeaderText(c), ' '),
+(OVERRIDE boolToPM(compareToBaseSub(c)), ' '),
+(OVERRIDE boolToPM(totalAutoCompare(c)), ' '),
+(OVERRIDE boolToPM(totalAutoComparePerc(c)), ' '),
+(OVERRIDE boolToPM(required(c)), ' '),
+(OVERRIDE type(c), ' '),
+(OVERRIDE mesuareFunction(c), ' '),
+(OVERRIDE cellExpression(c), ' '),
+(OVERRIDE cellFormat(c), ' '),
+(OVERRIDE boolToPM(enable(c)), ' '),
+(OVERRIDE (CONCAT '', pos(c)), ' ')
+
+;
+
+
+
+insertFromTextClipboard(BReportConfigColumns c, TEXT t, TBOOLEAN pastPos) {
+   LOCAL d = STRING ();
+    d() <- '`\n`';
+   IF wordCount(t,d()) ==  24 THEN {
+       name(c)          <- getWord(t,d(), 1);
+       unit(c) <- GROUP MAX BReportUnits u IF name(  u) == getWord(t,d(), 2);
+       IF NOT unit(c)  THEN
+           NEW new = BReportUnits {
+               name(new) <- getWord(t,d(), 2);
+               ratio (new) <- toInteger(getWord(t,d(), 3));
+               unit(c) <- new;
+           }
+      // name(unit( <- getWord(t,d(), 2);
+      // ratio(unit( <- getWord(t,d(), 3);
+       idPosName(c)     <- getWord(t,d(), 4);
+       idPosRef(c)      <- getWord(t,d(), 5);
+       idNameName(c)    <- getWord(t,d(), 6);
+       idClass(c)       <- getWord(t,d(), 7);
+       isMesuare(c)     <- PMTOBool(getWord(t,d(), 8));
+       idNameRef(c)     <- getWord(t,d(), 9);
+       commentary(c)    <- getWord(t,d(), 10);
+       disableTotalByH(c) <- PMTOBool(getWord(t,d(), 11));
+       totalCompareH(c) <- PMTOBool(getWord(t,d(), 12));
+       dockToPreviuosHeader(c) <- PMTOBool(getWord(t,d(), 13));
+       dockToPreviuosHeaderText(c) <- getWord(t,d(), 14);
+       compareToBaseSub(c) <- PMTOBool(getWord(t,d(), 15));
+       totalAutoCompare(c) <- PMTOBool(getWord(t,d(), 16));
+       totalAutoComparePerc(c) <- PMTOBool(getWord(t,d(), 17));
+       required(c) <- PMTOBool(getWord(t,d(), 18));
+       type(c) <- getWord(t,d(), 19);
+       mesuareFunction(c) <- getWord(t,d(), 20);
+       cellExpression(c) <- getWord(t,d(), 21);
+       cellFormat(c) <- getWord(t,d(), 22);
+       IF pastPos == TTRUE THEN {
+           enable(c) <- PMTOBool(getWord(t,d(), 23));
+           pos (c)   <- toInteger(getWord(t,d(), 24));
+       }
+   }
+}
+
+
+//
+//CLASS BReportUnits 'Единицы отчета';
+//name      'Ед.измер.'           = DATA STRING[25]  (BReportUnits);
+//ratio     'Коэфф'               = DATA INTEGER  (BReportUnits);
+//
+//CLASS BReportConfigColumns 'Список колонок';
+//bReportConfig                   = DATA BReportConfig (BReportConfigColumns) NONULL DELETE;
+//enable    'Включено'            = DATA BOOLEAN (BReportConfigColumns);
+//pos       'Позиция поля'        = DATA INTEGER (BReportConfigColumns);
+//
+//name      'Имя поля'            = DATA STRING[255] (BReportConfigColumns);
+//unit      'Ед.измер.'           = DATA BReportUnits (BReportConfigColumns);
+//ratio     'Коэфф'               = DATA STRING[255] (BReportConfigColumns);
+//
+//idPosName  'id nameProp'        = DATA STRING[255] (BReportConfigColumns);
+//idPosRef   'id груп.ссылкой'    = DATA STRING[255] (BReportConfigColumns);
+//idNameName 'id nameProp'        = DATA STRING[100] (BReportConfigColumns);
+//idClass    'id class'           = DATA STRING[100] (BReportConfigColumns);
+//isMesuare  'это показатель'     = DATA BOOLEAN    (BReportConfigColumns);
+//idNameRef  'id поля ссылкой'    = DATA STRING[100] (BReportConfigColumns);
+//
+//commentary  'Комментарий,
+// основание' = DATA STRING[1024] (BReportConfigColumns);
+//
+//
+//disableTotalByH  'Отключить итог по группе'  = DATA BOOLEAN    (BReportConfigColumns);
+//totalCompareH    'Поля сравнения,
+// включить'  = DATA BOOLEAN   (BReportConfigColumns);
+//
+//
+//// описания полей для генератора 
+//dockToPreviuosHeader      'в т.ч. к предыдущему столбцу'    = DATA BOOLEAN(BReportConfigColumns);
+//dockToPreviuosHeaderText  'в т.ч. Текст'    = DATA STRING[100](BReportConfigColumns);
+//
+//compareToBaseSub          'блок сравнения'      = DATA BOOLEAN(BReportConfigColumns);
+//totalAutoCompare      'Сравн.автополе'       = DATA BOOLEAN   (BReportConfigColumns);
+//totalAutoComparePerc  '% Сравн.автополе'     = DATA BOOLEAN   (BReportConfigColumns);
+//required         'добавлять поле всегда'    = DATA BOOLEAN(BReportConfigColumns);
+//
+//type                  'тип (JR notation)'               = DATA STRING[100](BReportConfigColumns);
+//
+//mesuareFunction       'Выражение меры (JR notation)'      = DATA STRING[1024](BReportConfigColumns);
+//cellExpression        'Выражение в ячейке (JR notation)'  = DATA STRING[1024](BReportConfigColumns);
+//cellFormat            'Формат вывода (JR notation)'       = DATA STRING[50](BReportConfigColumns);
+
+//FORM formBReportConfigColumns
+//    OBJECTS d = BReportConfigColumns
+//    PROPERTIES name(d)
+//    LIST BReportConfigColumns OBJECT d;

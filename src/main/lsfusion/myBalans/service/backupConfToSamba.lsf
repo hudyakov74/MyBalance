@@ -1,0 +1,38 @@
+MODULE backupConfToSamba;
+
+REQUIRE  backupConf;
+
+NAMESPACE MyBalance; 
+arhivCopyPathTo 'Путь к smb каталогу' = DATA STRING[240]();
+arhivCopyLogin 'Login к smb каталогу' = DATA STRING[240]();
+arhivCopyPass 'Pass к smb каталогу' = DATA STRING[240]();
+ 
+
+EXTEND FORM backup
+    PROPERTIES  arhivCopyPathTo(),arhivCopyLogin(),arhivCopyPass() PANEL;
+
+DESIGN backup {
+      pane {
+          NEW MyBalanceSmb {
+              caption = 'Копия в SMB';
+              
+              fill = 1;
+              MOVE PROPERTY (pathToJar()){tooltip = 'функция для задач: backupConfToSambaSendLastSheduleRunFunction()';};
+              MOVE PROPERTY (arhivCopyPathTo());
+              MOVE PROPERTY (arhivCopyLogin());
+              MOVE PROPERTY (arhivCopyPass()) { echoSymbols = TRUE; clearText = TRUE; };
+          } 
+      }     
+}
+
+backupConfToSambaSendLastSheduleRunFunction 'MyBalance Отправить сегодняшний бэкап в самбу'() {
+   FOR  log(Backup b) AND NOT fileDeleted(b) AND date(b) >= sum( (currentDate()), 0) DO {
+       LOCAL ss = STRING();
+       ///usr/bin/smbclient -m smb2 //10.11.4.249/lsfusion -U makfa/lsfusion%qpass -c 'put /home/lsfusion/backup/2025-11-10-01-00-00.backup current.backup'
+       ss() <- CONCAT '', '/usr/bin/smbclient -m smb2 ', arhivCopyPathTo(), ' -U', arhivCopyLogin(),'%', arhivCopyPass(), ' -c \'put ', file(b), ' ',replace(file(b),'/',''),'\'';
+       printToLog(CONCAT '', CONCAT '', '/usr/bin/smbclient -m smb2 ', arhivCopyPathTo(), ' -U', arhivCopyLogin(),'%', 'arhivCopyPass()', ' -c "put ', file(b), ' ',replace(file(b),'/',''),'"');  
+       cmd(ss());
+       MESSAGE cmdOut() LOG;
+       MESSAGE cmdErr() LOG;
+   }
+}

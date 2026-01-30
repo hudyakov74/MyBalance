@@ -1,6 +1,6 @@
 MODULE CoreColor;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
  
  
 groupBackColor(INTEGER n) = CASE WHEN n==1 THEN #ececc3 //желтый

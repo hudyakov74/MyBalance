@@ -1,0 +1,52 @@
+MODULE CubeKhpCost;
+
+REQUIRE CalcCore, Calc, CalcTask, DimensCFO, Cube, DimensNomenkl, DimensCostItems;
+
+NAMESPACE MyBalance;
+
+
+CLASS CubeKhpCost 'Затраты';
+@createCubeReqDim(CubeKhpCost,cubeKhpCost);
+
+
+date 'дата операции'   = DATA  DATETIME (CubeKhpCost);
+dimCFO 'Подразделение' = DATA DimCFO(CubeKhpCost);
+dimCostItem 'Статья затрат' = DATA DimCostItems(CubeKhpCost);
+
+value 'Сумма' = DATA NUMERIC[14,2](CubeKhpCost);
+
+INDEX calc(CubeKhpCost i), period(i), dimCFO(i), i;
+//dimCFOZero 'Подразделение первоначальное' = DATA DimCFO(CubeKhpCost);
+ 
+sumKhpCostBy(Calc calc,  DimCFO dimCFO, DimCostItems dimensCostItems) = 
+                GROUP SUM value(CubeKhpCost s) //IF NOT stageZero(s)  
+                BY calc(s), dimCFO(s), dimCostItem(s);
+
+sumKhpCostBy(Calc calc, Period p,  DimCFO dimCFO, DimCostItems dimensCostItems) =
+    GROUP SUM value(CubeKhpCost s) //IF NOT stageZero(s)  
+    BY calc(s), period(s), dimCFO(s), dimCostItem(s);
+
+sumKhpCostBy(Calc calc, Period p,  DimCFO dimCFO) =
+    GROUP SUM value(CubeKhpCost s) BY calc(s), period(s), dimCFO(s);
+
+sumKhpCostBy(Calc calc, CalcTask ct, DimCFO dimCFO, DimCostItems dimensCostItems) =
+                GROUP SUM value(CubeKhpCost s) //IF NOT stageZero(s)  
+                BY calc(s), calcTask(s),  dimCFO(s), dimCostItem(s);
+
+sumKhpCostBy(Calc calc,  DimCFO dimCFO  ) =
+    GROUP SUM value(CubeKhpCost s) //IF NOT stageZero(s)  
+    BY calc(s), dimCFO(s);
+
+sumKhpCostBy(Calc calc, CalcTask ct, DimCFO dimCFO) =
+    GROUP SUM value(CubeKhpCost s) //IF NOT stageZero(s)  
+    BY calc(s), calcTask(s),  dimCFO(s);
+
+isDimCfoCubeKhpCost(CalcTask ct, DimCFO d) = GROUP MAX TRUE IF isParent(dimCFO(CubeKhpCost s), d) AND calcTask(s) = ct;
+isDimCostItemCubeKhpCost(CalcTask ct, DimCostItems d) =   GROUP MAX TRUE IF isParent(dimCostItem(CubeKhpCost s), d) AND calcTask(s) = ct;
+isDimCfoCostItemCubeKhpCost(CalcTask ct, DimCFO p, DimCostItems c) =  
+                        GROUP MAX TRUE IF isParent(dimCFO(CubeKhpCost s), p) AND isParent(dimCostItem(s), c) AND calcTask(s) = ct;
+
+
+isDimCfoCostItemCubeKhpCostOther(CalcTask ct, DimCFO p, DimCostItems c) =
+    GROUP MAX TRUE IF isParent(dimCFO(CubeKhpCost s), p) AND checkedCFO(task(ct), dimCFO(s)) AND isParent(dimCostItem(s), c) AND calcTask(s) != ct AND calc(s) == calc(ct);
+

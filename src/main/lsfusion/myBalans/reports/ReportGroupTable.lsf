@@ -2,7 +2,7 @@ MODULE ReportGroupTable;
 
 // REQUIRE  ;
  
-NAMESPACE Reports;
+NAMESPACE MyBalance;
 
 CLASS ReportGroup{
     group 'Итог по группе',

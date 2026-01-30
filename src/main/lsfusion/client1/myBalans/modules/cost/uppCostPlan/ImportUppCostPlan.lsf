@@ -1,0 +1,305 @@
+MODULE ImportUppCostPlan;
+
+importedUppPlan = DATA LOCAL BOOLEAN (INTEGER);
+
+uppPlan_odata_metadata = DATA LOCAL STRING();
+uppPlan_valueVGoods = DATA LOCAL INTEGER(INTEGER);
+//uppPlan_vtsiel_Inviestitsii_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vsumma = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vsumma1 = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vtovar_Type = DATA LOCAL STRING(INTEGER);
+uppPlan_vnaznachieniie = DATA LOCAL STRING(INTEGER);
+uppPlan_vchastichnoGotova = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_votmienienoPoiasnieniie = DATA LOCAL STRING(INTEGER);
+uppPlan_vtochzak = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vUID_IzDrughoiZaiavki = DATA LOCAL STRING(INTEGER);
+uppPlan_votmienienoRukovoditiel__Key = DATA LOCAL STRING(INTEGER);
+uppPlan_lineNumber = DATA LOCAL STRING(INTEGER);
+uppPlan_vobiekt_Type = DATA LOCAL STRING(INTEGER);
+uppPlan_vUID = DATA LOCAL STRING(INTEGER);
+uppPlan_ref_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vtsiena = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vkolvoOst = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_PlanMonthForUse = DATA LOCAL DATETIME(INTEGER);
+uppPlan_PlanMonthForUse1 = DATA LOCAL DATETIME(INTEGER);
+uppPlan_currencyKoeff = DATA LOCAL STRING(INTEGER);
+uppPlan_Cost_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_Cost = DATA LOCAL STRING(INTEGER);
+uppPlan_Cost1 = DATA LOCAL STRING(INTEGER);
+uppPlan_vinviestitsii = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vosnovaniie = DATA LOCAL STRING(INTEGER);
+uppPlan_vproiekt_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vtovar = DATA LOCAL STRING(INTEGER);
+uppPlan_vtovarName = DATA LOCAL STRING(INTEGER);
+uppPlan_vtovarName1 = DATA LOCAL STRING(INTEGER);
+uppPlan_vtovar1 = DATA LOCAL STRING(INTEGER);
+uppPlan_vmiesiatsPlaniruiemoiOplaty = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vKDatie = DATA LOCAL DATETIME(INTEGER);
+uppPlan_votmienienoRukovodstvom = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vprotsientOplaty = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_viedIzm = DATA LOCAL STRING(INTEGER);
+uppPlan_vobiekt = DATA LOCAL STRING(INTEGER);
+uppPlan_vlinii_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vvaliuta_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vkolvo = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vzapas = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vsrochnost__Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vliniia_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_viedIzmOKIeI_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vtovarnaiaPodghruppa_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vopisaniie = DATA LOCAL STRING(INTEGER);
+uppPlan_vvaliutaSumma = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vvaliutaKurs = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_ReqNaPriobrietieniieTMTs_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vghodMiesiatsPlaniruiemoiOplaty = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vrukovoditiel_Ploshchadki = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vstat_iaOborotovPoBiudzhietu_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vstat_iaOborotovPoBiudzhietu = DATA LOCAL STRING(INTEGER);
+uppPlan_vstat_iaOborotovPoBiudzhietu1 = DATA LOCAL STRING(INTEGER);
+uppPlan_vghodPlaniruiemoiOplaty = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vtovarnaiaGruppa_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vCfoSpisaniia_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vCfoSpisaniia = DATA LOCAL STRING(INTEGER);
+uppPlan_vCfoSpisaniia1 = DATA LOCAL STRING(INTEGER);
+uppPlan_Responsible_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_Responsible = DATA LOCAL STRING(INTEGER);
+uppPlan_Year = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_Posted = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_ReqTUM = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_Ready_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_ref_Key1 = DATA LOCAL STRING(INTEGER);
+uppPlan_tookItOMTS = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_YearReq2015 = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vzamIspDiriektoraPoAI_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_Req223FZ = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vdata_ZamIspDiriektoraPoAI = DATA LOCAL DATETIME(INTEGER);
+uppPlan_ReqBasis_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_DiriektorPoNapravlieniiu = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vGoodsProchieie = DATA LOCAL STRING(INTEGER);
+uppPlan_valueVGoodsProchieie = DATA LOCAL INTEGER(INTEGER);
+uppPlan_vdata_PartialReady = DATA LOCAL DATETIME(INTEGER);
+uppPlan_Plant_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_Plant = DATA LOCAL STRING(INTEGER);
+uppPlan_deletionMark = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vtiekhnichieskiiDiriektor_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vekonomistOUiA_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdiriektorPoNapravlieniiu_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vsummaZaiavki = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vdata_OMTS_Vzialo = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vdiriektorPoZakupkamISnabzhieniiu_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vstrakhovoiZapas = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vblokirovka = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vdata_RukPodrazdSpisaniia = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vGoodsDolgh = DATA LOCAL STRING(INTEGER);
+uppPlan_valueVGoodsDolgh = DATA LOCAL INTEGER(INTEGER);
+uppPlan_dataVersion = DATA LOCAL STRING(INTEGER);
+uppPlan_PlanReq = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_ScenarioUpp_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_FullReady = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vrukovoditiel_Ploshchadki_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_RukStruktPodrazd = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vdata_CfoZakonchilo = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vnachal_nikPEO_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_isInWorkCfo = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vdata_ZaiavkuPodghotovil = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vpodpisiPodrazdielieniiSpisaniia = DATA LOCAL STRING(INTEGER);
+uppPlan_valueVpodpisiPodrazdielieniiSpisaniia = DATA LOCAL INTEGER(INTEGER);
+uppPlan_vdata_Nachal_nikPEO = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vsklad_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_number = DATA LOCAL STRING(INTEGER);
+uppPlan_vpodpisiStat_iRaskhodov = DATA LOCAL STRING(INTEGER);
+uppPlan_valueVpodpisiStat_iRaskhodov = DATA LOCAL INTEGER(INTEGER);
+uppPlan_vCfo_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vCfo = DATA LOCAL STRING(INTEGER);
+uppPlan_PartialReady_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_YearReq = DATA LOCAL BOOLEAN(INTEGER);
+uppPlan_vzaiavkiNaPriobrietieniieTMTs = DATA LOCAL STRING(INTEGER);
+uppPlan_valueVzaiavkiNaPriobrietieniieTMTs = DATA LOCAL INTEGER(INTEGER);
+uppPlan_date = DATA LOCAL DATETIME(INTEGER);
+uppPlan_ReqPreparedBy_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vpodpisavshii_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_EkonomistOUiA = DATA LOCAL DATETIME(INTEGER);
+uppPlan_Department = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_Rukovoditiel_Ploshchadki = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vdata_DiriektorPoZakupkamISNabzhieniiu = DATA LOCAL DATETIME(INTEGER);
+uppPlan_vrukPodrazdSpisaniia_Key = DATA LOCAL STRING(INTEGER);
+uppPlan_vdata_TiekhnichieskiiDiriektor = DATA LOCAL DATETIME(INTEGER);
+uppPlan_Month = DATA LOCAL NUMERIC(INTEGER);
+uppPlan_vrukStruktPodrazd_Key = DATA LOCAL STRING(INTEGER);
+
+
+
+
+
+
+FORM formImportUppCostPlan
+    PROPERTIES() uppPlan_odata_metadata EXTID 'odata.metadata'
+
+    OBJECTS value = INTEGER
+    PROPERTIES(value) 
+uppPlan_Responsible_Key EXTID 'Ответственный_Key',
+uppPlan_Responsible EXTID 'Ответственный____Presentation',
+uppPlan_Year EXTID 'Год',
+uppPlan_Posted EXTID 'Posted',
+uppPlan_ReqTUM EXTID 'ЗаявкаТУМ',
+uppPlan_Ready_Key EXTID 'ПолностьюГотова_Key',
+uppPlan_ref_Key1 EXTID 'Ref_Key',
+uppPlan_tookItOMTS EXTID 'ВзятоОМТС',
+uppPlan_YearReq2015 EXTID 'ГодоваяЗаявка2015',
+//uppPlan_vzamIspDiriektoraPoAI_Key EXTID 'ЗамИспДиректораПоАИ_Key',
+uppPlan_Req223FZ EXTID 'Заявка223ФЗ',
+//uppPlan_vdata_ZamIspDiriektoraPoAI EXTID 'Дата_ЗамИспДиректораПоАИ',
+uppPlan_ReqBasis_Key EXTID 'ЗаявкаОснование_Key',
+ 
+//uppPlan_vdata_DiriektorPoNapravlieniiu EXTID 'Дата_ДиректорПоНаправлению',
+uppPlan_vdata_PartialReady EXTID 'Дата_ЧастичноГотова',
+uppPlan_Plant_Key EXTID 'ПроизводственнаяПлощадка_Key',
+uppPlan_Plant EXTID 'ПроизводственнаяПлощадка____Presentation',
+uppPlan_deletionMark EXTID 'DeletionMark',
+//uppPlan_vtiekhnichieskiiDiriektor_Key EXTID 'ТехническийДиректор_Key',
+//uppPlan_vekonomistOUiA_Key EXTID 'ЭкономистОУиА_Key',
+ 
+//uppPlan_vdiriektorPoNapravlieniiu_Key EXTID 'ДиректорПоНаправлению_Key',
+uppPlan_vsummaZaiavki EXTID 'СуммаЗаявки',
+//uppPlan_vdata_OMTS_Vzialo EXTID 'Дата_ОМТС_Взяло',
+//uppPlan_vdiriektorPoZakupkamISnabzhieniiu_Key EXTID 'ДиректорПоЗакупкамИСнабжению_Key',
+//uppPlan_vstrakhovoiZapas EXTID 'СтраховойЗапас',
+//uppPlan_vblokirovka EXTID 'Блокировка',
+//uppPlan_vdata_RukPodrazdSpisaniia EXTID 'Дата_РукПодраздСписания',
+uppPlan_dataVersion EXTID 'DataVersion',
+uppPlan_PlanReq EXTID 'ПлановаяЗаявка',
+uppPlan_ScenarioUpp_Key EXTID 'СценарийПланирования_Key',
+uppPlan_vdata_FullReady EXTID 'Дата_ПолностьюГотова',
+//uppPlan_vrukovoditiel_Ploshchadki_Key EXTID 'РуководительПлощадки_Key',
+//uppPlan_vdata_RukStruktPodrazd EXTID 'Дата_РукСтруктПодразд',
+//uppPlan_vdata_CfoZakonchilo EXTID 'Дата_ПодразделениеЗакончило',
+//uppPlan_vnachal_nikPEO_Key EXTID 'НачальникПЭО_Key',
+uppPlan_isInWorkCfo EXTID 'ВРаботеУПодразделения',
+//uppPlan_vdata_ZaiavkuPodghotovil EXTID 'Дата_ЗаявкуПодготовил',
+ 
+//uppPlan_vdata_Nachal_nikPEO EXTID 'Дата_НачальникПЭО',
+uppPlan_vsklad_Key EXTID 'Склад_Key',
+uppPlan_number EXTID 'Number',
+uppPlan_vCfo_Key EXTID 'Подразделение_Key',
+uppPlan_vCfo EXTID 'Подразделение____Presentation',
+uppPlan_PartialReady_Key EXTID 'ЧастичноГотова_Key',
+uppPlan_YearReq EXTID 'ГодоваяЗаявка',
+uppPlan_date EXTID 'Date',
+uppPlan_ReqPreparedBy_Key EXTID 'ЗаявкуПодготовил_Key',
+//uppPlan_vpodpisavshii_Key EXTID 'Подписавший_Key',
+//uppPlan_vdata_EkonomistOUiA EXTID 'Дата_ЭкономистОУиА',
+uppPlan_Department EXTID 'Отдел',
+
+//uppPlan_vdata_Rukovoditiel_Ploshchadki EXTID 'Дата_РуководительПлощадки',
+//uppPlan_vdata_DiriektorPoZakupkamISNabzhieniiu EXTID 'Дата_ДиректорПоЗакупкамИСНабжению',
+//uppPlan_vrukPodrazdSpisaniia_Key EXTID 'РукПодраздСписания_Key',
+//uppPlan_vdata_TiekhnichieskiiDiriektor EXTID 'Дата_ТехническийДиректор',
+uppPlan_Month EXTID 'Месяц'
+//uppPlan_vrukStruktPodrazd_Key EXTID 'РукСтруктПодразд_Key'
+    
+
+    OBJECTS vGoods = INTEGER EXTID 'Товары'
+    FILTERS uppPlan_valueVGoods(vGoods) == value
+    PROPERTIES(vGoods) 
+uppPlan_vsumma EXTID 'Сумма',
+uppPlan_vtovar_Type EXTID 'Товар_Type',
+uppPlan_vnaznachieniie EXTID 'Назначение',
+//uppPlan_vchastichnoGotova EXTID 'ЧастичноГотова',
+//uppPlan_votmienienoPoiasnieniie EXTID 'ОтмененоПояснение',
+//uppPlan_vtochzak EXTID 'Точзак',
+//uppPlan_vUID_IzDrughoiZaiavki EXTID 'УИД_ИзДругойЗаявки',
+//uppPlan_votmienienoRukovoditiel__Key EXTID 'ОтмененоРуководитель_Key',
+uppPlan_lineNumber EXTID 'LineNumber',
+//uppPlan_vobiekt_Type EXTID 'Объект_Type',
+//uppPlan_vUID EXTID 'УИД',
+//uppPlan_ref_Key EXTID 'Ref_Key',
+uppPlan_vtsiena EXTID 'Цена',
+//uppPlan_vkolvoOst EXTID 'КолвоОст',
+uppPlan_PlanMonthForUse EXTID 'МесяцПланируемогоСписания',
+uppPlan_currencyKoeff EXTID 'ВалютаКратность',
+uppPlan_Cost_Key EXTID 'СтатьяРасходов_Key',
+uppPlan_Cost  EXTID 'СтатьяРасходов____Presentation',
+
+uppPlan_vinviestitsii EXTID 'Инвестиции',
+uppPlan_vosnovaniie EXTID 'Основание',
+uppPlan_vproiekt_Key EXTID 'Проект_Key',
+uppPlan_vtovar EXTID 'Товар',
+uppPlan_vtovarName EXTID 'Товар____Presentation',
+uppPlan_vmiesiatsPlaniruiemoiOplaty EXTID 'МесяцПланируемойОплаты',
+uppPlan_vKDatie EXTID 'КДате',
+uppPlan_votmienienoRukovodstvom EXTID 'ОтмененоРуководством',
+uppPlan_vprotsientOplaty EXTID 'ПроцентОплаты',
+uppPlan_viedIzm EXTID 'ЕдИзм',
+uppPlan_vobiekt EXTID 'Объект',
+uppPlan_vlinii_Key EXTID 'Линии_Key',
+uppPlan_vvaliuta_Key EXTID 'Валюта_Key',
+uppPlan_vkolvo EXTID 'Колво',
+uppPlan_vzapas EXTID 'Запас',
+uppPlan_vsrochnost__Key EXTID 'Срочность_Key',
+uppPlan_vliniia_Key EXTID 'Линия_Key',
+uppPlan_viedIzmOKIeI_Key EXTID 'ЕдИзмОКЕИ_Key',
+uppPlan_vtovarnaiaPodghruppa_Key EXTID 'ТоварнаяПодгруппа_Key',
+uppPlan_vopisaniie EXTID 'Описание',
+uppPlan_vvaliutaSumma EXTID 'ВалютаСумма',
+uppPlan_vvaliutaKurs EXTID 'ВалютаКурс',
+uppPlan_ReqNaPriobrietieniieTMTs_Key EXTID 'ЗаявкаНаПриобретениеТМЦ_Key',
+uppPlan_vghodMiesiatsPlaniruiemoiOplaty EXTID 'ГодМесяцПланируемойОплаты',
+uppPlan_vrukovoditiel_Ploshchadki EXTID 'РуководительПлощадки',
+uppPlan_vstat_iaOborotovPoBiudzhietu_Key EXTID 'СтатьяОборотовПоБюджету_Key',
+uppPlan_vstat_iaOborotovPoBiudzhietu EXTID 'СтатьяОборотовПоБюджету____Presentation',
+uppPlan_vghodPlaniruiemoiOplaty EXTID 'ГодПланируемойОплаты',
+uppPlan_vtovarnaiaGruppa_Key EXTID 'ТоварнаяГруппа_Key',
+uppPlan_vCfoSpisaniia_Key EXTID 'ПодразделениеСписания_Key',
+uppPlan_vCfoSpisaniia EXTID 'ПодразделениеСписания____Presentation'
+  
+  
+  
+FILTERS importedUppPlan(value)
+//
+  OBJECTS gpl = INTEGER EXTID 'ТоварыПрочее'
+  PROPERTIES(gpl) 
+  uppPlan_vGoodsProchieie EXTID 'value',
+  uppPlan_vtovarName1 EXTID 'Товар____Presentation',
+  uppPlan_vCfoSpisaniia1 EXTID 'ПодразделениеСписания____Presentation',
+  uppPlan_vstat_iaOborotovPoBiudzhietu1 EXTID 'СтатьяОборотовПоБюджету____Presentation',
+  uppPlan_vsumma1 EXTID 'СуммаКОплатеВРуб',
+  uppPlan_PlanMonthForUse1 EXTID 'МесяцПланируемогоСписания',
+  uppPlan_Cost1  EXTID 'СтатьяРасходов____Presentation'
+  FILTERS uppPlan_valueVGoodsProchieie(gpl) == value
+
+    
+//
+//    OBJECTS gdl = INTEGER EXTID 'ТоварыДолг'
+//    PROPERTIES(gdl) uppPlan_vGoodsDolgh EXTID 'value'
+//    FILTERS importedUppPlan(gdl)
+//    FILTERS uppPlan_valueVGoodsDolgh(gdl) == value
+//
+//    OBJECTS pss = INTEGER EXTID 'ПодписиПодразделенийСписания'
+//    PROPERTIES(pss) uppPlan_vpodpisiPodrazdielieniiSpisaniia EXTID 'value'
+//    FILTERS importedUppPlan(pss)
+//    FILTERS uppPlan_valueVpodpisiPodrazdielieniiSpisaniia(pss) == value
+//
+//    OBJECTS pds = INTEGER EXTID 'ПодписиСтатьиРасходов'
+//    PROPERTIES(pds) uppPlan_vpodpisiStat_iRaskhodov EXTID 'value'
+//    FILTERS importedUppPlan(pds)
+//    FILTERS uppPlan_valueVpodpisiStat_iRaskhodov(pds) == value
+//    FILTERS uppPlan_valueVpodpisiStat_iRaskhodov(pds) == value
+//
+//    OBJECTS tmc = INTEGER EXTID 'ЗаявкиНаПриобретениеТМЦ'
+//    PROPERTIES(tmc) uppPlan_vzaiavkiNaPriobrietieniieTMTs EXTID 'value'
+//    FILTERS importedUppPlan(tmc)
+//    FILTERS uppPlan_valueVzaiavkiNaPriobrietieniieTMTs(tmc) == value
+;
+
+
+textImportUppPlan = 'Document_МАКФА_ЗаявкаНаПриобретениеПодразделение?$format=json&$format=json
+&$select=*,Подразделение____Presentation,ПроизводственнаяПлощадка____Presentation,Ответственный____Presentation,
+Товары/Товар____Presentation,Товары/ПодразделениеСписания____Presentation
+,Товары/СтатьяОборотовПоБюджету____Presentation,Товары/Сумма
+,Товары/МесяцПланируемогоСписания,Товары/СтатьяРасходов____Presentation,
+ТоварыПрочее/Товар____Presentation,ТоварыПрочее/ПодразделениеСписания____Presentation,
+ТоварыПрочее/СтатьяОборотовПоБюджету____Presentation,ТоварыПрочее/СуммаКОплатеВРуб,
+ТоварыПрочее/МесяцПланируемогоСписания,ТоварыПрочее/СтатьяРасходов____Presentation
+&$filter=DeletionMark eq false and ГодоваяЗаявка eq true';
+//Date ge datetime\'2025-01-01T00:00:00\'
+//http://10.11.4.201:2280/erp/odata/standard.odata/Document_МАКФА_ЗаявкаНаПриобретениеПодразделение?$format=json&$top=1&$format=json&$filter=Date ge datetime'2025-01-01T00:00:00' and ГодоваяЗаявка eq true and Год eq 2026

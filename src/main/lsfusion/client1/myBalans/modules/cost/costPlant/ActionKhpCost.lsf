@@ -1,0 +1,209 @@
+MODULE ActionKhpCost;
+
+REQUIRE FormKhpCost, CubeCostFactImport, PeriodCompare;
+
+NAMESPACE MyBalance;
+
+// Действия
+@createLocalMenuOperation(CubeKhpCost,formKhpCost);
+
+loadBuffer1cCubeKhpCost 'Загрузка данных из буфера 1с' (CalcTask ct) {
+ //  value(CubeKhpCost cost)  <- 0    // очистка
+  DELETE CubeKhpCost cost WHERE  calc(cost) == calc(ct) AND task(cost) == task(ct);
+  
+  FOR valueCostFactImportBy(calc(ct),DimCFO dimCFO_, DimCostItems  dimCostItems_, DimActivity da_, DimAccount acc)   
+  AND  checkedCFO(task(ct), dimCFO_)
+  AND NOT doNotUseImportItem(dimCostItems_) 
+ // FOR  calc(CubeCostFactImport i) == calc(ct) AND  checkedCFO(task(ct), dimCFO(i)) 
+       NEW n = CubeKhpCost DO {
+          { 
+           task(n)              <- task(ct);
+           calc(n)              <- calc(ct);
+           period(n)            <- getPeriodByDate(calc(ct),calcDateBegin(calc(ct)));
+           date(n)              <- toDateTime(calcDateBegin(calc(ct)));
+           dimCFO(n)            <- dimCFO_ ;
+        //  dimActivity(n)       <- da_;
+        //   dimAccount(n)   <- acc;
+           dimCostItem(n)   <- dimCostItems_;
+           value(n)             <- valueCostFactImportBy(calc(ct), dimCFO_, dimCostItems_,da_, acc);
+         }
+   }
+  FOR valueCostFactImportByNullAct(calc(ct),DimCFO dimCFO_, DimCostItems  dimCostItems_, DimAccount acc)   
+  AND  checkedCFO(task(ct), dimCFO_)
+  AND NOT doNotUseImportItem(dimCostItems_) 
+ // FOR  calc(CubeCostFactImport i) == calc(ct) AND  checkedCFO(task(ct), dimCFO(i)) 
+       NEW n = CubeKhpCost DO {
+          { 
+           task(n)              <- task(ct);
+           calc(n)              <- calc(ct);
+           period(n)            <- getPeriodByDate(calc(ct),calcDateBegin(calc(ct)));
+           date(n)              <- toDateTime(calcDateBegin(calc(ct)));
+           dimCFO(n)            <- dimCFO_ ;
+        //   dimAccount(n)   <- acc;
+           dimCostItem(n)   <- dimCostItems_;
+           value(n)             <- valueCostFactImportByNullAct(calc(ct), dimCFO_, dimCostItems_, acc);
+         }
+   }
+}
+
+copyCubeKhpCost(CalcTask calcTask, Calc retValue){
+             DELETE CubeKhpCost cost WHERE calc(cost) == calc(calcTask) AND task(cost) == task(calcTask);
+             FOR CubeKhpCost c AS CubeKhpCost AND calc(c) = retValue
+                 AND ( period1(INTEGER periodCal) AND period2(periodCal) )
+                 AND period(c) == period(period1(periodCal)) // период источника по таблице
+               //  AND type(task(c)) == type(task(calcTask))
+                 AND (task(c)) == (task(calcTask))
+                 AND
+                 (
+                     checkedCFO(task(calcTask), dimCFO(c)) // отмечены
+                         OR
+                         NOT (GROUP SUM 1 IF checkedCFO(task(calcTask), DimCFO cfo_))
+                     )
+                 AND dimCostItem(c)
+                 AND dimCFO(c)
+    
+                 NEW n = CubeKhpCost DO {
+                 task(n) <- task(calcTask);
+                 date(n) <- toDateTime( dateBegin(period2(periodCal)) );
+                 period(n) <- period( period2(periodCal) );
+                 calc(n) <- calc(calcTask);
+                 dimCFO(n) <- dimCFO(c) ;
+                 dimCostItem(n) <- dimCostItem(c) ;
+                 value(n) <- value(c) ;
+             }
+}
+// mode 1 = all  mode 2 = delete all and zerro if not const  mode 3 = only const
+copyCubeKhpCostDistrib(CalcTask calcTask, Calc retValue, INTEGER mode){
+            DELETE CubeKhpCostDistrib cost WHERE calc(cost) == calc(calcTask) AND task(cost) == task(calcTask)
+                                                 AND (mode != 3 OR distrCoeffConst(dimCFO(cost)));
+    
+            FOR CubeKhpCostDistrib c AS CubeKhpCostDistrib AND calc(c) = retValue
+                //AND type(task(c)) == type(task(calcTask)) 
+                AND (task(c)) == (task(calcTask))
+
+                AND (
+                    checkedCFO(task(calcTask), dimCFO(c)) // отмечены
+                        OR
+                        NOT (GROUP SUM 1 IF checkedCFO(task(calcTask), DimCFO cfo_))
+                    )
+                AND ( period1(INTEGER periodCal) AND period2(periodCal) )
+                AND period(c) == period(period1(periodCal)) // период источника по таблице
+                AND
+                (
+                (mode == 1)
+                OR
+                (distrCoeffConst(dimCFO(c)) AND mode == 2)
+                OR
+                (distrCoeffConst(dimCFO(c)) AND mode == 3)
+                )
+                NEW n = CubeKhpCostDistrib  DO {
+                    task(n)         <- task(calcTask);
+                    period(n)       <- period( period2(periodCal) );
+                    calc(n)         <- calc(calcTask);
+                    date(n)         <-  toDateTime( dateBegin(period2(periodCal)) );
+                    dimCFO(n)       <- dimCFO(c) ;
+                    dimCfoDistrib(n) <- dimCfoDistrib(c) ;
+                    value(n)        <- IF  distrCoeffConst(dimCFO(c)) AND mode == 2 THEN 0.0 ELSE value(c);
+                    issueBased(n)   <- issueBased(c) ;
+            }
+}
+
+copyDirectCostCubeKhpCost(CalcTask calcTask, Calc retValue ){
+            DELETE CubeKhpCostManual cost WHERE calc(cost) == calc(calcTask) AND task(cost) == task(calcTask);
+            FOR CubeKhpCostManual c AS CubeKhpCostManual AND calc(c) = retValue
+                AND ( period1(INTEGER periodCal) AND period2(periodCal) )
+                AND period(c) == period(period1(periodCal)) // период источника по таблице
+                AND type(task(c)) == type(task(calcTask))
+                AND
+                (
+                    checkedCFO(task(calcTask), dimCFO(c)) // отмечены
+                        OR
+                        NOT (GROUP SUM 1 IF checkedCFO(task(calcTask), DimCFO cfo_))
+                    )
+                AND dimCostItem(c)
+                AND dimCFO(c)
+
+                NEW n = CubeKhpCostManual DO {
+                calc(n) <- calc(calcTask);
+                task(n) <- task(calcTask);
+                period(n) <- period( period2(periodCal) );
+
+                date(n) <- toDateTime( dateBegin(period2(periodCal)) );
+                dimCFO(n) <- dimCFO(c) ;
+           //     dimCfoPlant(n) <- dimCfoPlant(c) ;
+                dimCostItem(n) <- dimCostItem(c) ;
+//                dimPlantProductLine(n) <- dimPlantProductLine(c) ;
+//                dimNomenklPlant(n) <- dimNomenklPlant(c) ;
+                cubePlantProduct(n) <- cubePlantProduct(c) ;
+            //    dimNomenklCostGroup(n) <- dimNomenklCostGroup(c) ;
+            //   dimPartnerFinGroup(n) <- dimPartnerFinGroup(c) ;
+                value(n) <- value(c) ;
+            }
+}
+
+
+EXTEND  CLASS MenuOperationsCubeKhpCost  { 
+   loadBuffer1c  'Заполнить из буфера импорта из 1с (с очисткой)',
+   copyDirectCost 'Скопировать  "Затраты прямые"',
+   copyCubeKhpCost 'Скопировать "Затраты подразделений"',
+   copyCubeKhpCostDistrib 'Скопировать "Базы распределения"',
+   copyCubeKhpCostDistribConst 'Скопировать постоянные "Базы распределения" c очисткой показателей переменных баз',
+   copyCubeKhpCostDistribConstOnly 'Скопировать постоянные "Базы распределения" без очистки показателей переменных баз'
+}
+
+copyCubeKhpCostFull(CalcTask ct, Calc retValue){
+    copyCubeKhpCost(ct, retValue);
+    copyCubeKhpCostDistrib(ct, retValue, 1);
+    copyDirectCostCubeKhpCost(ct, retValue); 
+}
+
+@bulkTaskCopy(TypeTask.KhpCost, copyCubeKhpCostFull);
+
+operationCubeKhpCost(CalcTask ct,  menu) +{
+  CASE EXCLUSIVE 
+         WHEN menu == MenuOperationsCubeKhpCost.copy  THEN {
+             DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                 DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                     copyCubeKhpCostFull(ct, retValue);
+                 }
+             }
+         }
+         WHEN menu == MenuOperationsCubeKhpCost.copyCubeKhpCost  THEN {
+             DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                 DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                     copyCubeKhpCost(ct, retValue);
+                 }
+             }
+         }
+         WHEN menu == MenuOperationsCubeKhpCost.copyCubeKhpCostDistrib  THEN {
+             DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                 DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                     copyCubeKhpCostDistrib(ct, retValue, 1);
+                 }
+             }
+         }
+         WHEN menu == MenuOperationsCubeKhpCost.copyCubeKhpCostDistribConst  THEN {
+             DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+                 DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                     copyCubeKhpCostDistrib(ct, retValue, 2);
+                 }
+             }
+         }
+      WHEN menu == MenuOperationsCubeKhpCost.copyCubeKhpCostDistribConstOnly  THEN {
+          DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+              DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                  copyCubeKhpCostDistrib(ct, retValue, 3);
+              }
+          }
+      }
+         WHEN menu == MenuOperationsCubeKhpCost.loadBuffer1c  THEN {
+            loadBuffer1cCubeKhpCost(ct);
+         }
+         WHEN menu == MenuOperationsCubeKhpCost.copyDirectCost  THEN {
+          DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+              DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = calc(ct) READONLY DO {
+                  copyDirectCostCubeKhpCost(ct, retValue);
+              }
+          }
+      }
+};

@@ -2,7 +2,8 @@ MODULE CalcTask;
 
 REQUIRE Calc, Cube, Form, DistribTuneRef, LogicCalc;
 
-NAMESPACE Calc;
+NAMESPACE MyBalanceCalc;
+
 
 CLASS CalcTask 'Задача';
 TABLE calcTask(CalcTask);
@@ -12,13 +13,14 @@ currentCalcTask = DATA LOCAL CalcTask();
 calc 'Расчет' = DATA Calc(CalcTask) INDEXED NONULL; 
 task 'Задача' = DATA Task(CalcTask) INDEXED NONULL;
 taskChecked 'Проверен'  = DATA BOOLEAN  (CalcTask);
+comment 'Комментарий'  = DATA STRING[256](CalcTask);
 
 versionNum 'Актуальный номер версии данных' = DATA INTEGER (CalcTask); // значение 0 - данные для удаления
 tuneCalc    'Алгоритм расчета'   =  DATA DistribTuneRef(CalcTask); // версия - проба
 
 
 // используем для шедулера 
-logicCalcTask   'Алгоритм константа' = DATA LogicCalc(CalcTask);
+//logicCalcTask   'Алгоритм константа' = DATA LogicCalc(CalcTask);
 taskTime                             = DATA DATETIME (CalcTask);
 taskCompletedTime                    = DATA DATETIME (CalcTask);
 
@@ -27,7 +29,38 @@ paramInt1     ''        = DATA INTEGER (CalcTask);
 paramInt2     ''        = DATA INTEGER (CalcTask);
 param1                  = DATA LOCAL INTEGER (CalcTask);
 param2Bool              = DATA LOCAL BOOLEAN (CalcTask);
+paramString             = DATA LOCAL STRING (CalcTask);
 INDEX calc(CalcTask c), task(c);
+
+
+// для описания задачи
+FORM  showDescrMyBalanceCalcTask 'Описание расчета' NOIMAGE 
+    OBJECTS t  '' = RICHTEXT PANEL 
+    PROPERTIES t = VALUE(t);
+DESIGN showDescrMyBalanceCalcTask {
+    OBJECTS {
+        fill = 1;
+        MOVE PROPERTY (t) {
+            fill = 1;
+            caption = '';
+        }
+    }
+}
+
+showDescrMyBalanceCalcTask(CalcTask ct){
+   SHOW showDescrMyBalanceCalcTask  
+   OBJECTS t =  CONCAT '\n=============================\n',
+       descriptionTask(task(ct)),
+       descrMyBalance(type(task(ct))),
+     //  descrMyBalance(OVERRIDE logicCalcTask(ct), logicTask(task(ct))),
+       ('Основная операция'),    
+       descrMenuOperations(task(ct)),
+       descrSectionRequest(type(task(ct)));
+   ;
+};
+
+
+
 
 META createCube(objectDim)
 TABLE objectDim(###objectDim);
@@ -35,9 +68,23 @@ task   'задача' = DATA Task(###objectDim) INDEXED IN id;
 period 'Период' = DATA Period(###objectDim) INDEXED IN id; // для плоских списков 
 calc   'расчет' = DATA Calc(###objectDim) INDEXED IN id NONULL;
 calcTask(###objectDim d) = getCalcTask(calc(d),task(d)) MATERIALIZED;
-versionNum 'Номер версии данных' = DATA INTEGER (###objectDim);
+versionNum 'Номер версии данных' = DATA INTEGER (###objectDim) INDEXED;
+deletedTime 'Время удаления' = DATA DATETIME  (###objectDim);
 //INDEX calcTask(###objectDim d), versionNum(d), d;
 current###objectDim = DATA LOCAL ###objectDim();
+
+calcTaskManagerDeleteFunction() +   {
+    NEWSESSION {
+        MESSAGE CONCAT ':', 'К удалению '###objectDim, GROUP SUM 1 IF ###objectDim s IS ###objectDim AND versionNum(s) == 0 LOG;
+        FOR [GROUP SUM 1 IF ###objectDim s IS ###objectDim AND versionNum(s) == 0 BY calcTask(s)](CalcTask ct) DO {
+            // по одному
+            APPLY {
+                DELETE ###objectDim s WHERE s IS ###objectDim AND versionNum(s) == 0 AND calcTask(s) == ct;
+            }
+        }
+        MESSAGE CONCAT ':', 'Осталось '###objectDim, GROUP SUM 1 IF ###objectDim s IS ###objectDim AND versionNum(s) == 0 LOG;
+    }
+}    
 END
 
 META createCubeReqDim(ObjectDim,tableName)
@@ -62,7 +109,8 @@ taskCompletedTime(d) <- currentDateTime() WHEN SET(taskChecked(d));
 readOnlyIfCheked(CalcTask ct) = has(currentUser(),userRoleSID('readonlyIfCheked')) AND taskChecked(ct);
  
 getCalcTask(Calc calcL,Task taskL) = GROUP MAX CalcTask c IF calc(c) == calcL AND task(c) == taskL MATERIALIZED;
-checkOrCreateCalcTask (Calc calcL,Task taskL)
+
+checkOrCreateCalcTask (Calc calcL, Task taskL)
 {
     currentCalcTask() <- getCalcTask(calcL,taskL);
      IF NOT  currentCalcTask() THEN  {
@@ -71,7 +119,7 @@ checkOrCreateCalcTask (Calc calcL,Task taskL)
         NEW ct = CalcTask  {
             calc(ct) <- calcL;
             task(ct) <- taskL;
-            logicCalcTask(ct) <- logicTask(taskL);
+          //  logicCalcTask(ct) <- logicTask(taskL);
             currentCalcTask() <- ct;
         }
        }
@@ -81,19 +129,24 @@ calcTaskRuns(Calc c, Task t) ABSTRACT;
  
 taskChecked(Calc c,Task t) = GROUP MAX taskChecked(CalcTask ct) IF calc(ct)==c AND  task(ct) == t;
 EXTEND FORM calcCard
-PROPERTIES   taskChecked 'Проверено' = taskChecked(curCalc,task) GRID,
+PROPERTIES   comment 'Комментарий' = comment(getCalcTask(curCalc,task)),
+            // logicCalcTask   'Алгоритм' = name(logicCalcTask(getCalcTask(curCalc,task))) READONLY ON EDIT {},
+             taskChecked 'Проверено' = taskChecked(curCalc,task) GRID,
+             taskCompletedTime 'Изменено' =
+              (CONCAT ' ', toDateDDMMYYYY(taskCompletedTime(getCalcTask(curCalc,task))),
+               toTimeHMS(taskCompletedTime(getCalcTask(curCalc,task)))),
              taskStartTime 'Запуск' =
              (CONCAT ' ', toDateDDMMYYYY(taskTime(getCalcTask(curCalc,task))),  
                          toTimeHMS(taskTime(getCalcTask(curCalc,task)))),
-             taskCompletedTime 'Завершено' =
-             (CONCAT ' ', toDateDDMMYYYY(taskCompletedTime(getCalcTask(curCalc,task))),  
-                         toTimeHMS(taskCompletedTime(getCalcTask(curCalc,task)))) 
-    
+             
+             calcTask 'calcTask' = LONG(getCalcTask(curCalc,task))    
     EVENTS ON SCHEDULE PERIOD 60 { formRefresh(); }    
 ;
        
 DESIGN calcCard {
+    PROPERTY (comment){charWidth = 18;}
     PROPERTY (taskChecked){charWidth = 8;}
+   // PROPERTY (logicCalcTask){charWidth = 8; class = '';}
  
 }
  
@@ -105,16 +158,30 @@ param_nn    'из'   = paramProportionWhole(calc)
 ; 
 
 EXTEND FORM  calcCard 
- PROPERTIES ON CHANGE { openTask(curCalc, task); } 
- nameCol1 'тип.' = (CONCAT ', ',nameCalcBook(type(task)), name(tuneCalc(getCalcTask(curCalc,task)))) DRAW task GRID AFTER nameCol; 
+ PROPERTIES  ON CHANGE {showDescrMyBalanceCalcTask(getCalcTask(curCalc, task));}
+ nameCol1 'тип.' = (CONCAT ', ',nameCalcBook(type(task)), name(tuneCalc(getCalcTask(curCalc,task)))) 
+                DRAW task GRID AFTER nameCol FOREGROUND #000055
+ PROPERTIES runCheckedFormRecalc 'пересчитать отмеченное' = {
+        MESSAGE 'run form 0' NOWAIT LOG;
+        FOR (CalcTask ct_) IF calc(ct_) == curCalc  AND select(task(ct_)) AND NOT isGroup(task) ORDER pos(task(ct_)) DO {
+            MESSAGE 'run form' NOWAIT LOG;
+            paramStringOpenTask() <- 'initAndRun';
+            openTask(curCalc, task(ct_));
+        }
+        paramStringOpenTask() <- NULL; 
+ }
+    PROPERTIES  ON CHANGE {showDescrMyBalanceCalcTask(getCalcTask(curCalc, task));} 
+ hlp '?' = IF descriptionTask(task) THEN '?' DRAW task GRID AFTER nameCol1
+; 
 
 DESIGN calcCard {
     PROPERTY (nameCol) {hide = TRUE;}
+    TOOLBARLEFT { MOVE PROPERTY (runCheckedFormRecalc){hide = TRUE;}; }
 }
 
 dateColumnName 'Название колонки' (CalcTask calcTask, Period p, STRING name) =  
-   CONCAT ', ', STRING (toChar(dateBegin(periodInCalc(p, calc(calcTask))), 'TMMon YY')), name;  
-
+IF p = Period.empty THEN 'Итого' ELSE CONCAT ', ', STRING (toChar(dateBegin(periodInCalc(p, calc(calcTask))), 'TMMon YY')), name;
+ 
 // Tree
 isNoShowFoldedFormcalcCard(Calc c, Task p) = (      GROUP MAX TRUE 
                                                                  IF calcVariant(c) == calcVariant(Task parent_)
@@ -163,6 +230,7 @@ PROPERTIES
          openFgAll '++'= {taskFolderOpenSet(task,100);} NOIMAGE    
 ;
 DESIGN calcCard {
+    PROPERTY(nameCol1){charWidth = 12;}
         TOOLBARLEFT (task) {
             MOVE PROPERTY (levelFg1){charWidth = 2;};
             MOVE PROPERTY (levelFg2){charWidth = 2;};
@@ -178,10 +246,11 @@ DESIGN calcCard {
 FORM formCalcTask 'Для администратора' 
 OBJECTS s = CalcTask
     PROPERTIES DELETE (s),
-    isGroup = isGroup(task(s)),
-    nameTask = nameTask(task(s)),
-    nameCalc = name(calc(s)),
-    calcVariant = nameCalcVariant(calcVariant(task(s)))
+    isGroup     ''  = isGroup(task(s)),
+    task 'id Задачи' =  task(s),
+    nameTask    'Задача'  = nameTask(task(s)),
+    nameCalc    'Имя расчета'  = name(calc(s)),
+    calcVariant ''  = nameCalcVariant(calcVariant(task(s)))
 ;
  DESIGN  formCalcTask {
     PROPERTY (nameCalc) {charWidth = 15;}
@@ -189,3 +258,7 @@ OBJECTS s = CalcTask
     PROPERTY (calcVariant) {charWidth = 15;}
  }
     
+ 
+ 
+ 
+ 

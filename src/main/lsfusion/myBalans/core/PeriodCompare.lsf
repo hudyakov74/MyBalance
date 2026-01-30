@@ -1,0 +1,64 @@
+MODULE PeriodCompare;
+
+REQUIRE CalcTask;
+
+NAMESPACE MyBalanceCalc;
+
+// форма сопоставления периодов
+period1 = DATA LOCAL NESTED PeriodCalendar(INTEGER);
+period2 = DATA LOCAL NESTED PeriodCalendar(INTEGER);
+
+fillCompareForm(Calc ct1, Calc ct2) {
+    period1(i) <- NULL;
+    period2(i) <- NULL;
+    LOCAL  i = INTEGER ();
+    FOR periodInCalc(Period p,  (ct1)) ORDER dateBegin(periodInCalc(p,  (ct1))) NOINLINE DO {
+        i() <- i() (+) 1;
+        period1(i()) <- periodInCalc(p,  (ct1));    
+    }
+    
+    i() <- OVERRIDE (
+                    GROUP MAX INTEGER ii IF dateBegin(period1(ii)) == (GROUP MIN dateBegin(periodInCalc(Period pp,  (ct2))))
+                    ) - 1,0;
+    
+    FOR periodInCalc(Period p,  (ct2)) ORDER dateBegin(periodInCalc(p,  (ct2))) NOINLINE DO {
+        i() <- i() (+) 1;
+        period2(i()) <- periodInCalc(p,  (ct2));
+    }        
+}
+
+
+FORM formPeriodMatching 'Соответствие загружаемых периодов'
+    OBJECTS ct1 = Calc PANEL
+    OBJECTS ct2 = Calc PANEL
+    OBJECTS max '' = INTEGER  PANEL
+    FILTERS max > 0 AND max < 25
+    EVENTS ON INIT {
+        fillCompareForm(ct1, ct2);
+        SEEK formPeriodMatching.max = max((GROUP MAX INTEGER i1 IF period1(i1)),(GROUP MAX INTEGER i1 IF period2(i1)));
+        IF max == 1 THEN formClose();
+    }
+        
+    OBJECTS i = INTEGER
+    FILTERS iterate(i,1,max)
+    PROPERTIES ON CHANGE {DIALOG periodFormList OBJECTS pCalendar = period1(i) INPUT in NULL FILTERS periodType(pCalendar) == periodType( (ct1)) AND dateBegin(pCalendar) >= calcDateBegin(ct1) AND dateEnd(pCalendar) <= calcDateEnd(ct1)   DO { period1(i) <- in; }}
+        periodDate1 '1. Дата' = dateBegin(period1(i)),
+        period1 'Источник' = namePeriod(period(period1(i)))
+        
+    PROPERTIES ON CHANGE {DIALOG periodFormList OBJECTS pCalendar = period2(i) INPUT in NULL FILTERS periodType(pCalendar) ==  periodType( (ct2))  AND dateBegin(pCalendar) >= calcDateBegin(ct2) AND dateEnd(pCalendar) <= calcDateEnd(ct2)  DO { period2(i) <- in; }}
+        periodDate2 '2. Дата' = dateBegin(period2(i)),
+        period2 'Приемник' = namePeriod(period(period2(i)))
+;
+
+
+execFormActionCopyFromCalcTask(Calc curCalc, Task task) + {
+
+   DIALOG calcListSelect OBJECTS c INPUT retValue READONLY DO {
+       DIALOG formPeriodMatching OBJECTS ct1 = retValue, ct2 = curCalc READONLY DO {
+            FOR [GROUP MAX TRUE IF calcVariant(Task t) ==  calcVariant(task) BY type(t)](TypeTask typeTask) DO {
+                execFormActionCopy(curCalc, typeTask, calcVariant(task), retValue);
+            }
+       }
+   }
+
+}

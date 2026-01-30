@@ -1,0 +1,78 @@
+MODULE FormSalary7percent;
+
+REQUIRE FormSalary7;
+
+NAMESPACE MyBalance;
+
+// двойная иерархия без групп 
+//filterFormSalary7lev2(CalcTask ct, DimCostItems c) = checkedCostItems(task(ct), c);
+filterFormSalary7lev1(DimCostItems c, DimCostItems r) =
+    itemsName(c) == DimCostItemsNamed.salary AND
+        (itemsName(r) == DimCostItemsNamed.salaryFund OR itemsName(r) == DimCostItemsNamed.salaryTax)
+   OR
+        itemsName(c) == DimCostItemsNamed.salary20 AND
+            (itemsName(r) == DimCostItemsNamed.salaryFund20 OR itemsName(r) == DimCostItemsNamed.salaryTax20)
+;
+
+
+EXTEND FORM formSalary7
+ OBJECTS costK  = (l1 = DimCostItems, l2 = DimCostItems) 
+    FILTERS filterFormSalary7lev1(  l1, l2)
+PROPERTIES
+    costB 'База расчета' = name(l1),
+    costR 'Статья начисления' = name(l2),
+    valueKoef = valueKoefCubeSalary7Coef(calcTask, p,  l1, l2)
+        ON CHANGE {
+            INPUT inp = OVERRIDE valueKoefCubeSalary7Coef(calcTask, p,  l1, l2), 0 DO {
+                IF formSalary7fillModeString() THEN
+                    {
+                        FOR periodInCalc(Period p_, calc(calcTask)) AND pos(p_) >= pos(p) DO {
+                            setCubeSalary7Coef(calcTask, p_,  l1, l2, inp);
+                        }
+                    }
+                ELSE {
+                    setCubeSalary7Coef(calcTask, p,  l1, l2, inp);
+                }
+            }
+        }
+        ON GROUPCHANGE {}
+        ON CONTEXTMENU 'Вкл.запол.вправо' {
+            formSalary7fillModeString() <- TRUE;
+        }
+        ON CONTEXTMENU 'Выкл.запол.вправо' {
+            formSalary7fillModeString() <- NULL;
+        }
+
+
+        //FOOTER        cubeEnergoResValueCountH(calcTask, p)
+    //  SHOWIF formSalePlanColumns('1count') cubeEnergoResValueSumH(calcTask, p, dimnomEFg(nomenklEr), dimcfoEFg(cfoEr))
+    COLUMNS columnSpg (p) HEADER (CONCAT ' ', dateColumnName(calcTask, p, ''),'%')
+    DRAW  costK GRID
+;
+
+
+DESIGN formSalary7{
+    BOX (costK) {caption = 'Коэффициент начисления';}
+    PROPERTY (costB) {charWidth = 20; }
+    PROPERTY (costR) {charWidth = 20; }
+    PROPERTY (valueKoef) {charWidth = 13; pattern = '#,##0.0000'; }
+}
+
+// Плоский список
+EXTEND FORM formSalary7
+ 
+OBJECTS  koefList =  CubeSalary7Coef
+    FILTERS calcTask(koefList) == calcTask
+    PROPERTIES
+    kLdimCostItems           'Статья базы расчета'= name(dimCostItems     (koefList)),
+    kLdimCostItemsTune       'Статья начисления'  = name(dimCostItemsTune (koefList)),
+    kLvalueKoef               'Коэффициент'       = valueKoef        (koefList)
+    
+;
+
+DESIGN formSalary7{
+    BOX (costK) {caption = 'Коэффициент начисления';}
+    PROPERTY (kLdimCostItems) {charWidth = 20; }
+    PROPERTY (kLdimCostItemsTune) {charWidth = 20; }
+    PROPERTY (valueKoef) {charWidth = 13; pattern = '#,##0.0000'; }
+}

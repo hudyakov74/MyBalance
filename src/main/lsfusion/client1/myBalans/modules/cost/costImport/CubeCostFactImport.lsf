@@ -1,0 +1,68 @@
+MODULE CubeCostFactImport;
+
+REQUIRE Utils, CalcCore,Calc,CalcTask,DimensRawCostItems,   DimensRawCostItems, 
+DimensCostItems, DimensRawCFO, DimAccount, DimActivity  ;
+
+NAMESPACE  MyBalance;
+
+
+CLASS CubeCostFactImport 'Буфер загрузки затрат из 1с';
+@createCubeReqDim(CubeCostFactImport,cubeCostFactImport);
+
+// дата обязательно - для LAST
+date 'дата записи'  = DATA  DATETIME (CubeCostFactImport) INDEXED; // для получения последних соответствий
+// 1. статья затрат сырая  -- ссылка на нормальное, пометка ислкючения статьи тут
+dimRawCostItems 'Статья затрат, импорт' = DATA DimRawCostItems(CubeCostFactImport);
+dimRawCostItemsCalc 'Статья калькуляции, импорт' = DATA DimRawCostItems(CubeCostFactImport);
+
+dimRawCostItemsKey 'Статья затрат, импорт' = DATA LOCAL STRING[36](CubeCostFactImport);
+dimRawCostActivityKey 'Вид деятельности, импорт' = DATA LOCAL STRING[36](CubeCostFactImport);
+dimRawCalcCostActivityName 'Вид деятельности, name' = DATA LOCAL STRING[100](CubeCostFactImport);
+// costItems заполняем по статье калькуляции
+dimRawCalcCostItemsKey 'Статья калькуляции, key' = DATA LOCAL STRING[36](CubeCostFactImport);
+dimRawCalcCostItemsName 'Статья калькуляции, name' = DATA LOCAL STRING[100](CubeCostFactImport);
+dimRawCalcCostItemsCk1 'Контроль 1' = DATA   STRING(CubeCostFactImport);
+dimRawCalcCostItemsCk2 'Контроль 2' = DATA   STRING(CubeCostFactImport);
+dimRawCalcCostItemsCk3 'Контроль 3' = DATA   STRING(CubeCostFactImport);
+
+// 2. подразделение сырое  -- ссылка на нормальное тут
+dimRawCFO 'ЦФО, импорт'         = DATA DimRawCFO(CubeCostFactImport);
+dimRawCFOKey 'ЦФО, импорт'      = DATA LOCAL STRING[36](CubeCostFactImport);
+// 3. Кор счет
+dimAccount 'счет'           = DATA DimAccount(CubeCostFactImport);
+dimAccountKey 'счет'        = DATA LOCAL STRING[36](CubeCostFactImport);
+// 4. Счет затрат
+dimCorrAccount 'Кор.Счет'           = DATA DimAccount(CubeCostFactImport);
+dimCorrAccountKey 'Кор.Счет'        = DATA LOCAL STRING[36](CubeCostFactImport);
+
+dimActivity  'Вид деятельности' = DATA DimActivity(CubeCostFactImport);
+dimCostItems 'Статья затрат'    = DATA DimCostItems(CubeCostFactImport);
+//dimCostNonOperItems 'Статья 91' = DATA DimCostNonOperItems(CubeCostFactImport);
+dimCFO       'ЦФО'              = DATA DimCFO(CubeCostFactImport);
+value        'Сумма'            = DATA NUMERIC[18,2](CubeCostFactImport);
+
+is91 = DATA LOCAL BOOLEAN (CubeCostFactImport);
+
+
+valueCostFactImportByCalcTaskEnable(CalcTask ct, DimCFO dimCFO,DimCostItems dimCostItems) = 
+        GROUP SUM value(CubeCostFactImport i) IF 
+        dimCFO(i) == dimCFO AND dimCostItems(i) == dimCostItems
+        AND NOT isNoOper(dimAccount(i))
+        AND calc(i) == calc(ct) AND task(i) == task(ct); // AND NOT dimCostCfoAccDisable(dimAccount(i),dimCorrAccount(i),dimRawCostItems(i),dimRawCFO(i));
+ 
+valueCostFactImportBy(Calc c, DimCFO dimCFO, DimCostItems dimCostItems, DimActivity da_, DimAccount acc) = 
+        GROUP SUM value(CubeCostFactImport i) IF 
+        dimCFO(i) == dimCFO AND dimCostItems(i) == dimCostItems
+        AND NOT isNoOper(dimAccount(i))
+        AND calc(i) == c
+        AND dimActivity(i) = da_
+        AND  dimAccount(i) = acc;
+
+valueCostFactImportByNullAct(Calc c, DimCFO dimCFO, DimCostItems dimCostItems, DimAccount acc) = 
+        GROUP SUM value(CubeCostFactImport i) IF 
+        dimCFO(i) == dimCFO AND dimCostItems(i) == dimCostItems
+        AND NOT isNoOper(dimAccount(i))
+        AND calc(i) == c
+        AND NOT dimActivity(i) 
+        AND  dimAccount(i) = acc;
+ 

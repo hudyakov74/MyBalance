@@ -1,0 +1,79 @@
+MODULE ReportFilter;
+
+REQUIRE Utils;
+
+NAMESPACE MyBalance;
+
+CLASS ReportFilter 'Фильтр отчета' {
+    empty ''
+};
+
+name 'наименование' = DATA STRING[255](ReportFilter);
+currentFormReportFilter = DATA LOCAL NESTED ReportFilter();
+
+FORM formReportFilter 'Фильтры'
+OBJECTS d = ReportFilter
+PROPERTIES name(d), DELETE(d), NEW(d)
+//PROPERTIES edit 'Изменить' = {SHOW formReportFilter WAIT NEWSESSION MANAGESESSION;} 
+    
+EVENTS ON INIT {currentFormReportFilter() <- NULL;}
+EVENTS ON OK {currentFormReportFilter() <- d;}
+LIST ReportFilter OBJECT d;
+
+DESIGN formReportFilter {
+  //  TOOLBARRIGHT (d) {MOVE PROPERTY (edit);}
+    PROPERTY (name(d)) {charWidth = 15;};
+    height = 800;
+    OBJECTS {
+      
+            fill = 1;
+            lines = 1;
+            horizontal = TRUE;
+            NEW lPanel {
+                fill = 0.1;
+                MOVE BOX (d);
+            }
+            NEW rPanel {
+                fill = 1;
+                tabbed = TRUE;
+            }
+        
+    }
+}
+
+META addFilterDim(dimName, captionForm)
+
+filter###dimName 'v' = DATA BOOLEAN(###dimName, ReportFilter);    
+    
+EXTEND FORM formReportFilter
+    TREE dimName dimName = ###dimName  PARENT parent(dimName) 
+    PROPERTIES BACKGROUND  IF isHide(dimName) THEN  #e3e3e3 ELSE IF isGroup(dimName) THEN #ffffee
+    
+    filter###dimName(dimName, d) ON CHANGE {
+        INPUT  inp = filter###dimName(dimName, d) DO {
+            FOR isParent(###dimName dims_, dimName) DO {
+                filter###dimName(dims_, d) <- inp;
+            } 
+        }
+    },
+    name(dimName) READONLY 
+    EVENTS ON INIT {EXPAND ALL TOP formReportFilter.dimName;}
+
+    PROPERTIES pos(dimName),tabName(dimName)
+    ORDERS  pos(dimName),tabName(dimName)
+    FILTERGROUP onlyCheck##dimNamedimName FILTER 'только отмеченные'  filter###dimName(dimName, d) DEFAULT
+    FILTERGROUP hided##dimNamedimName FILTER 'Скрывать неиспользуемые' NOT isHide(dimName) OR filter###dimName(dimName, d) DEFAULT
+;
+  DESIGN  formReportFilter {
+      rPanel {
+          MOVE  BOX (TREE dimName){ 
+              caption = captionForm; 
+              fill = 1;
+          };
+      }
+      PROPERTY (pos(dimName))     {hide = TRUE;}
+      PROPERTY (tabName(dimName)) {hide = TRUE;}
+  }
+    
+END
+ 

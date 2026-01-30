@@ -1,0 +1,364 @@
+MODULE ActionCostFactImport;
+
+REQUIRE Utils, ExtUtil, CubeCostFactImport, ExtTypeRequest, FormCostFactImport;
+
+NAMESPACE  MyBalance;
+
+// процедуры загрузки
+EXTEND CLASS TypeRequest {
+    FormCostFactImport20 'Импорт затрат 20 счет',
+    FormCostFactImport25 'Импорт затрат 21-29 счет',
+    FormCostFactImport44 'Импорт затрат 44,91 счет'    
+}
+
+
+loadCost1c 'Загрузка из 1с' (ExtRequest er, CalcTask ct, TypeRequest mode) ABSTRACT;
+
+// ПРОЦЕДУРА ВЫБОРА
+functionsCostFactImport1(CalcTask ct, ExtRequest er) + {
+    // берем отчет - грузим отчет
+   CASE EXCLUSIVE  
+    WHEN type(er) == TypeRequest.FormCostFactImport20 
+        OR type(er) == TypeRequest.FormCostFactImport25 
+        OR type(er) == TypeRequest.FormCostFactImport44 
+    THEN { 
+       loadCost1c(er, ct,  type(er));
+    } 
+}
+recExtDimensionName   = DATA LOCAL  STRING(INTEGER);
+recPeriod            = DATA LOCAL STRING(INTEGER);
+recAccountDr_Key     = DATA LOCAL  STRING(INTEGER);
+recExtDimensionDr1   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionDr2   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionDr3   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr1   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr2   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr3   = DATA LOCAL  STRING(INTEGER);
+
+recExtDimensionDr1p   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionDr2p   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionDr3p   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr1p   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr2p   = DATA LOCAL  STRING(INTEGER);
+recExtDimensionCr3p   = DATA LOCAL  STRING(INTEGER);
+
+recAccountCr_Key     = DATA LOCAL  STRING(INTEGER);
+recValue             = DATA LOCAL  NUMERIC[18,2](INTEGER); 
+resultDataLoadCost1c = DATA LOCAL  FILE();     
+    
+    
+getDataLoadCost1c 'Загрузка проводок' (CalcTask ct,  extR, STRING accsKey,drCr, STRING firmKey){
+    IF drCr = 1 THEN
+    {
+        EXTERNAL HTTP GET conectString(extSource(extR)) + 
+        'AccountingRegister_Хозрасчетный/RecordsWithExtDimensions('
+        +'StartPeriod=datetime\''+to1cDate0000(calcDateBegin(calc(ct)))+'\''
+        +',EndPeriod=datetime\''+to1cDate2359(  calcDateEnd(calc(ct)))+'\''
+        +',Condition=AccountDr_Key eq guid\''+accsKey+'\' and Active eq true and Организация_Key eq guid\''+firmKey+'\''
+        +')?$format=json'
+        +'&$select=Period,Active,AccountDr_Key,ExtDimensionDr1,ExtDimensionDr2,ExtDimensionDr3,AccountCr_Key,ExtDimensionCr1,ExtDimensionCr2,ExtDimensionCr3'
+        +',Организация_Key,Сумма,Содержание,ExtDimensionDr1____Presentation,ExtDimensionDr2____Presentation,ExtDimensionDr3____Presentation,ExtDimensionCr1____Presentation,ExtDimensionCr2____Presentation,ExtDimensionCr3____Presentation'
+        HEADERS headers TO resultDataLoadCost1c;
+     }   
+   ELSE
+    {
+    EXTERNAL HTTP GET conectString(extSource(extR)) + 
+        'AccountingRegister_Хозрасчетный/RecordsWithExtDimensions('
+        +'StartPeriod=datetime\''+to1cDate0000(calcDateBegin(calc(ct)))+'\''
+       +',EndPeriod=datetime\''+to1cDate2359(  calcDateEnd(calc(ct)))+'\''
+        +',Condition=AccountCr_Key eq guid\''+accsKey+'\' and Active eq true and Организация_Key eq guid\''+firmKey+'\''
+        +')?$format=json'
+        +'&$select=Period,Active,AccountDr_Key,ExtDimensionDr1,ExtDimensionDr2,ExtDimensionDr3,AccountCr_Key,ExtDimensionCr1,ExtDimensionCr2,ExtDimensionCr3'
+        +',Организация_Key,Сумма,Содержание,ExtDimensionDr1____Presentation,ExtDimensionDr2____Presentation,ExtDimensionDr3____Presentation,ExtDimensionCr1____Presentation,ExtDimensionCr2____Presentation,ExtDimensionCr3____Presentation'
+        HEADERS headers TO resultDataLoadCost1c;
+    }
+  
+     IMPORT JSON FROM resultDataLoadCost1c()  TO   
+          recPeriod          = 'Period',  
+          recAccountDr_Key   = 'AccountDr_Key',  
+          recExtDimensionDr1 = 'ExtDimensionDr1',  
+          recExtDimensionDr2 = 'ExtDimensionDr2',  
+          recExtDimensionDr3 = 'ExtDimensionDr3',  
+          recExtDimensionCr1 = 'ExtDimensionCr1',  
+          recExtDimensionCr2 = 'ExtDimensionCr2',  
+          recExtDimensionCr3 = 'ExtDimensionCr3',  
+          recExtDimensionDr1p = 'ExtDimensionDr1____Presentation',  
+          recExtDimensionDr2p = 'ExtDimensionDr2____Presentation',  
+          recExtDimensionDr3p = 'ExtDimensionDr3____Presentation',  
+          recExtDimensionCr1p = 'ExtDimensionCr1____Presentation',  
+          recExtDimensionCr2p = 'ExtDimensionCr2____Presentation',  
+          recExtDimensionCr3p = 'ExtDimensionCr3____Presentation',  
+          recAccountCr_Key   = 'AccountCr_Key',  
+          recValue           = 'Сумма'
+     ; 
+}     
+ isAccountCorr(STRING strFullFilters,STRING accDt,STRING accCt) =  
+       isSubstring(strFullFilters, CONCAT '-',substr(accDt,1,2)+'.*',accCt)
+       OR 
+       isSubstring(strFullFilters, CONCAT '-',substr(accDt,1,2)+'.*',substr(accCt,1,2)+'.*')   
+       OR 
+       isSubstring(strFullFilters, CONCAT '-',accDt,substr(accCt,1,2)+'.*')
+       OR 
+       isSubstring(strFullFilters, CONCAT '-', accDt,accCt)
+       OR 
+       isSubstring(strFullFilters, CONCAT '-', accDt,'*')
+       OR 
+       isSubstring(strFullFilters, CONCAT '-', '*',accCt)
+       ;
+            
+// AccountingRegister_Хозрасчетный/RecordsWithExtDimensions(Top=5, StartPeriod=datetime'2021-02-01T12:00:00',EndPeriod=datetime'2021-03-01T12:00:00',Condition='AccountDr_Key eq guid\'5410c99e-d7ec-11e6-a711-3c970e78167f\'')?$format=json
+loadCost1c(ExtRequest extR,CalcTask ct, TypeRequest mode) + {
+    DELETE CubeCostFactImport cost WHERE calc(ct) == calc(cost) AND task(ct) == task(cost);
+    // 
+    LOCAL excludeAccount = STRING();
+    excludeAccount() <- GROUP MAX valueStr(ExtRequestParam p) IF param(p) == 'ExcludeAccount';
+    IF NOT excludeAccount() THEN
+        NEW n = ExtRequestParam {
+            extRequest(n) <- extR;
+            param(n) <- 'ExcludeAccount';
+            name(n) <- 'Список кор счетов для исключения в формате "счетДт-счетКт,счетДт-счетКт"';
+            valueStr(n) <- '20.*-20.*,20.*-21.*,20.*-23.*,20.*-25.*,20.*-26.*,23.*-23.*,25.*-25.*,26.*-26.*,25.01-23.01,44.02.1-23.01,26.01-23.01,26.01-29.1'; //20.*-20.*,20.*-21.*,20.*-23.*,20.*-25.*,20.*-26.*,23.*-23.*,25.*-25.*,26.*-26.*
+            excludeAccount() <- '';
+        }
+    // -----------------
+    headers('Authorization') <- passwordBasicAuth(extSource(extR));
+
+     
+    LOCAL accs = STRING (INTEGER);
+    LOCAL accsNumCostItem = INTEGER (INTEGER);
+    LOCAL accsCostActivity = INTEGER (INTEGER);
+    LOCAL accsCfoActivity = INTEGER (INTEGER);
+    LOCAL accsDrCr = INTEGER (INTEGER);
+    LOCAL accsIs91 = BOOLEAN (INTEGER);
+    LOCAL accsKey = STRING[36] (INTEGER);
+    CASE  
+        WHEN mode == TypeRequest.FormCostFactImport20 THEN {
+            accs(0) <- '20.01.1'; accsNumCostItem(0) <- 3; accsDrCr(0) <- 1; accsCfoActivity(0) <- 1;
+            //accs(1) <- '20.01.2'; accsNumCostItem(1) <- 3; accsDrCr(1) <- 1;  (1) <- 1; 
+            //accs(2) <- '20.02'; accsNumCostItem(2) <- 3; accsDrCr(2) <- 1;  (2) <- 1; 
+        }
+        WHEN mode == TypeRequest.FormCostFactImport25 THEN {
+            accs(3) <- '23.01'; accsNumCostItem(3) <- 3; accsDrCr(3) <- 1; accsCfoActivity(3) <- 1;
+            accs(4) <- '23.02'; accsNumCostItem(4) <- 3; accsDrCr(4) <- 1; accsCfoActivity(4) <- 1;
+            accs(5) <- '25.01'; accsNumCostItem(5) <- 2; accsDrCr(5) <- 1; accsCfoActivity(5) <- 1;
+            accs(6) <- '25.02'; accsNumCostItem(6) <- 2; accsDrCr(6) <- 1; accsCfoActivity(6) <- 1;
+            //accs(7) <- '25.03'; accsNumCostItem(7) <- 1; accsDrCr(7) <- 1;
+            accs(8) <- '26.01'; accsNumCostItem(8) <- 2; accsDrCr(8) <- 1; accsCfoActivity(8) <- 1;
+            accs(9) <- '29.01'; accsNumCostItem(9) <- 3; accsDrCr(9) <- 1; accsCfoActivity(9) <- 1;
+            accs(10) <- '29.02'; accsNumCostItem(10) <- 3; accsDrCr(10) <- 1; accsCfoActivity(10) <- 1;
+            //accs(10)<- '26.03'; accsNumCostItem(10) <- 1; accsDrCr(10) <- 1;  
+        } 
+        WHEN mode == TypeRequest.FormCostFactImport44 THEN {
+            //accs(11) <- '44.01.1'; accsNumCostItem(11) <- 1; accsDrCr(11) <- 1; 
+            //accs(12) <- '44.01.2'; accsNumCostItem(12) <- 1; accsDrCr(12) <- 1;  
+            //accs(13) <- '44.01.3'; accsNumCostItem(13) <- 1; accsDrCr(13) <- 1;  
+            accs(14) <- '44.02.1'; accsNumCostItem(14) <- 1; accsDrCr(14) <- 1; accsCfoActivity(14) <- 2;
+            //accs(15) <- '44.02.2'; accsNumCostItem(15) <- 1; accsDrCr(15) <- 1; 
+            //accs(16) <- '44.02.3'; accsNumCostItem(16) <- 1; accsDrCr(16) <- 1; 
+            accs(18) <- '91.01'; accsNumCostItem(18) <- 1; accsDrCr(18) <- 2; accsIs91(18) <- TRUE; // второе ск это номенклатура где есть такая аналитика
+            accs(19) <- '91.02.1'; accsNumCostItem(19) <- 1; accsDrCr(19) <- 1; accsIs91(19) <- TRUE; // второе ск это номенклатура где есть такая аналитика
+            //accs(20) <- '91.02.2'; accsNumCostItem(20) <- 1;  accsDrCr(20) <- 1; accsIs91(20) <- TRUE;  
+            //accs(21) <- '91.02.3'; accsNumCostItem(21) <- 1;  accsDrCr(21) <- 1; accsIs91(21) <- TRUE;  
+
+        }
+
+   
+  
+       
+     
+    LOCAL accsFirmKey = STRING (INTEGER);
+    EXTERNAL HTTP GET conectString(extSource(extR)) +
+        'Catalog_Организации?$format=json&$top=100&$filter=ИНН eq \'' + inn(dimFirm(extR)) + '\' and КПП eq \'' + kpp(dimFirm(extR)) + '\' and DeletionMark eq false&$select=Ref_Key,Description'
+        HEADERS headers TO resultDataLoadCost1c;
+    IMPORT JSON FROM resultDataLoadCost1c() TO accsFirmKey = 'Ref_Key';
+
+    IF accsFirmKey(0) THEN {
+        EXTERNAL HTTP GET conectString(extSource(extR)) +
+            'ChartOfAccounts_Хозрасчетный?$select=Ref_Key,Code&$format=json'
+            HEADERS headers TO resultDataLoadCost1c;
+        IMPORT JSON FROM resultDataLoadCost1c() TO importStrDimAccount = 'Code', importUuidStrDimAccount = 'Ref_Key';
+        syncByNameDimAccount(); // importDimAccount importStrDimAccount importUuidStrDimAccount
+        // ЦФО              
+        EXTERNAL HTTP GET conectString(extSource(extR)) +
+            'Catalog_ПодразделенияОрганизаций?$format=json'
+            + '&$select=Ref_Key,Description'
+            HEADERS headers TO resultDataLoadCost1c;
+        LOCAL cfoKey = BPSTRING[36] (INTEGER);
+        LOCAL cfoName = BPSTRING[100] (INTEGER);
+        IMPORT JSON FROM resultDataLoadCost1c() TO
+                cfoKey = 'Ref_Key',
+                cfoName = 'Description';
+
+        FOR accs(INTEGER stage_) DO {
+            
+            MESSAGE 'Cчет ' + accs(stage_) LOG; 
+            accsKey(stage_) <- GROUP MAX importUuidStrDimAccount(ii) IF accs(stage_) == importStrDimAccount(ii);
+
+            getDataLoadCost1c(ct, extR, accsKey(stage_), accsDrCr(stage_), accsFirmKey(0));
+ 
+            LOCAL loadPos = BOOLEAN (INTEGER);
+
+            IF accsDrCr(stage_) == 2 THEN {
+
+                importUuidStrDimRawCostItems(INTEGER i_) <- CASE WHEN accsNumCostItem(stage_) == 1 THEN recExtDimensionCr1(i_)
+                    WHEN accsNumCostItem(stage_) == 2 THEN recExtDimensionCr2(i_)
+                    WHEN accsNumCostItem(stage_) == 3 THEN recExtDimensionCr3(i_)
+                    ELSE NULL;
+                importStrDimRawCostItems(INTEGER i_) <- CASE WHEN accsNumCostItem(stage_) == 1 THEN recExtDimensionCr1p(i_)
+                    WHEN accsNumCostItem(stage_) == 2 THEN recExtDimensionCr2p(i_)
+                    WHEN accsNumCostItem(stage_) == 3 THEN recExtDimensionCr3p(i_)
+                    ELSE NULL;
+                syncByNameDimRawCostItems();
+
+                importUuidStrDimRawCFO(INTEGER i_) <- CASE WHEN accsCfoActivity(stage_) == 1 THEN recExtDimensionCr1(i_)
+                    WHEN accsCfoActivity(stage_) == 2 THEN recExtDimensionCr2(i_)
+                    WHEN accsCfoActivity(stage_) == 3 THEN recExtDimensionCr3(i_)
+                    ELSE NULL;
+                importStrDimRawCFO(INTEGER i_) <- CASE WHEN accsCfoActivity(stage_) == 1 THEN recExtDimensionCr1p(i_)
+                    WHEN accsCfoActivity(stage_) == 2 THEN recExtDimensionCr2p(i_)
+                    WHEN accsCfoActivity(stage_) == 3 THEN recExtDimensionCr3p(i_)
+                    WHEN   recValue(i_) THEN  CONCAT ' ','ЦФО на счете', accs(stage_), 'не указан';
+               
+                syncByNameDimRawCFO();
+
+                loadPos(INTEGER i_) <- isAccountCorr(excludeAccount(),
+                    (GROUP MAX importStrDimAccount(INTEGER iii) IF importUuidStrDimAccount(iii) == recAccountCr_Key(i_)),
+                    (GROUP MAX importStrDimAccount(INTEGER iii) IF importUuidStrDimAccount(iii) == recAccountDr_Key(i_))
+                    )
+                    IF recValue(i_);
+
+                FOR recValue(INTEGER ii) AND NOT loadPos(ii) INLINE
+                    NEW imp = CubeCostFactImport DO {
+                    is91(imp) <- accsIs91(stage_);
+                    calc(imp) <- calc(ct);
+                    task(imp) <- task(ct);
+                    date(imp) <- date1cToDateTime(recPeriod(ii));
+                    dimAccountKey(imp) <- recAccountCr_Key(ii);
+                    dimCorrAccountKey(imp) <- recAccountDr_Key(ii);
+                    value(imp) <- - recValue(ii); // Знак меняем.
+
+                    dimRawCFOKey(imp) <- importUuidStrDimRawCFO(ii);
+                    dimRawCFO(imp) <- importDimRawCFO(ii);
+
+                    dimRawCalcCostItemsCk1(imp) <- recExtDimensionCr1p(ii);
+                    dimRawCalcCostItemsCk2(imp) <- recExtDimensionCr2p(ii);
+                    dimRawCalcCostItemsCk3(imp) <- recExtDimensionCr3p(ii);
+
+                    dimRawCostItemsKey(imp) <- importUuidStrDimRawCostItems(ii);
+                    dimRawCalcCostItemsName(imp) <- importStrDimRawCostItems(ii);
+                    dimRawCostItems(imp) <- importDimRawCostItems(ii);
+
+                }
+            }
+            ELSE {
+
+                importUuidStrDimRawCostItems(INTEGER i_) <- CASE WHEN accsNumCostItem(stage_) == 1 THEN recExtDimensionDr1(i_)
+                    WHEN accsNumCostItem(stage_) == 2 THEN recExtDimensionDr2(i_)
+                    WHEN accsNumCostItem(stage_) == 3 THEN recExtDimensionDr3(i_)
+                    ELSE NULL;
+                importStrDimRawCostItems(INTEGER i_) <- CASE WHEN accsNumCostItem(stage_) == 1 THEN recExtDimensionDr1p(i_)
+                    WHEN accsNumCostItem(stage_) == 2 THEN recExtDimensionDr2p(i_)
+                    WHEN accsNumCostItem(stage_) == 3 THEN recExtDimensionDr3p(i_)
+                    ELSE NULL;
+                syncByNameDimRawCostItems();
+
+                importUuidStrDimRawCFO(INTEGER i_) <- CASE WHEN accsCfoActivity(stage_) == 1 THEN recExtDimensionDr1(i_)
+                    WHEN accsCfoActivity(stage_) == 2 THEN recExtDimensionDr2(i_)
+                    WHEN accsCfoActivity(stage_) == 3 THEN recExtDimensionDr3(i_)
+                    ELSE NULL;
+                importStrDimRawCFO(INTEGER i_) <- CASE WHEN accsCfoActivity(stage_) == 1 THEN recExtDimensionDr1p(i_)
+                    WHEN accsCfoActivity(stage_) == 2 THEN recExtDimensionDr2p(i_)
+                    WHEN accsCfoActivity(stage_) == 3 THEN recExtDimensionDr3p(i_)
+                    WHEN   recValue(i_) THEN  CONCAT ' ','ЦФО на счете', accs(stage_), 'не указан'
+                    ELSE NULL;
+                syncByNameDimRawCFO();
+
+                loadPos(INTEGER i_) <- isAccountCorr(excludeAccount(),
+                    (GROUP MAX importStrDimAccount(INTEGER iii) IF importUuidStrDimAccount(iii) == recAccountDr_Key(i_)),
+                    (GROUP MAX importStrDimAccount(INTEGER iii) IF importUuidStrDimAccount(iii) == recAccountCr_Key(i_))
+                    )
+                    IF recValue(i_);
+
+                FOR recValue(INTEGER ii) AND NOT loadPos(ii) INLINE
+                    NEW imp = CubeCostFactImport DO {
+                    is91(imp) <- accsIs91(stage_);
+                    calc(imp) <- calc(ct);
+                    task(imp) <- task(ct);
+                    date(imp) <- date1cToDateTime(recPeriod(ii));
+                    dimAccountKey(imp) <- recAccountDr_Key(ii);
+                    dimCorrAccountKey(imp) <- recAccountCr_Key(ii);
+                    value(imp) <- recValue(ii);
+
+                    dimRawCFOKey(imp) <- importUuidStrDimRawCFO(ii);
+                    dimRawCFO(imp)    <- importDimRawCFO(ii);
+
+                    dimRawCalcCostItemsCk1(imp) <- recExtDimensionDr1p(ii);
+                    dimRawCalcCostItemsCk2(imp) <- recExtDimensionDr2p(ii);
+                    dimRawCalcCostItemsCk3(imp) <- recExtDimensionDr3p(ii);
+
+                    dimRawCostItemsKey(imp) <- importUuidStrDimRawCostItems(ii);
+                    dimRawCalcCostItemsName(imp) <- importStrDimRawCostItems(ii);
+                    dimRawCostItems(imp) <- importDimRawCostItems(ii);
+                }
+            }
+            recValue(INTEGER ii) <- NULL;
+        }
+
+        // accsKey(i) <- GROUP MAX  accsAllKey(ii) IF accs(i) == accsAllName(ii);  
+        FOR calc(CubeCostFactImport imp) == calc(ct) AND task(imp) == task(ct) DO {
+            dimAccount(imp) <- GROUP MAX importDimAccount(INTEGER i_) IF dimAccountKey(imp) == importUuidStrDimAccount(i_);
+            dimCorrAccount(imp) <- GROUP MAX importDimAccount(INTEGER i_) IF dimCorrAccountKey(imp) == importUuidStrDimAccount(i_);
+        }
+        //        // заполним сразу существующие соответствия
+      //  FOR dimCostItemsAccnt(dimAccount(CubeCostFactImport imp), dimRawCostItems(imp)) AND calc(imp) == calc(ct) AND task(imp) == task(ct)
+      //      DO dimCostItems(imp) <- dimCostItemsAccnt(dimAccount(imp), dimRawCostItems(imp));
+        
+//        FOR dimCostItemsAccAcc(dimAccount(CubeCostFactImport imp), dimCorrAccount(imp), dimRawCostItems(imp)) AND calc(imp) == calc(ct) AND task(imp) == task(ct)
+//            DO dimCostItems(imp) <- dimCostItemsAccAcc(dimAccount(imp),  dimCorrAccount(imp), dimRawCostItems(imp));
+//
+//        FOR dimCFOAccnt(dimAccount(CubeCostFactImport imp), dimRawCFO(imp)) AND calc(imp) == calc(ct) AND task(imp) == task(ct)
+//            DO dimCFO(imp) <- dimCFOAccnt(dimAccount(imp), dimRawCFO(imp));
+
+    }
+};
+//       
+//// Перенос новых статей затрат "Как есть"
+//fillCostItemsAsIs(CalcTask ct) {
+//    FOR calc(CubeCostFactImport c) == calc(ct) AND task(c) == task(ct) 
+//        AND dimRawCostItems(c) AND name(dimRawCostItems(c)) != '' AND NOT dimCostItems(c) NOINLINE 
+//    DO {
+//    // ищем статью 
+//    newByNameDimCostItems(name(dimRawCostItems(c)));
+//    // ставим статью
+//    dimCostItems(c) <- currentDimCostItems();
+//    // запоминаем выбор
+//    dimCostItemsAccnt(dimAccount(c),dimRawCostItems(c)) <- currentDimCostItems();
+//    // ищем родителя
+//    newByNameDimCostItems(name(dimRawCostItemsCalc(c)));
+//    // ставим родителя
+//    IF currentDimCostItems() AND name(currentDimCostItems()) !='' AND NOT parent(dimCostItems(c)) THEN {
+//      parent(dimCostItems(c)) <- currentDimCostItems();  
+//    }
+//    }
+//}
+//
+//
+//// Перенос новых статей затрат "Как есть"
+//fillCfoAsIs(CalcTask ct) {
+//    FOR calc(CubeCostFactImport c) == calc(ct) AND task(c) == task(ct) 
+//        AND dimRawCFO(c) AND name(dimRawCFO(c)) != '' AND NOT dimCFO(c) NOINLINE 
+//    DO {
+//    // ищем статью 
+//    newByNameDimCFO(name(dimRawCFO(c)));
+//    // ставим статью
+//    dimCFO(c) <- currentDimCFO();
+//    // запоминаем выбор
+//    dimCFOAccnt(dimAccount(c),dimRawCFO(c)) <- currentDimCFO();
+//   
+//    }
+//}
+//
+//
+//EXTEND FORM formCostFactImport 
+//PROPERTIES fillCostItemsAsIs 'Заполнить статьи затрат' =  fillCostItemsAsIs(calcTask),                   
+//           fillCfoAsIs       'Заполнить подразделения' =  fillCfoAsIs(calcTask);                   

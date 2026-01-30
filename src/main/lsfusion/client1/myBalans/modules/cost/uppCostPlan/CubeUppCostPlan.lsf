@@ -1,0 +1,40 @@
+MODULE CubeUppCostPlan;
+
+REQUIRE CalcCore, Calc, CalcTask, DimensCFO,TypeUppCostPlan, Cube, DimensNomenkl, DimensCostItems;
+
+NAMESPACE MyBalance;
+
+
+CLASS CubeUppCostPlan 'Заявки УПП по затратам. Буфер';
+@createCubeReqDim(CubeUppCostPlan,cubeUppCostPlan);
+
+typeUppCostPlan         'Тип заявки'        = DATA TypeUppCostPlan(CubeUppCostPlan);
+typeUppCostPlanName     'Тип заявки'  (CubeUppCostPlan c) = name(typeUppCostPlan(c));
+date                    'дата документа'    = DATA  DATE      (CubeUppCostPlan);
+number                  'Номер документа'   = DATA  STRING[25](CubeUppCostPlan);
+responsibleCfo          'ЦФО заказчик'      = DATA  STRING[150](CubeUppCostPlan);
+responsiblePlant        'Площадка'          = DATA  STRING[150](CubeUppCostPlan);
+responsibleCfoIsWork    'В работе'          = DATA  BOOLEAN (CubeUppCostPlan);
+responsibleFio          'ФИО заказчик'      = DATA  STRING[150](CubeUppCostPlan);
+responsibleDepartment   'Отдел заказчик'    = DATA  STRING[150](CubeUppCostPlan);
+
+nomenkl                 'Товар/услуга'      = DATA  STRING[300](CubeUppCostPlan); 
+isService               'Услуга'            = DATA  BOOLEAN(CubeUppCostPlan); 
+consumerCfo             'ЦФО списания'      = DATA  STRING[150](CubeUppCostPlan);
+consumerDimCfo          'ЦФО'               = DATA  DimCFO(CubeUppCostPlan);
+consumerDimCfoName      'ЦФО' (CubeUppCostPlan c) = name(consumerDimCfo(c));
+consumerCostItems       'Статья списания'   = DATA  STRING[150](CubeUppCostPlan);
+consumerDimCostItems    'Статья затрат'     = DATA  DimCostItems(CubeUppCostPlan);
+consumerDimCostItemsName  'Статья затрат' (CubeUppCostPlan c) = name(consumerDimCostItems(c));
+consumerDateUse         'Месяц списания'    = DATA  DATE      (CubeUppCostPlan);
+ 
+
+sum                     'Сумма заявки(с НДС)'  = DATA  NUMERIC[20,2](CubeUppCostPlan);
+sumCompare              'Сумма для сверки'     = DATA  NUMERIC[20,2](CubeUppCostPlan);
+
+ndsRate                 'Ставка НДС'           = DATA  NUMERIC[20,0](CubeUppCostPlan);
+
+
+sumWoNds 'Сумма без НДС'(CubeUppCostPlan c)   = sum(c) * 100.0/ (100.0 (+) ndsRate(c));
+diffCompare 'Разница'(CubeUppCostPlan c) =  sum(c) (-) sumCompare(c); 
+

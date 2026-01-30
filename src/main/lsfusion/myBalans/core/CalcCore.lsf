@@ -1,8 +1,8 @@
 MODULE CalcCore;
 
-REQUIRE PeriodType,Period,Scenario, CoreColor,Time;
+REQUIRE PeriodType, Period, Scenario, CoreColor,Time;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
  
 // простой список наименований видов расчетов  
 CLASS CalcVariant 'Реестр видов расчетов';

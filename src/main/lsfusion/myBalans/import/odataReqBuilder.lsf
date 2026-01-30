@@ -110,10 +110,11 @@ PROPERTIES name(r),varPrefix(r),reqText(r),
   source =  name(source(r)),filters(r),select(r),expand(r)
 PROPERTIES(r) 
 resultReqText, 
-result,
-resultFull,
-reqNoSmallResult
+result
 PROPERTIES
+resultFull = left( resultFull(r) , 10000),
+reqNoSmallResult(r)
+    PROPERTIES
 get1 'показать скрипт' = {
     getFormScriptFromJson(result(r),varPrefix(r));
     MESSAGE (formScriptResult());
@@ -158,7 +159,7 @@ DESIGN extRequestTestFormCard {
  
         MOVE PROPERTY (resultReqText(r)) { charWidth = 150;};
         MOVE PROPERTY (result(r)){charHeight = 15;};
-        MOVE PROPERTY (resultFull(r)){charHeight = 15;};
+        MOVE PROPERTY (resultFull){charHeight = 15;};
     }
     }
 

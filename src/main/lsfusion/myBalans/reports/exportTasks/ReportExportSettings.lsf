@@ -2,7 +2,7 @@ MODULE ReportExportSettings;
 
 REQUIRE ReportExportType;
 
-NAMESPACE Reports;
+NAMESPACE MyBalance;
 
 CLASS ReportExportSettings 'Выгружаемые отчеты';
 

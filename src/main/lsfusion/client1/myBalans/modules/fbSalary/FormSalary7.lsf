@@ -1,0 +1,65 @@
+MODULE FormSalary7;
+
+REQUIRE CubeSalary7, CubeSalary7Coef, ExtUtil, Form, ReportList, PeriodCalendar, CalcTask, Time, Eval;
+
+NAMESPACE MyBalance;
+
+EXTEND CLASS TypeTask{
+    Salary7 '7 План. Фонд оплаты труда'
+}
+
+descrMyBalance(TypeTask d) +=
+    WHEN d == TypeTask.Salary7 THEN
+' 
+Фильтры формы - списки по умолчанию
+1. Указание ЦФУ - площадки обязательно, фильтрует все по площадке - перекрывает фильтр списка ЦФО 
+2. ЦФО - выводит по умолчанию список преднастроеных цфо - если они прошли фильтр ЦФУ
+3. Список статей затрат используется, если пустой - то (либо-либо) ограничивается преднастроенными статьями в коде
+4. 
+
+
+План вводится по 2 основным статьям - зарплата и зарплата 20 счет
+все статьи отмечаются константами в справочнике и выводятся для ввода значений
+и для ввода коэффициентов начисления
+
+Итоговый расчет храним в плоском списке. данных неммного- посмотреть можно во встроенной сводной
+';
+
+formSalary7fillModeString = DATA LOCAL NESTED BOOLEAN ();
+FORM  formSalary7 '7 План. Фонд оплаты труда';
+@createFormReqPropertysBeforeOBJ(Salary7);
+
+EXTEND FORM formSalary7
+    OBJECTS s = CubeSalary7;
+
+@createFormReqPropertyAfterOBJ(CubeSalary7, formSalary7, s, calc, task, '7 План. Фонд оплаты труда');
+
+
+EXTEND FORM formSalary7
+PROPERTIES
+date 'Дата' = date(s),
+period 'Период' = namePeriod(period(s)),
+dimCFOtype  'Тип подр.'      = name(typeCFO(dimCFO(s))) READONLY,
+dimCFO                  'ЦФО'            = name(dimCFO       (s)),     
+dimCostItems            'Статья затрат'  = name(dimCostItems (s)),  
+valueSum                'Сумма'          = valueSum(s) FOOTER (GROUP SUM valueSum(CubeSalary7 s_) IF [FILTER formSalary7.s](s_))
+;
+
+DESIGN formSalary7 {
+    PROPERTY (period){charWidth = 6;}
+    PROPERTY (dimCostItems){charWidth = 13;}
+    PROPERTY (dimCFO                ){charWidth = 13;}
+    PROPERTY (dimCFOtype                ){charWidth = 13;}
+    PROPERTY (valueSum              ){charWidth = 13; pattern = '#,##0.00';}
+}
+
+
+
+// измерение колонок 
+EXTEND FORM formSalary7
+    OBJECTS p = Period
+    FILTERS periodInCalc(p, calc(calcTask));
+
+
+// =====================================================
+// Форма ввода

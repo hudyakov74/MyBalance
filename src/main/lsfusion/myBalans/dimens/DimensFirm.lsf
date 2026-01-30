@@ -2,7 +2,7 @@ MODULE DimensFirm;
   
 REQUIRE TaskTune, Dimens;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimFirm 'Организации';
 TABLE dimFirm(DimFirm);

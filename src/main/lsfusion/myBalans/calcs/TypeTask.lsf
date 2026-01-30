@@ -1,6 +1,6 @@
 MODULE TypeTask;
 
-NAMESPACE Calc;
+NAMESPACE MyBalanceCalc;
 
 // --- Типы расчетных задач -------------------------------------------
 CLASS TypeTask 'Тип задач' {

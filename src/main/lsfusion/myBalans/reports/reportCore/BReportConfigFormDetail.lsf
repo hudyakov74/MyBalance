@@ -1,0 +1,189 @@
+MODULE BReportConfigFormDetail;
+ 
+REQUIRE    BReportConfigForm, System, Utils;
+
+NAMESPACE MyBalance;
+
+reportConfigEditText = DATA LOCAL NESTED TEXT();
+FORM  reportConfigEditText 'Редактирование'
+PROPERTIES 
+copy 'Скопировать в буфер обмена' = {copyToClipboard(reportConfigEditText());},
+reportConfigEditText() PANEL;
+
+DESIGN reportConfigEditText {
+    PROPERTY 
+    (reportConfigEditText() ) {
+        width   = 600;
+        height  = 300;
+        caption = '';
+    }
+    TOOLBARRIGHT {MOVE PROPERTY (copy) FIRST;}
+}
+
+// детальная форма настроек copyToClipboard
+
+FORM formBReportConfigDetail 'Детальная настройка отчета'
+OBJECTS rep 'Настройка' = BReportConfig PANEL
+PROPERTIES nameReport(rep)  READONLYIF TRUE PANEL
+OBJECTS col 'Список полей' = BReportConfigColumns
+  FILTERS  bReportConfig(col) == rep
+    PROPERTIES DELETE (col), NEW (col),
+        //enable    'Включена как мера' = enable(col),
+
+    copyAllRep 'copy all' = {
+        reportConfigEditText() <-  GROUP CONCAT textColumnToClipboard(BReportConfigColumns col_),'|\n\n|' IF bReportConfig(col_)== rep ORDER col_;
+        DIALOG reportConfigEditText FLOAT DO {
+             FOR iterate(INTEGER i,1, wordCount(reportConfigEditText(), '|\n\n|')) DO {
+                 NEW new = BReportConfigColumns {
+                     bReportConfig(new) <- rep;
+                     insertFromTextClipboard(new,  getWord(reportConfigEditText(),'|\n\n|',i) , TTRUE );
+                     
+                 }
+             }  ; 
+        }
+    },             
+                   
+    copy 'copy/past' =  {
+            reportConfigEditText() <- textColumnToClipboard(col);
+            DIALOG reportConfigEditText FLOAT DO {
+                insertFromTextClipboard(col, reportConfigEditText(), TFALSE);
+            }
+    } DRAW col GRID,
+    pos       'Позиция поля' = pos(col),
+    name      'Имя поля'     = name(col),
+    nameUnit  'ед.изм'       = name(unit(col)),
+    coeffUnit 'делитель'     = ratio(unit(col)),              
+    commentary(col)  ON CHANGE {reportConfigEditText() <- commentary(col); DIALOG reportConfigEditText FLOAT; commentary(col) <- reportConfigEditText();},
+        enable(col),
+        isMesuare  'Мера' = isMesuare(col),
+      
+        compareToBaseSub(col), totalAutoCompare(col), totalAutoComparePerc(col),
+        required(col),
+        dockToPreviuosHeader  'в т.ч.' = dockToPreviuosHeader(col), // к предыдущему столбцу
+        dockToPreviuosHeaderText  'Заголовок в т.ч.' = dockToPreviuosHeaderText(col), // к предыдущему столбцу
+    mesuareFunction 'Выражение меры (JR notation)' = mesuareFunction(col) ON CHANGE {reportConfigEditText() <- mesuareFunction(col); DIALOG reportConfigEditText FLOAT; mesuareFunction(col) <- reportConfigEditText();},
+    cellExpression  'Выражение в ячейке (JR notation)' = cellExpression(col) ON CHANGE {reportConfigEditText() <- cellExpression(col); DIALOG reportConfigEditText FLOAT; cellExpression(col) <- reportConfigEditText();},
+    cellFormat      'Формат вывода (JR notation)' =  cellFormat(col),
+  
+    type            'тип (JR notation)' = type(col)  ON CHANGE {reportConfigEditText() <- type(col); DIALOG reportConfigEditText FLOAT; type(col) <- reportConfigEditText();},
+        
+idPosName  'Выражение группировки' = idPosName(col),
+idPosRef   'id груп.ссылкой' = idPosRef(col),
+idNameName 'Значение вывода группировки' = idNameName(col),
+idClass    'id class' = idClass(col),
+idNameRef  'id поля ссылкой' = idNameRef(col)
+    
+    PROPERTIES
+    cUp '⇧' = { //↑↓
+        LOCAL tmp = BReportConfigColumns();
+        tmp() <- GROUP LAST BReportConfigColumns l IF pos(l) < pos(col) AND  bReportConfig(l) == bReportConfig(col) ORDER pos(l);
+        IF tmp() THEN {
+            pos(col)  <- pos(tmp());
+            pos(tmp())   <- pos(tmp()) + 1;
+        }
+    },
+        cDown '⇩' = {
+            LOCAL tmp = BReportConfigColumns();
+            tmp() <- GROUP LAST BReportConfigColumns l IF pos(l) > pos(col) AND  bReportConfig(l) == bReportConfig(col) ORDER DESC pos(l);
+            IF tmp() THEN {
+                pos(col)  <- pos(tmp());
+                pos(tmp())   <- pos(tmp()) - 1;
+            }
+        }
+    
+   ORDERS pos 
+;
+
+DESIGN formBReportConfigDetail {
+    TOOLBARLEFT (col) {
+        MOVE PROPERTY (cUp);
+        MOVE PROPERTY (cDown);
+        MOVE PROPERTY (copyAllRep);
+    }
+    PROPERTY (dockToPreviuosHeaderText) {charWidth = 10;}
+    PROPERTY (name) {charWidth = 13;}
+    PROPERTY (nameUnit) {charWidth =  3;}
+    PROPERTY (coeffUnit) {charWidth =  3;}
+    PROPERTY (commentary(col)) {charWidth = 13; charHeight = 1;}
+    PROPERTY (mesuareFunction) {charWidth = 13; charHeight = 1;}
+    PROPERTY (cellExpression) {charWidth = 13; charHeight = 1;}
+    PROPERTY (cellFormat) {charWidth = 13; charHeight = 1; }
+    PROPERTY (type) {charWidth = 13; charHeight = 1;}
+    PROPERTY (idPosName) {charWidth = 13;}
+    PROPERTY (idPosRef) {charWidth = 13;}
+    PROPERTY (idClass) {charWidth = 13;}
+    PROPERTY (idNameName) {charWidth = 13;}
+    PROPERTY (idNameRef) {charWidth = 13;}
+}
+
+ 
+
+openFormBReportConfigDetail(BReportConfig rep) {
+    MESSAGE 'После редактирования Заполните настройки текущего отчета из варианта настроек или переоткройте отчет, детальные изменения выполняются в шаблоне варианта';
+    formClose();
+    SHOW formBReportConfigDetail OBJECTS rep = (OVERRIDE copyOf(rep), rep)  DOCKED NEWSESSION;
+}
+
+EXTEND FORM formBReportConfigCard 
+PROPERTIES  openFormBReportConfigDetail 'Детальная настройка' = {
+        openFormBReportConfigDetail(s);
+    },
+    addInGroup 'добавить поле' = {
+        DIALOG formBReportConfigDetail OBJECTS col INPUT l FILTERS rep = s DO { //   = l 
+            IF NOT GROUP MAX TRUE IF l == group(BReportConfigGroup x) AND NOT bReportPartition(x)  THEN {
+               NEW new = BReportConfigGroup {
+                   bReportConfig(new) <- bReportConfig(l);
+                   posV(new) <- 1 (+) GROUP SUM 1 IF bReportConfig(BReportConfigGroup gg) == bReportConfig(l) AND NOT bReportPartition(gg);
+                   posH(new) <- 1 (+) GROUP SUM 1 IF bReportConfig(BReportConfigGroup gg) == bReportConfig(l) AND NOT bReportPartition(gg);
+                   group(new) <- l;
+               }
+            }
+            ELSE MESSAGE 'такая группа уже есть' LOG;
+        };
+},
+    addInGroupPers 'добавить поле' = {
+        DIALOG formBReportConfigDetail OBJECTS col INPUT l FILTERS rep = s DO { //   = l 
+            IF NOT GROUP MAX TRUE IF l == group(BReportConfigGroup x)  AND bReportPartition(x) == part THEN {
+                NEW new = BReportConfigGroup {
+                    bReportConfig(new) <- bReportConfig(l);
+                    bReportPartition(new)  <- part;
+                    posV(new)  <- 1 (+) GROUP SUM 1 IF bReportConfig(BReportConfigGroup gg) == bReportConfig(l) AND bReportPartition(x) == part;
+                    //posH(new)  <- 1 (+) GROUP SUM 1 IF bReportConfig(BReportConfigGroup gg) == bReportConfig(l) AND bReportGroup(x) == part ;
+                    group(new) <- l;
+                } 
+            }
+            ELSE MESSAGE 'такая группа уже есть' LOG;
+        };
+    } SHOWIF personalV(part);
+
+DESIGN formBReportConfigCard {
+    TOOLBARRIGHT(col) {MOVE PROPERTY (openFormBReportConfigDetail);} 
+    TOOLBARRIGHT(vGroup) {MOVE PROPERTY (addInGroup);} 
+    TOOLBARRIGHT(vGroupPers) {MOVE PROPERTY (addInGroupPers);} 
+    
+}
+
+
+//
+//
+//EXTEND  FORM formBReportConfigDetail
+//    PROPERTIES xlsx 'тест в excel' =
+//    {
+//        exec(rep); // исполняем перед выводом!!!
+//        //bReportGenerateGroups(rep);
+//        //mbJasperFillTemplate( resource(), rep, );
+//        readResource('forms/patternEmptySale.jrxml');
+//        mbJasperGenerateAndFillTemplate(resource(), rep);
+//
+//        IF  has(currentUser(), userRoleSID('dirAdmin')) THEN
+//            {open(bRepRawFile(), toChar(currentDateTime(),'HH24:MI')+'.jrxml');
+//            }
+//        form(rep) <- FILE(bRepRawFile());
+//        PRINT formReportSale2   OBJECTS conf = rep XLSX TO fileXLS;
+//        IF  has(currentUser(), userRoleSID('dirAdmin')) THEN {open(fileXLS());}
+//        xlsCreateRowOutlineV2(fileXLS(), 0,4,8,  1,0,3,2,  0,0,
+//            5 (+) (GROUP SUM 1 IF bReportConfig(BReportConfigGroup t) == conf AND enableH(t)) (+) (GROUP MAX 1 IF bReportConfig(BReportConfigColumns c) == conf AND isMesuare(c) AND enable(c) AND dockToPreviuosHeader(c) )
+//            ,0);
+//        open(fileXLS(), OVERRIDE nameReport(rep), name(rep) );
+//    }
+//;

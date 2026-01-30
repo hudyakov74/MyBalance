@@ -1,6 +1,16 @@
 MODULE Dimens;
-REQUIRE CoreColor,CoreMenu,Utils, DimCategory, Reflection;
-NAMESPACE   Dimens;
+REQUIRE CoreColor, CoreMenu, Utils, ExtUtil, DimCategory, Reflection, BReportPartition, Security;
+NAMESPACE MyBalance;
+
+CLASS DimRegisters {
+    empty 'Пусто'
+}
+nameDim = DATA STRING[100](DimRegisters);
+name(DimRegisters d) = OVERRIDE nameDim(d), staticCaption(d);
+
+constructFilter(Object obj, BReportPartitionFilter c) ABSTRACT CASE;
+// listBreportSelected(,)
+
  
 META configDim(ObjectDim) 
  // элемент root - представляет собой элемент множества подставляющийся вместо всего множества
@@ -40,7 +50,7 @@ META configDim(ObjectDim)
     FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(t) DEFAULT
     LIST ObjectDim OBJECT t;
     DESIGN   form##ObjectDim##TreeList { 
-        PROPERTY (tabName(t)) { charWidth=100; }
+        PROPERTY (tabName(t)) { charWidth=100; charHeight = 1; }
     };
   
    // форма для редактирования списка - открывается только из меню
@@ -79,6 +89,7 @@ META configDim2TaskTune(ObjectDim,checked,var)
     ;
     
     DESIGN taskTune { // расширяем дизайн формы Item
+        PROPERTY (tabName(var)) { charWidth = 35; charHeight = 1; }
         PROPERTY (name(var)) { hide = TRUE; }
         PROPERTY (isGroup(var)) { hide = TRUE; }
         PROPERTY (canonicalName(var)) { hide = TRUE; } 
@@ -94,6 +105,10 @@ END
 
 META configDimWOGroup(ObjectDim)
 
+EXTEND CLASS  ObjectDim{
+    empty '<>'
+}
+ 
 pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id;
 name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
@@ -109,7 +124,32 @@ WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectD
    isRoot(sd)<-NULL ;
    MESSAGE 'только один элемент может представлять корень';
 };
-     
+
+EXTEND CLASS  DimRegisters{
+    ObjectDim ObjectDim
+}
+
+// Для настроек отчета
+TABLE bSel###ObjectDim(ObjectDim, BReportConfig);
+bSel 'Отбор' = DATA LOCAL BOOLEAN (ObjectDim, BReportConfig)  TABLE bSel###ObjectDim; // множество выбранных элементов для отчета
+
+TABLE lBrepSel###ObjectDim(ObjectDim, BReportPartitionFilter);
+lBrepSel = DATA BOOLEAN (ObjectDim, BReportPartitionFilter) TABLE lBrepSel###ObjectDim;
+
+FORM listBreportSelected##ObjectDim 'Список' // toDo - Сделать иерархию
+    OBJECTS  c = BReportPartitionFilter PANEL,
+             s = ObjectDim
+    PROPERTIES lBrepSel(s, c) DRAW s GRID,
+        name 'Наименование' = name(s) READONLY 
+    FILTERGROUP selOnly FILTER 'выбр/все' lBrepSel(s, c) DEFAULT
+;
+
+DESIGN listBreportSelected##ObjectDim {
+    BOX { size = (600,400);}
+}
+
+
+    
 FORM  form##ObjectDim##Selectlist  'Выбор элемента'
     OBJECTS  d = ObjectDim  
     PROPERTIES(d)  READONLY  
@@ -197,32 +237,34 @@ newByImportIndex##ObjectDim(INTEGER n) {
 }    
 
 syncByName##ObjectDim() {
-    FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL;
+    FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL; 
+    FOR importStr###ObjectDim(INTEGER n) == '' DO  importStr###ObjectDim(n) <- NULL;
+    FOR importStr###ObjectDim(INTEGER n) DO importStr###ObjectDim(n) <- trimDeltn(importStr###ObjectDim(n));
     // если указан uuid то сначала смотрим по нему существующие элементы, если было переименование в первичном источнике!!! 
     FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
         AND 
         uuidInit(##ObjectDim p) == importUuidStr###ObjectDim(nm) 
-        AND 
-        name(p) != importStr###ObjectDim(nm)
+        AND
+        trimDeltn( name(p) ) != importStr###ObjectDim(nm)
         DO {
       name(p) <- importStr###ObjectDim(nm);
     }
       // остальное заводим по имени!!!
-    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF name(p) == nm) DO {
+    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF trimDeltn(name(p)) == nm) DO {
         newByName##ObjectDim(nm);
     }
     // если захотели добавить UUID
     FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
         AND 
         NOT uuidInit(##ObjectDim p)  
-        AND 
-        name(p) == importStr###ObjectDim(nm)
+        AND
+        trimDeltn( name(p) )== importStr###ObjectDim(nm)
         DO {
              uuidInit(p) <- importUuidStr###ObjectDim(nm);
     }
   
     // синхронизируем по имени
-    FOR importStr###ObjectDim(INTEGER n) = name(##ObjectDim p) DO {
+    FOR importStr###ObjectDim(INTEGER n) = trimDeltn (name(##ObjectDim p)) DO {
         import###ObjectDim(n) <- p;
     }
 }                
@@ -261,6 +303,15 @@ objectInCategoryOrEpmty 'функция входимости объекта в �
 END
 
 META configDimWO(ObjectDim)
+
+
+importStr###ObjectDim = DATA LOCAL STRING (INTEGER);    
+importStrCode###ObjectDim = DATA LOCAL STRING (INTEGER);    
+importUuidStr###ObjectDim = DATA LOCAL STRING[36] (INTEGER);  
+import###ObjectDim    = DATA LOCAL ##ObjectDim(INTEGER);       
+
+syncByName##ObjectDim() ABSTRACT;
+    
 CLASS  ObjectDim##Named{
   empty ''
 }
@@ -268,9 +319,16 @@ EXTEND CLASS  ObjectDim{
   empty '<>'
 }
 
+
 name(ObjectDim##Named obj_) = staticCaption(obj_); 
 
 itemsCode 'Код элемента' (ObjectDim##Named obj) =  regexpReplace(staticName(obj),'.*\\.','','');
+
+FORM form###ObjectDim##Namedlist
+    OBJECTS d = ObjectDim##Named
+    PROPERTIES name(d)
+    LIST ObjectDim##Named OBJECT d
+;
 
 pos 'Порядок' = DATA INTEGER  (ObjectDim) IN base CHARWIDTH 5;
 code 'Код' = DATA STRING[15] (ObjectDim) IN id INDEXED; 
@@ -278,10 +336,11 @@ name 'Наименование' = DATA ISTRING[254] (ObjectDim) IN id INDEXED ;
 uuidInit 'Первоначальный uuid' = DATA ISTRING[36] (ObjectDim) IN id INDEXED ;
 nameWoDuble(ObjectDim s) =  regexpReplace(name(s),'"','','g'); 
 isGroup 'Группа' = DATA BOOLEAN (ObjectDim);
+backgroundColor(ObjectDim s) = IF isGroup(s) THEN groupBackColor(3) ;
 isHide 'Скрыт' = DATA BOOLEAN (ObjectDim);
 parent 'Родитель' = DATA ObjectDim(ObjectDim) INDEXED;
 //parentRoot 'Родитель корень' =  GROUP LAST ObjectDim d_ IF itemsName(d_) == obj;
-nodeKey(ObjectDim obj_) = PARTITION SUM 1 IF obj_ IS ObjectDim ORDER  obj_ MATERIALIZED; 
+nodeKey(ObjectDim obj_) = PARTITION SUM 1 IF obj_ IS ObjectDim ORDER obj_ MATERIALIZED; 
 parentKey(ObjectDim obj_) = nodeKey(parent(obj_)) MATERIALIZED;
 
 isRoot 'корень' = DATA BOOLEAN (ObjectDim);
@@ -303,6 +362,9 @@ isParent 'Родитель' (ObjectDim child, ObjectDim parent) = TRUE IF levelI
         
 canonicalName 'Каноническое имя' (ObjectDim group) =  GROUP CONCAT name(ObjectDim parent), ' / ' IF  level(group, parent) AND (group != parent OR isGroup(group)) ORDER DESC level(group, parent) CHARWIDTH 50;
 
+renumPos##ObjectDim(ObjectDim d_) ABSTRACT;
+
+
 mainOrder 'nodeKey'  (ObjectDim group) = //GROUP SUM 1 IF canonicalName(group) > canonicalName(ObjectDim group_)
 nodeKey(group)
 //STRING[9](
@@ -312,15 +374,21 @@ nodeKey(group)
 CHARWIDTH 9;
 
 //levelNum 'levelNum' (ObjectDim group) =            (GROUP  MAX level(group, parent))  CHARWIDTH 2;
-levelNumInt 'levelNumInt' (ObjectDim group) = LONG (GROUP  SUM levelInt(group, parent))-1  CHARWIDTH 2; // от 0 
-maxLevelInt 'Максимальный уровень' (ObjectDim c, INTEGER maxLevel) = IF maxLevel > 0 THEN maxLevel ELSE (GROUP MAX levelNumInt(ObjectDim all_))+1;     
+levelNumInt 'levelNumInt' (ObjectDim group) = LONG (GROUP  SUM levelInt(group,ObjectDim parent))-1  CHARWIDTH 2; // от 0 
+maxLevelInt 'Максимальный уровень' (ObjectDim c, INTEGER maxLevel) = IF maxLevel > 0 THEN maxLevel ELSE (GROUP MAX levelNumInt(ObjectDim all_))+1; //для чего?
+maxLevelInt 'Максимальный уровень' (ObjectDim c) =  (GROUP MAX levelNumInt(ObjectDim all_));
 
-getLevelObj(ObjectDim ch, INTEGER lvl ) =  (GROUP MAX ObjectDim parent AS  ObjectDim IF  levelInt(ch,parent) AND levelNumInt(parent) == lvl);
-     
+
+getLevelObj(ObjectDim ch, INTEGER lvl )          =  (GROUP MAX ObjectDim parent AS  ObjectDim IF  levelInt(ch,parent)                      AND levelNumInt(parent) == lvl);
+getLevelObjWoItems(ObjectDim ch, INTEGER lvl )   =  (GROUP MAX ObjectDim parent AS  ObjectDim IF  levelInt(ch,parent) AND NOT ch == parent AND levelNumInt(parent) == lvl);
+
+
  
+nameOrderPos (ObjectDim d) =  100000 (+) (PARTITION SUM 1 ORDER  (OVERRIDE pos(d),9999999), upper(name(d)));
+nameOrderFull 'по алфавиту' (ObjectDim d) = GROUP CONCAT trim(toChar(nameOrderPos(ObjectDim dd),'000000')) IF isParent(d, dd),'' ORDER levelNumInt(dd) MATERIALIZED;
 
-backgroundColor(ObjectDim s) = IF isGroup(s) THEN groupBackColor(3) ;   
-tabName 'имя' (ObjectDim group) =  (GROUP CONCAT '  ','  ' ORDER DESC levelInt(group, parent)) + name(group) CHARWIDTH 15;
+
+tabName 'Иерархия' (ObjectDim group) =  ISTRING((GROUP CONCAT '  ','  ' ORDER DESC levelInt(group, parent)) + name(group)) CHARWIDTH 15;
 tabNameTabbed 'имя' (ObjectDim group) =  (GROUP CONCAT '\t','\t' ORDER DESC levelInt(group, parent)) + name(group) CHARWIDTH 15;
 getRoot##ObjectDim()  = GROUP MAX ObjectDim c IF isRoot(c) AND NOT isGroup(c);
 getEmpty##ObjectDim() = GROUP MAX ObjectDim c IF isRoot(c) AND isGroup(c);
@@ -328,14 +396,122 @@ WHEN LOCAL CHANGED(isRoot(ObjectDim sd))  AND ( (GROUP SUM(1) IF (isRoot(ObjectD
    isRoot(sd)<-NULL ;
    MESSAGE 'только один элемент может представлять корень';
 };
+// добавим материализированные поля родителей для lookup - хранение дубликатов имен в справочниках небольшая цена
+// пока 3 уровня - 0-2 родителей 
+name0L 'Группа урвн.0' (ObjectDim s)            = name(getLevelObj(s,0)) MATERIALIZED;
+name0LOrderFull 'Группа,код урвн.1'  (ObjectDim s)  = nameOrderFull(getLevelObj(s,0)) MATERIALIZED;
+name1L 'Группа урвн.1' (ObjectDim s)            = name(getLevelObj(s,1)) MATERIALIZED;
+name1LOrderFull 'Группа,код урвн.1'  (ObjectDim s)  = nameOrderFull(getLevelObj(s,1)) MATERIALIZED;
+name2L 'Группа урвн.2' (ObjectDim s)            = name(getLevelObj(s,2)) MATERIALIZED;
+name2LOrderFull 'Группа,код урвн.2'  (ObjectDim s)  = nameOrderFull(getLevelObj(s,2)) MATERIALIZED;
+name3L 'Группа урвн.3' (ObjectDim s)            = name(getLevelObj(s,3)) MATERIALIZED;
+name3LOrderFull 'Группа,код урвн.3'  (ObjectDim s)  = nameOrderFull(getLevelObj(s,3)) MATERIALIZED;
+name4L 'Группа урвн.4' (ObjectDim s)            = name(getLevelObj(s,4)) MATERIALIZED;
+name4LOrderFull 'Группа,код урвн.4'  (ObjectDim s)  = nameOrderFull(getLevelObj(s,4)) MATERIALIZED;
+
+// 
+
+
+countDuble##ObjectDim(STRING name)   =  GROUP SUM 1 BY name(ObjectDim nn);
+
+
+EXTEND CLASS  DimRegisters{
+    ObjectDim ObjectDim
+}
+
+// Для настроек отчета
+TABLE bSel###ObjectDim(ObjectDim, BReportConfig);
+bSel 'Отбор' = DATA LOCAL BOOLEAN (ObjectDim, BReportConfig)  TABLE bSel###ObjectDim; // множество выбранных элементов для отчета
+
+
+
+TABLE lBrepSel###ObjectDim(ObjectDim, BReportPartitionFilter);
+lBrepSel = DATA BOOLEAN (ObjectDim, BReportPartitionFilter) TABLE lBrepSel###ObjectDim ;
+
+FORM listBreportSelected###ObjectDim 'Список'  
+    OBJECTS c = BReportPartitionFilter PANEL
+    TREE   groupTree g = ObjectDim PARENT parent(g)
+    OBJECTS          s = ObjectDim,
+                  sSel 'ВЫБРАНО' = ObjectDim
+      
+    PROPERTIES READONLY nameG = IF isRoot(g) THEN ' ВСЁ' ELSE name(g)
+    ORDERS nameG
+    FILTERS isGroup(g) OR isRoot(g)
+    
+    PROPERTIES  BACKGROUND backgroundColor(s)
+       lBrepSel(s, c) DRAW s GRID,
+       nameS 'Наименование' = name(s) READONLY,
+       isGroup(s)
+    ORDERS  isGroup(s) DESC, nameS
+    FILTERS isRoot(g) OR isParent(s, g)
+    //FILTERS NOT isGroup(s)
+    
+    PROPERTIES BACKGROUND backgroundColor(sSel)
+       lBrepSel(sSel, c) DRAW sSel GRID,
+       name  'Наименование' = name(sSel) READONLY
+    ORDERS name
+    FILTERS lBrepSel(sSel, c)  
+    
+    ON INIT {
+        SEEK listBreportSelected###ObjectDim.s = sSel;
+    }
+;
+
+DESIGN listBreportSelected##ObjectDim {
+    PROPERTY (nameG){charWidth = 10; fill = 100;}
+    PROPERTY (isGroup(s)){ hide = TRUE;}
+    OBJECTS {
+        horizontal = TRUE;
+        NEW hPan {
+            MOVE BOX(TREE groupTree) {
+            };
+            GRID(TREE groupTree){
+                
+                hierarchicalWidth = 60;
+                hierarchicalCaption = '';
+            }
+            fill = 0.25;
+        }
+        NEW bPan {
+          fill = 1;
+          MOVE BOX(s){
+              TOOLBARSYSTEM(s) {
+                  showViews = FALSE;
+                  showSettings = FALSE;
+                  //showFilters = FALSE;
+                  showPrintGroupXls = FALSE;
+                  showCountQuantity = FALSE;
+                  showCalculateSum = FALSE;
+                  showManualUpdate = FALSE;
+              }
+          };
+          MOVE BOX(sSel) {
+              fill = 0.3;
+              TOOLBARSYSTEM(sSel){
+                  showViews = FALSE;
+                  showSettings = FALSE;
+                  showFilters = FALSE;
+                  showPrintGroupXls = FALSE;
+                  showCountQuantity = FALSE;
+                  showCalculateSum = FALSE;
+                  showManualUpdate = FALSE;
+              };
+          }; 
+        }
+    }
+    
+    BOX { size = (800,600);}
+}
+// настроки отчета
+
 // список для выбора группы 
 EXTEND FORM form##ObjectDim##Group  
 OBJECTS d = ObjectDim 
 PROPERTIES(d) 
 ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
 BACKGROUND  #e3e3e3 IF isHide(d)
-READONLY pos, code, canonicalName
-ORDERS pos(d), canonicalName(d) FILTERS isGroup(d) AND NOT isRoot(d)
+READONLY pos, code, canonicalName, nameOrderFull
+ORDERS pos(d), nameOrderFull(d) FILTERS isGroup(d) AND NOT isRoot(d)
 FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT;
 
 selectGroup(ObjectDim r) {
@@ -357,17 +533,11 @@ FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isH
 //LIST ObjectDim OBJECT t
 ;
 DESIGN   form##ObjectDim##TreeList { 
-    PROPERTY (tabName(t)) { charWidth=100; }
+    PROPERTY (tabName(t)) { charWidth=100; charHeight = 1; }
 } ;
 
 
 
-
-FORM  form##ObjectDim##Card
-OBJECTS c = ObjectDim PANEL
-PROPERTIES (c) name
-
-EDIT ObjectDim OBJECT c;
          
                          
 FORM form##ObjectDim##Selectlist 'Выбор элемента' 
@@ -376,21 +546,25 @@ FORM form##ObjectDim##Selectlist 'Выбор элемента'
     ON CONTEXTMENU 'скрыть элемент вкл/выкл' {isHide(d) <- NOT isHide(d);}
     BACKGROUND  #e3e3e3 IF isHide(d)
     code, name, tabName  BACKGROUND backgroundColor(d)  BACKGROUND backgroundColor(d)   
-    ,pos  ,canonicalName, isGroup
-    PROPERTIES(d) NEWEDIT,EDIT 
+    ,pos  ,nameOrderFull, isGroup
+    PROPERTIES(d) NEWEDIT,EDIT
+    PROPERTIES itemsName 'Имя для формул' = name(itemsName(d)) 
     FILTERS   NOT (isRoot(d) AND isGroup(d)) 
-    ORDERS  pos(d), canonicalName(d), isGroup(d) DESC
+    ORDERS  pos(d), nameOrderFull(d), isGroup(d) DESC
     FILTERGROUP hided FILTER 'Скрывать неиспользуемые' NOT isHide(d) DEFAULT
     LIST ObjectDim OBJECT d
     ;
 
 DESIGN   form##ObjectDim##Selectlist { 
-   PROPERTY  (tabName(d))   { charWidth=60; defaultCompare='=*';}
+   PROPERTY  (tabName(d))   { charWidth=60; charHeight = 1; }
    PROPERTY  (pos(d))   { hide = TRUE ; }
    PROPERTY  (isGroup(d))   { hide = TRUE ; }
-   PROPERTY (canonicalName(d)) {charWidth=20; defaultCompare='=*'; }
+   PROPERTY (nameOrderFull(d)) {charWidth = 3; }
+   PROPERTY (itemsName) {charWidth=10;}
   BOX { size = (1200,600);}
-} ;      
+} ;
+
+
 
 
      
@@ -404,21 +578,45 @@ DESIGN   form##ObjectDim##Selectlist {
                        isHide BACKGROUND backgroundColor(d),
                      //  levelNumInt BACKGROUND backgroundColor(d), 
                        
-                       pos BACKGROUND backgroundColor(d), 
+                       pos BACKGROUND backgroundColor(d)
+                       ON CONTEXTMENU 'Перенумеровать по иерархии от ...' {INPUT   inp = pos(d) DO {
+                                                                               LOCAL n_ = INTEGER();
+                                                                               n_() <- inp;
+                                                                               FOR isParent(ObjectDim d_, d) ORDER canonicalName(d_)  DO {
+                                                                                   pos(d_) <- n_();
+                                                                                   n_() <- n_() + 2;
+                                                                               }
+                                                                           }
+                                                                          }, 
                        code BACKGROUND backgroundColor(d), 
                        tabName BACKGROUND backgroundColor(d) STICKY, 
                        name BACKGROUND backgroundColor(d) 
        PROPERTIES      itemsName 'Имя для формул' = name(itemsName(d)),
-                        parent 'Родитель' = name(parent(d)) ON CHANGE selectGroup(d) BACKGROUND backgroundColor(d),
-                       canonicalName(d) BACKGROUND backgroundColor(d),
-                       uuidInit(d)
-       ORDERS  pos(d),canonicalName(d), isGroup(d) DESC 
+                        parent 'Родитель' = name(parent(d)) ON CHANGE {DIALOG form##ObjectDim##TreeList  OBJECTS t = parent(d)  CHANGE = parent(d) LIST name(t) FILTERS isGroup(t); },
+                         //selectGroup(d) BACKGROUND backgroundColor(d),
+                       nameOrderFull(d) BACKGROUND backgroundColor(d),
+                       uuidInit(d),
+           name0L(d), name0LOrderFull (d), name1L(d), name1LOrderFull (d), name2L(d), name2LOrderFull (d), name3L(d), name3LOrderFull (d), name4L(d), name4LOrderFull(d)
+
+       FILTERGROUP dubles FILTER 'Показать дубли' countDuble##ObjectDim(name(d)) > 1
+       ORDERS  pos(d), nameOrderFull(d), isGroup(d) DESC 
        ; 
        DESIGN  form##ObjectDim##list {
-       
-        PROPERTY (tabName(d)) {charWidth=20; defaultCompare='=*'; }
-        PROPERTY (name(d)) {charWidth=20; defaultCompare='=*'; }
-        PROPERTY (uuidInit(d)) {charWidth=10; defaultCompare='=*'; }
+           PROPERTY (name(d))     {charWidth=20;}
+           PROPERTY (nameOrderFull(d))     {charWidth=2;}
+           PROPERTY (tabName(d))  {charWidth=20; charHeight=1;}
+           PROPERTY (parent)      {charWidth=20;}
+           PROPERTY (uuidInit(d)) {charWidth=10;}
+           PROPERTY (name0L(d)) {hide=TRUE;}
+           PROPERTY (name0LOrderFull(d)) {hide=TRUE;}
+           PROPERTY (name1L(d)) {hide=TRUE;}
+           PROPERTY (name1LOrderFull(d)) {hide=TRUE;}           
+           PROPERTY (name2L(d)) {hide=TRUE;}
+           PROPERTY (name2LOrderFull(d)) {hide=TRUE;}           
+           PROPERTY (name3L(d)) {hide=TRUE;}
+           PROPERTY (name3LOrderFull(d)) {hide=TRUE;}           
+           PROPERTY (name4L(d)) {hide=TRUE;}
+           PROPERTY (name4LOrderFull(d)) {hide=TRUE;}
        }  
        NAVIGATOR {
                    dimCatalogs   {
@@ -429,7 +627,26 @@ DESIGN   form##ObjectDim##Selectlist {
 delAll##ObjectDim 'удалить видимое'() {
     DELETE ObjectDim a WHERE a IS ObjectDim AND [FILTER form##ObjectDim##list.d](a);
 };
-// EXTEND FORM  form##ObjectDim##list PROPERTIES delAll##ObjectDim();    
+EXTEND FORM form##ObjectDim##list PROPERTIES delAll##ObjectDim() SHOWIF has(currentUser(), userRoleSID('dirAdmin'));
+DESIGN  form##ObjectDim##list { 
+    TOOLBARRIGHT {
+        MOVE PROPERTY (delAll##ObjectDim());
+    }
+}
+
+
+
+
+FORM  form##ObjectDim##Card
+    OBJECTS c = ObjectDim PANEL
+    PROPERTIES (c) name
+    PROPERTIES  listOpen 'Открыть список' = {SHOW form##ObjectDim##list DOCKED NEWSESSION;}
+    
+    EDIT ObjectDim OBJECT c;
+DESIGN form##ObjectDim##Card {
+    TOOLBARRIGHT {MOVE PROPERTY (listOpen);}
+}
+
 
 current##ObjectDim = DATA LOCAL ObjectDim ();
 
@@ -462,11 +679,7 @@ newByCode##ObjectDim(STRING code) {
        
        
        
-       
-importStr###ObjectDim = DATA LOCAL STRING (INTEGER);    
-importStrCode###ObjectDim = DATA LOCAL STRING (INTEGER);    
-importUuidStr###ObjectDim = DATA LOCAL STRING[36] (INTEGER);  
-import###ObjectDim    = DATA LOCAL ##ObjectDim(INTEGER);       
+             
 
 newByImportIndex##ObjectDim(INTEGER n) {
  IF importStr###ObjectDim(n) AND length(importStr###ObjectDim(n)) > 0 THEN {
@@ -497,21 +710,23 @@ newByImportIndexCode##ObjectDim(INTEGER n) {
  ELSE current##ObjectDim() <- NULL;
 }    
        
-syncByName##ObjectDim() {
+syncByName##ObjectDim()+{
     FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL;
+    FOR importStr###ObjectDim(INTEGER n) == '' DO  importStr###ObjectDim(n) <- NULL;
+    FOR importStr###ObjectDim(INTEGER n) DO importStr###ObjectDim(n) <- trimDeltn(importStr###ObjectDim(n));
     // если указан uuid то сначала смотрим по нему существующие элементы, если было переименование в первичном источнике!!! 
     FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
         AND 
         uuidInit(##ObjectDim p) == importUuidStr###ObjectDim(nm) 
         AND 
-        name(p) != importStr###ObjectDim(nm)
+        NOT trimDeltn(name(p)) == importStr###ObjectDim(nm)
         DO {
              name(p) <- importStr###ObjectDim(nm);
     }
     
        
     // остальное заводим по имени!!!
-    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF name(p) == nm)   
+    FOR [GROUP MAX importStr###ObjectDim(INTEGER n) BY importStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF trimDeltn(name(p)) == nm)   
          NEW  new =  ObjectDim DO { 
             name(new) <- nm; 
     }
@@ -520,14 +735,14 @@ syncByName##ObjectDim() {
     FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) IF length(importUuidStr###ObjectDim(n)) == 36 BY n](INTEGER nm) 
         AND 
         NOT uuidInit(##ObjectDim p)  
-        AND 
-        name(p) == importStr###ObjectDim(nm)
+        AND
+        trimDeltn(name(p)) == importStr###ObjectDim(nm)
         DO {
              uuidInit(p) <- importUuidStr###ObjectDim(nm);
     }
  
     // синхронизируем по имени
-    FOR importStr###ObjectDim(INTEGER n) = name(##ObjectDim p) DO {
+    FOR importStr###ObjectDim(INTEGER n) = trimDeltn( name(##ObjectDim p) ) DO {
         import###ObjectDim(n) <- p;
     }
 }                       
@@ -560,7 +775,7 @@ syncByCode##ObjectDim() {
     //  добавить Имя в новые
      FOR [GROUP MAX importStr###ObjectDim(INTEGER n) IF length(importStr###ObjectDim(n)) > 0 BY n](INTEGER nm) 
         AND code(##ObjectDim  p) == importStrCode###ObjectDim(nm)
-        AND NOT name(p) == importStr###ObjectDim(nm) 
+        AND NOT trimDeltn(name(p)) == importStr###ObjectDim(nm) 
         DO {
              name(p) <- importStr###ObjectDim(nm);
     }
@@ -582,7 +797,7 @@ syncByCode##ObjectDim() {
 
 syncByUuid##ObjectDim() {
     FOR import###ObjectDim(INTEGER i) DO import###ObjectDim(i) <- NULL;
-    
+    FOR importStr###ObjectDim(INTEGER n) DO importStr###ObjectDim(n) <- trimDeltn(importStr###ObjectDim(n));
            
     // остальное заводим по коду!!!
     FOR [GROUP MAX importUuidStr###ObjectDim(INTEGER n) BY importUuidStr###ObjectDim(n)](STRING nm) AND NOT (GROUP MAX ##ObjectDim p IF uuidInit(p) == nm)   
@@ -592,7 +807,7 @@ syncByUuid##ObjectDim() {
     //  добавить Имя в новые
      FOR [GROUP MAX importStr###ObjectDim(INTEGER n) IF length(importStr###ObjectDim(n)) > 0 BY n](INTEGER nm) 
         AND uuidInit(##ObjectDim  p) == importUuidStr###ObjectDim(nm)
-        AND NOT name(p) == importStr###ObjectDim(nm) 
+        AND NOT trimDeltn(name(p)) == importStr###ObjectDim(nm) 
         DO {
              name(p) <- importStr###ObjectDim(nm);
     }

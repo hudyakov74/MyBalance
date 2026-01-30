@@ -1,0 +1,24 @@
+MODULE BReportPartition;
+
+CLASS ABSTRACT BReportData; // данные отчетов буден наследовать от этого класса чтоб не плодить таблиц
+
+bRepRawFile = DATA LOCAL RAWFILE;
+
+mbJasperTemplateCorrect 'Корректировка шаблона jrxml' INTERNAL 'MbJasperTemplateCorrect' (FILE, INTEGER,STRING, STRING, STRING, STRING, STRING, STRING);
+mbJasperFillTemplate 'Заполнение шаблона jrxml' INTERNAL 'MbJasperFillTemplate' (FILE, INTEGER,STRING, STRING, STRING, 
+                                                                                        STRING, STRING, STRING,STRING,STRING,
+                                                                                        STRING,STRING, STRING, STRING, STRING, STRING, STRING,
+                                                                                        STRING,STRING, STRING, STRING, STRING
+                                                                                , STRING, LONG, INTEGER, INTEGER);
+                                                                                    
+
+mbJasperDuplicateCrosstabTemplate 'копирование шаблонного crosstab в шаблоне, int раз (0 или 1 - без копий!!!), (n0 = 1), с label string+n' INTERNAL 'MbJasperDuplicateCrosstabTemplate' (FILE, INTEGER, STRING);
+
+CLASS BReportConfig 'Настройка отчета';
+currentBReportConfig = DATA LOCAL NESTED BReportConfig();
+
+CLASS BReportPartition 'Разделы отчета';
+CLASS BReportPartitionFilter 'Разделы отчета: фильтры';
+
+currentBReportPartitionFilter = DATA LOCAL BReportPartitionFilter();
+

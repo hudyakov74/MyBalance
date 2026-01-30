@@ -2,7 +2,7 @@ MODULE DimAccount;
 
 REQUIRE TaskTune,Dimens,DimensRawCFO,DimensRawCostItems,DimensCFO,DimensCostItems;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimAccount 'Счет';
 TABLE dimAccount(DimAccount);
@@ -22,5 +22,6 @@ PROPERTIES isNoOper(d);
 
 
 EXTEND CLASS DimAccountNamed {
-    acc26 'Счет 26'
+    acc26 'Счет 26',
+    acc20 'Счет 20'
 }

@@ -1,0 +1,41 @@
+MODULE ActionKhpCostOld;
+// 
+//REQUIRE  FormKhpCost;
+//
+//NAMESPACE KhpCost;
+// 
+//
+//copyCubeKhpCost(CalcTask calcTask){
+//
+// DIALOG Calc.calcList OBJECTS c INPUT retValue DO {
+//        FOR CubeKhpCost c AS CubeKhpCost AND calc(c) = retValue  AND NOT stageZero(c)
+//                                         AND  type(task(c)) == type(task(calcTask))
+//                                         AND
+//                                          (
+//                                           checkedCFO(task(calcTask),dimCFO(c)) // отмечены
+//                                           OR 
+//                                           NOT (GROUP SUM 1 IF checkedCFO(task(calcTask),DimCFO cfo_))
+//                                          ) 
+//                                          
+//                                                    NEW n = CubeKhpCost  DO {
+//            task(n)   <- task(calcTask);
+//            period(n) <- getPeriodByDate(calc(calcTask),calcDateBegin(calc(calcTask)));
+//            calc(n)   <- calc(calcTask);
+//            date(n)   <- toDateTime(calcDateBegin(calc(calcTask)));
+//            dimCFO(n)   <- dimCFO(c) ;
+//            dimensCostItems(n)   <- dimensCostItems(c) ;
+//            value(n)   <- value(c) ; 
+//        } 
+//     
+//    }
+//}
+// 
+//operationCubeKhpCost(CalcTask ct,  menu) +{
+//  CASE EXCLUSIVE 
+//         WHEN menu == MenuOperationsCubeKhpCost.copy  THEN {
+//            copyCubeKhpCost(ct);
+//         }
+//      
+//};
+//
+// 

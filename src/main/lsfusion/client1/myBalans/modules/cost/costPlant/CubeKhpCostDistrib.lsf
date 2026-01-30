@@ -1,0 +1,32 @@
+MODULE CubeKhpCostDistrib;
+
+REQUIRE CubeKhpCost;
+
+NAMESPACE MyBalance;
+
+CLASS CubeKhpCostDistrib 'Затраты. База распределения';
+@createCubeReqDim(CubeKhpCostDistrib,cubeKhpCostDistrib);
+
+
+date 'дата операции'   = DATA  DATETIME (CubeKhpCostDistrib);
+
+dimCFO        'Подразделение'            = DATA DimCFO(CubeKhpCostDistrib);
+dimCfoDistrib 'Подразделение получатель' = DATA DimCFO(CubeKhpCostDistrib);
+value         'Вес'                      = DATA NUMERIC[14,4](CubeKhpCostDistrib);
+issueBased    'База выпуска'             = DATA BOOLEAN (CubeKhpCostDistrib);
+
+INDEX 'dimCfoDistribCubeKhpCostDistrib' dimCfoDistrib(CubeKhpCostDistrib s), calc(s), s;
+INDEX 'dimCfoCubeKhpCostDistrib' dimCFO(CubeKhpCostDistrib s), calc(s), s;
+
+sumKhpCostDistribBy 'База распределения' (Calc calc,  DimCFO dimCFO,DimCFO dimCfoDistrib) = 
+                GROUP SUM value(CubeKhpCostDistrib s) BY calc(s), dimCFO(s),dimCfoDistrib(s);
+
+issueBasedKhpCostDistribBy 'База распределения' (Calc calc,  DimCFO dimCFO, DimCFO dimCfoDistrib) =
+      GROUP MAX issueBased(CubeKhpCostDistrib s) BY calc(s), dimCFO(s), dimCfoDistrib(s);
+
+isDistribBy 'есть ли База распределения'  (Calc calc,  DimCFO dimCFO,DimCFO dimCfoDistrib) =
+GROUP MAX TRUE IF issueBased(CubeKhpCostDistrib s) OR value(s) != 0 BY calc(s), dimCFO(s), dimCfoDistrib(s);
+
+koeffCostDistrib(CubeKhpCostDistrib d) = value(d) / (GROUP SUM value(CubeKhpCostDistrib distr_) IF calc(distr_) ==  calc(d) AND dimCFO(distr_) ==  dimCFO(d) AND period(distr_) == period(d)) MATERIALIZED;
+
+

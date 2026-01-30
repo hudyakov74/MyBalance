@@ -1,5 +1,7 @@
 MODULE TypeCFO;
 
+REQUIRE BReportPartition;
+
 CLASS TypeCFO{
     supportUnits '23. Вспомогательные подразделения',
     productionUnits '20. Производственные подразделения',
@@ -7,10 +9,13 @@ CLASS TypeCFO{
     commonBusinessUnits '26. Общехозяйственные  подразделения',    
     commonProductionUnits '25. Общепроизводственные подразделения',
     otherIncome '91. Прочие доходы',
-    otherExpenses '91. Прочие расходы'
+    otherExpenses '91. Прочие расходы',
+    otherNonProductionUnits '29. Прочие непроизводственные подразделения'
 } 
 name(TypeCFO td) =  staticCaption(td) ;
- 
+
+TABLE lBrepSelTypeCFO(TypeCFO, BReportPartitionFilter);
+lBrepSel = DATA BOOLEAN (TypeCFO, BReportPartitionFilter) TABLE lBrepSelTypeCFO ;
 
 FORM formTypeCFO
 OBJECTS l = TypeCFO

@@ -1,0 +1,13 @@
+MODULE CubeCategoryBaseDistr;
+ 
+REQUIRE CalcCore, CalcTask, Cube, DimCategory;
+
+NAMESPACE MyBalance;
+
+CLASS CubeCategoryBaseDistr 'Базы распределения на базе категорий';
+
+@createCubeReqDim(CubeCategoryBaseDistr,cubeCategoryBaseDistr);
+num  '№' = DATA INTEGER (CubeCategoryBaseDistr); 
+dimCategorySource  'Изменение источник' = DATA DimCategory(CubeCategoryBaseDistr); 
+dimCategoryDestination1  'Измерение приемник' = DATA Object(CubeCategoryBaseDistr); 
+coeff  'Коэффициент'         = DATA NUMERIC[20,6](CubeCategoryBaseDistr); 

@@ -1,19 +1,24 @@
 MODULE Period;
 
-REQUIRE PeriodType;
+REQUIRE PeriodType, Utils;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 
-CLASS Period  'Период'  ;
+CLASS Period  'Период' {
+    empty 'пустой'
+} ;
 TABLE period (Period);
-namePeriod 'Наименование' = DATA ISTRING[30] (Period) DEFAULTCOMPARE 'CONTAINS' IN id ;
+namePeriod 'Наименование' = DATA ISTRING[30] (Period) IN id ;
 pos 'Порядок'             = DATA INTEGER     (Period) IN base;
-periodType                = DATA PeriodType  (Period) IN base NONULL; 
+periodType                = DATA PeriodType  (Period) IN base;
+
+name(Period p)  = STRING (CONCAT '.', lpad((CONCAT '',pos(p)),2,'0'), namePeriod(p));
 
 FORM periodForm 'Периоды'
 OBJECTS  g = PeriodType
-PROPERTIES (g) nameType ,NEW, DELETE 
+PROPERTIES (g) nameType, NEW, DELETE
+PROPERTIES  namedType 'Константа' = name(named(g))  
 
 OBJECTS p = Period 
 PROPERTIES (p) //periodType, 
@@ -35,3 +40,6 @@ DESIGN periodList {
     PROPERTY  (pt) {charWidth=4;}
     PROPERTY  (namePeriod(p)) {charWidth=20;}
 }
+
+
+

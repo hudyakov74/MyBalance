@@ -1,5 +1,5 @@
 MODULE ExtOdata;
 
-NAMESPACE ExtSystem; 
+NAMESPACE MyBalance; 
 
 import_odata_metadata  = DATA LOCAL STRING();

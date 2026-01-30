@@ -1,0 +1,248 @@
+MODULE ReportFormKhpCost;
+
+REQUIRE  CubeKhpCost, ReportClassList, BReportConfigForm, Utils, ReportList
+        ,// CubeEnergoRes,
+        CubeSalary7, Time;
+
+NAMESPACE MyBalance;
+
+// =============================
+// Уровень конкретного отчета
+// 
+// =============================
+EXTEND CLASS ReportClassList {
+    ReportFormKhpCost1 'Отчет по затратам подразделений'
+}
+ 
+// конкретный отчет - поля данных 
+CLASS  ReportFormKhpCost1:BReportData;
+section       = DATA LOCAL BReportConfigSections(ReportFormKhpCost1);
+partition     = DATA LOCAL BReportPartition (ReportFormKhpCost1);
+scenario      = DATA LOCAL Scenario     (ReportFormKhpCost1);
+date          = DATA LOCAL DATE         (ReportFormKhpCost1);
+dimCFO        = DATA LOCAL DimCFO       (ReportFormKhpCost1);
+dimCostItem   = DATA LOCAL DimCostItems (ReportFormKhpCost1);
+value 'Сумма' = DATA LOCAL NUMERIC[14,2](ReportFormKhpCost1);
+
+
+
+FORM formReportFormKhpCost1
+        OBJECTS   conf = BReportConfig  PANEL
+    SUBREPORT 'ReportFormKhpCost_conf.jrxml'
+    REPORT    'patternEmpty.jrxml'
+    OBJECTS   s = ReportFormKhpCost1 SUBREPORT form(conf) // FILE(rawFile())  //, 'MyBalance_formReportFormKhpCost1.jrxml' //file()
+
+        EVENTS ON INIT {
+            SEEK formReportFormKhpCost1.conf = currentBReportConfig();
+        }
+    
+    PROPERTIES xlsx 'Вывести в excel' =
+    {   exec(conf);
+        bReportGenerateGroups(conf);
+        readResource('forms/ReportFormKhpCost/pattern16x3x1.jrxml');
+        mbJasperTemplateCorrect( resource(), conf);
+        form(conf) <-  FILE(bRepRawFile());
+     
+        IF  has(currentUser(), userRoleSID('dirAdmin')) THEN open(bRepRawFile(), toChar(currentDateTime(),'HH24:MI')+'.jrxml');
+        PRINT formReportFormKhpCost1  OBJECTS conf = conf // FILTERS [FILTER formReportFormKhpCost1.s](s)
+            
+            XLSX TO fileXLS;
+      //  open(fileXLS());
+        xlsCreateRowOutlineV2(fileXLS(), 0,5,3,1,1, 3,2,0,0,10,0);
+        open(fileXLS(), OVERRIDE nameReport(conf), name(conf) );
+    } BACKGROUND #eeffee
+
+    PROPERTIES NOIMAGE 
+        dateR 'Дата'    = date(s),
+        value = value(s)  FOOTER (GROUP SUM value( ReportFormKhpCost1 ss) IF [FILTER formReportFormKhpCost1.s](ss)),
+        scenarioCode = name(scenario(s)),
+        scenario 'Сценарий' = name(scenario(s)),
+        dimCostItemCode = name(dimCostItem(s)),
+        dimCostItem 'Статья затрат' = name(dimCostItem(s)),
+        typeCFOcode 'Тип ЦФО код' = name(typeCFO(dimCFO(s))),
+        typeCFO     'Тип ЦФО'     = name(typeCFO(dimCFO(s))),
+        dimCFOCode   = name(dimCFO(s)),
+        dimCFO  'ЦФО' = name(dimCFO(s)),
+            
+            
+        sectionCode  =  nameSection(section(s)),
+        section 'Секция' = nameSection(section(s)),
+        partCode     'Раздел' =   (OVERRIDE toChar(pos(partition(s)),'00000'),name(partition(s))),
+        part  = name(partition(s)),
+        dateCode    = STRING( toChar(date(s),'yyyyMMdd')),
+        date        = STRING( toChar(date(s),'dd.MM.yyyy') )
+            
+// это в макрос
+PROPERTIES  nameHeaderDetail(conf) PANEL ON CHANGE AFTER {
+                SEEK formReportFormKhpCost1.conf =  currentBReportConfig();
+            }, 
+            editVariant 'Изменить' = {SHOW  formBReportConfigCard OBJECTS s = conf;
+                SEEK formReportFormKhpCost1.conf =  currentBReportConfig();
+
+            },
+            selectVariant 'Выбрать вариант' = {
+                DIALOG formBReportConfigList OBJECTS  version = conf INPUT in FILTERS report(conf) == report(version)  DO {
+                    bReportConfigGetWorkCopyOrNew(in, currentUser());
+                    SEEK formReportFormKhpCost1.conf =  currentBReportConfig();
+    }
+};
+
+ @reportBGroup(formReportFormKhpCost1, s, dimCostItem, dimCostItem, name, 'Статьи затрат', TRUE) ;
+
+ @reportBGroup(formReportFormKhpCost1, s, dimCFO, dimCFO, name, 'Цфо', TRUE);
+ @reportBGroup(formReportFormKhpCost1, s, dimCFOCode, dimCFO, nameOrderFull, 'Цфо, код', TRUE);
+
+
+
+@report2HeadersDes(formReportFormKhpCost1);
+ 
+
+DESIGN formReportFormKhpCost1 {
+    OBJECTS {
+        NEW header {
+            horizontal = TRUE;
+            lines = 1;
+            MOVE  PROPERTY (nameHeaderDetail(conf)) {fill = 1; charWidth = 250;}
+            MOVE  PROPERTY (editVariant);
+            MOVE  PROPERTY (selectVariant);
+        } 
+    }
+     
+    PROPERTY (sectionCode) {hide = TRUE;}
+    PROPERTY (partCode) {hide = TRUE;}
+    PROPERTY (scenarioCode) {hide = TRUE;}
+    PROPERTY (date) {hide = TRUE;}
+    PROPERTY (dateCode) {hide = TRUE;}
+    PROPERTY (dimCFOCode) {hide = TRUE;}
+    PROPERTY (dimCostItemCode) {hide = TRUE;}
+    
+    PROPERTY (section) {width = 20;}
+    PROPERTY (part) {width = 20;}
+    PROPERTY (dimCostItem) {width = 20;}
+    PROPERTY (dimCFO) {width = 20;}
+    PROPERTY (scenario) {width = 20;}
+    PROPERTY (value) {pattern = '#,##0.00';}
+}
+
+@report2createAndCalcFilter(reportCost2_1, DimCFO,'DimCFO');
+@report2createAndCalcFilter(reportCost2_2, DimCostItems,'DimCostItems');
+@report2createAndCalcFilterWoParent(reportCost2_3, TypeCFO,'TypeCFO');
+
+
+/////////////////////////////
+// заполнение буфера отчета данными
+exec(BReportConfig rep ) +  WHEN report(rep) == ReportClassList.ReportFormKhpCost1 THEN {
+    DELETE ReportFormKhpCost1 d WHERE d IS ReportFormKhpCost1;
+
+    reportCost2_1Set(rep);
+    reportCost2_2Set(rep);
+    reportCost2_3Set(rep);
+    
+    LOCAL noFilter = BOOLEAN (BReportPartition, INTEGER);
+    
+    
+    noFilter(BReportPartition part, 0) <-  NOT (GROUP MAX TRUE IF (BReportPartitionFilter filt1 AS BReportPartitionFilter) AND enable(filt1) AND partition(filt1) = part AND enable(part) AND bReportConfig(part) == rep  AND condition(filt1) == BReportCondition.in );
+   // noFilter(BReportPartition part, 1) <-  NOT (GROUP MAX TRUE IF (BReportPartitionFilter filt1 AS BReportPartitionFilter) AND enable(filt1) AND partition(filt1) = part AND enable(part) AND bReportConfig(part) == rep  AND condition(filt1) == BReportCondition.notIn );
+     
+    FOR bReportConfig(BReportConfigSections sec) == rep AND enable(sec)
+        AND scenario(calc(CubeKhpCost s)) == scenario(sec) AND toDate(date(s)) >= date1(sec) AND toDate(date(s)) <= date2(sec)
+        AND bReportConfig(BReportPartition part) == rep AND enable(part)
+        AND (NOT reportCost2_1Enable(TTRUE, part)  OR     reportCost2_1Filter(TTRUE,  part, dimCFO(s) ) )
+        AND (NOT reportCost2_1Enable(TFALSE, part) OR NOT reportCost2_1Filter(TFALSE, part, dimCFO(s) ) )
+        AND (NOT reportCost2_3Enable(TTRUE, part)  OR     reportCost2_3Filter(TTRUE,  part, typeCFO(dimCFO(s)) ) )
+        AND (NOT reportCost2_3Enable(TFALSE, part) OR NOT reportCost2_3Filter(TFALSE, part, typeCFO(dimCFO(s)) ) )
+        AND (NOT reportCost2_2Enable(TTRUE, part)  OR     reportCost2_2Filter(TTRUE,  part, dimCostItem(s) ) )
+        AND (NOT reportCost2_2Enable(TFALSE, part) OR NOT reportCost2_2Filter(TTRUE,  part, dimCostItem(s) ) ) 
+   
+            NEW   n = ReportFormKhpCost1 DO {
+                section(n)      <- sec;
+                partition(n)    <- part;
+                scenario (n)    <- scenario(sec);  
+                date(n)         <- toDate(date(s)); 
+                dimCFO(n)       <- dimCFO(s); 
+                dimCostItem(n)  <- dimCostItem(s); 
+                value(n)        <- value(s) * IF negativeSign(sec) THEN -1 ELSE 1; 
+    }
+
+////CubeEnergoRes
+//    FOR bReportConfig(BReportConfigSections sec) == rep AND enable(sec)
+//        AND scenario(calc(CubeEnergoRes s)) == scenario(sec) AND toDate(date(s)) >= date1(sec) AND toDate(date(s)) <= date2(sec)
+//        AND bReportConfig(BReportPartition part) == rep AND enable(part)
+//        AND (NOT reportCost2_1Enable(TTRUE, part)  OR     reportCost2_1Filter(TTRUE,  part, dimCFO(s) ) )
+//        AND (NOT reportCost2_1Enable(TFALSE, part) OR NOT reportCost2_1Filter(TFALSE, part, dimCFO(s) ) )
+//        AND (NOT reportCost2_3Enable(TTRUE, part)  OR     reportCost2_3Filter(TTRUE,  part, typeCFO(dimCFO(s)) ) )
+//        AND (NOT reportCost2_3Enable(TFALSE, part) OR NOT reportCost2_3Filter(TFALSE, part, typeCFO(dimCFO(s)) ) )
+//        AND (NOT reportCost2_2Enable(TTRUE, part)  OR     reportCost2_2Filter(TTRUE,  part, dimCostItems(s) ) )
+//        AND (NOT reportCost2_2Enable(TFALSE, part) OR NOT reportCost2_2Filter(TTRUE,  part, dimCostItems(s) ) )
+//        NEW   n = ReportFormKhpCost1 DO {
+//        section(n)      <- sec;
+//        partition(n)    <- part;
+//        scenario (n)    <- scenario(sec);
+//        date(n)         <- toDate(date(s));
+//        dimCFO(n)       <- dimCFO(s);
+//        dimCostItem(n)  <- dimCostItems(s);
+//        value(n)        <- valueSum(s) * IF negativeSign(sec) THEN -1 ELSE 1;
+//    }
+    
+    //CubeSalary7
+    FOR bReportConfig(BReportConfigSections sec) == rep AND enable(sec)
+        AND scenario(calc(CubeSalary7 s)) == scenario(sec) AND toDate(date(s)) >= date1(sec) AND toDate(date(s)) <= date2(sec)
+        AND bReportConfig(BReportPartition part) == rep AND enable(part)
+         
+        AND (NOT reportCost2_1Enable(TTRUE, part)  OR     reportCost2_1Filter(TTRUE,  part, dimCFO(s) ) )
+        AND (NOT reportCost2_1Enable(TFALSE, part) OR NOT reportCost2_1Filter(TFALSE, part, dimCFO(s) ) )
+        AND (NOT reportCost2_3Enable(TTRUE, part)  OR     reportCost2_3Filter(TTRUE,  part, typeCFO(dimCFO(s)) ) )
+        AND (NOT reportCost2_3Enable(TFALSE, part) OR NOT reportCost2_3Filter(TFALSE, part, typeCFO(dimCFO(s)) ) )
+        AND (NOT reportCost2_2Enable(TTRUE, part)  OR     reportCost2_2Filter(TTRUE,  part, dimCostItems(s) ) )
+        AND (NOT reportCost2_2Enable(TFALSE, part) OR NOT reportCost2_2Filter(TTRUE,  part, dimCostItems(s) ) )
+        // AND f(part, column)    
+        NEW   n = ReportFormKhpCost1 DO {
+        section(n)      <- sec;
+        partition(n)    <- part;
+        scenario (n)    <- scenario(sec);
+        date(n)         <- toDate(date(s));
+        dimCFO(n)       <- dimCFO(s);
+        dimCostItem(n)  <- dimCostItems(s);
+        value(n)        <- valueSum(s) * IF negativeSign(sec) THEN -1 ELSE 1;
+    }
+}
+
+
+open(BReportConfig rep ) +  WHEN report(rep) == ReportClassList.ReportFormKhpCost1 THEN {
+    DELETE ReportFormKhpCost1 d WHERE d IS ReportFormKhpCost1;
+    bReportConfigGetWorkCopyOrNew(rep, currentUser());
+    EVAL ACTION 'SHOW formReportFormKhpCost1  DOCKED NEWSESSION;';
+    //SHOW formReportFormKhpCost1  DOCKED NEWSESSION;
+}
+ 
+ 
+EXTEND FORM formReportFormKhpCost1  PROPERTIES  NOIMAGE // to do - case +
+       //tune 'Открыть настройки' = { SHOW formBReportConfigCard OBJECTS s = conf NEWSESSION WAIT; }  BACKGROUND #eeffee, 
+       ex1 'Показать данные' =  {exec(conf);}
+;
+
+DESIGN formReportFormKhpCost1 {
+    caption = '<font color="#330066">' + nameHeader(conf) + '</font>'; // #330066
+    image = 'fa fa-table';
+    BOX (conf) {caption = NULL;}
+    OBJECTS {
+        NEW head   {
+            caption = '';
+            horizontal = TRUE;
+            lines = 1;
+         //   MOVE PROPERTY (tune); 
+            MOVE PROPERTY (ex1);
+            MOVE PROPERTY (xlsx);
+        }
+        NEW head2{
+           // fill = 0.1;
+            horizontal = TRUE;
+            lines = 2;
+
+        }
+        NEW table {
+            fill = 1;
+            MOVE BOX (s) {caption = '';}; 
+        }
+    }
+}

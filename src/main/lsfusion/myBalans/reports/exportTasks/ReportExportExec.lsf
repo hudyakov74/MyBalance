@@ -2,7 +2,7 @@ MODULE ReportExportExec;
 
 REQUIRE  ReportExportSettings;
 
-NAMESPACE Reports;
+NAMESPACE MyBalance;
 
 
 runExportReport 'Запуск' (INTEGER numRep) {

@@ -1,20 +1,28 @@
 MODULE Task;
 
-REQUIRE CalcCore, DistribTuneRef, LogicCalc, TypeTask, Utils;
+REQUIRE CalcCore, DistribTuneRef, LogicCalc, Scenario, TypeTask, Utils;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 // --- Задачи расчета -------------------------------------------
 CLASS  Task 'Задачи расчета';
 TABLE task(Task);
 pos         'Порядок'               = DATA INTEGER  (Task) IN base CHARWIDTH 5;
 nameTask    'Наименование задачи'   = DATA STRING[1000] (Task) IN id;
+descriptionTask  'Описание'         = DATA TEXT (Task);
 type        'Тип'                   = DATA TypeTask (Task);
 calcVariant 'Вид расчета'           = DATA CalcVariant (Task) NONULL;
 isGroup     'Это группа'            = DATA BOOLEAN (Task); 
 parent      'В группе'              = DATA Task(Task);
 tuneCalc    'Алгоритм расчета'      = DATA DistribTuneRef(Task);
-logicTask   'Алгоритм константа'    = DATA LogicCalc(Task);
+//logicTask   'Алгоритм константа'    = DATA LogicCalc(Task);
+
+// дополнительные настройки
+signTask 'Знак представления данных'    = DATA INTEGER (Task);
+sign(Task s) = OVERRIDE signTask(s), 1;
+select 'выбор' = DATA LOCAL NESTED BOOLEAN (Task);
+enableScenario 'Использовать в сценарии' = DATA BOOLEAN (Task, Scenario);
+
 
 level       'Уровень'  (Task child,Task parent) = 
    RECURSION 1l IF child IS Task AND parent = child STEP 2l IF parent = parent($parent) MATERIALIZED;
@@ -28,12 +36,14 @@ levelNumInt 'levelNumInt' (Task group) = LONG (GROUP  SUM levelInt(group,Task pa
 isParent 'Родитель' (Task child, Task parent) = TRUE IF level(child, parent);
     
 nameTaskTab 'Наименование задачи' (Task group)=
- ( GROUP CONCAT '    ','.   '  ORDER DESC levelInt(group, Task parent)  ) + nameTask(group) CHARWIDTH 15;
+    ( ( GROUP CONCAT   ('    '),  ('.    ')  ORDER DESC levelInt(group, Task parent)  ) + nameTask(group) ) CHARWIDTH 15;
+ 
  
 
 canonicalName 'Каноническое имя' (Task group) =
    GROUP CONCAT nameTask(Task parent), ' / ' ORDER DESC levelInt(group, parent) CHARWIDTH 50;
- 
+
+
 
 FORM taskList 'Список задач расчета'
 OBJECTS  f = Task
@@ -63,14 +73,15 @@ openTaskListGroup(Task curr){
 FORM taskListCard 'Карточка задачи расчета'
 OBJECTS  f = Task  PANEL 
 PROPERTIES  pos(f), nameTask(f) ,
-            type_p  'Тип' = nameCalcBook(type(f)),
-            parent 'В группе' = nameTask(parent(f)) ON CHANGE openTaskListGroup(f),
-            tuneCalc 'Алгоритм расчета' = name(tuneCalc(f)),
-            logicCalc 'Алгоритм константа' =  name(logicTask(f)) ON CHANGE { 
-                EVAL ACTION 'INPUT inp_ = LogicCalc'+ substrFrom(staticName(type(f)), strpos(staticName(type(f)),'.')+1) +' CHANGE = logicTask($1);' PARAMS f; //MyBalanceCalc_TypeTask.SalePayouts
-                
-            } // выбор элемента зависит от type
-        
+            type_p  'Тип' = nameCalcBook(type(f)), 
+            sign 'Знак представления' = signTask(f) ON CHANGE {INPUT i = sign(f) DO { signTask(f) <- IF i < 0 THEN -1 ELSE 1; }},    
+            parent 'В группе' = nameTask(parent(f)), // ON CHANGE openTaskListGroup(f),
+            tuneCalc 'Алгоритм расчета' = name(tuneCalc(f)) 
+//            logicCalc 'Алгоритм константа' =  name(logicTask(f)) ON CHANGE { 
+//                EVAL ACTION 'INPUT inp_ = LogicCalc'+ substrFrom(staticName(type(f)), strpos(staticName(type(f)),'.')+1) +' CHANGE = logicTask($1);' PARAMS f; //MyBalanceCalc_TypeTask.SalePayouts
+//                
+//            } // выбор элемента зависит от type
+
             
 EDIT Task OBJECT f;
 

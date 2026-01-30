@@ -1,8 +1,8 @@
 MODULE DimensNomenkl;
  
-REQUIRE TaskTune,Dimens,ExtFormRequestList,DimUnitNomenkl;
+REQUIRE TaskTune, Dimens, ExtFormRequestList, DimUnitNomenkl; //, DimNomenklCostGroup, DimNomenklFinGroup, DimNomenklPlant;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimNomenkl 'Номенклатура';
 TABLE dimNomenkl(DimNomenkl);
@@ -14,17 +14,58 @@ FORM formDimNomenklTreeList 'Номенклатура';
 
 
 // МЕСТО для доп. свойств
- unit       'Единица учета'  = DATA DimUnitNomenkl(DimNomenkl);
- unitReport 'Единица отчета' = DATA DimUnitNomenkl(DimNomenkl);
- unitReportScale 'Коэфф. единицы отчета' = DATA NUMERIC[18,6](DimNomenkl);
- vatRate 'Ставка НДС' =  DATA NUMERIC[10,2](DimNomenkl);
+ unit       'Единица учета'                 = DATA DimUnitNomenkl(DimNomenkl);
+ unitReport 'Единица отчета'                = DATA DimUnitNomenkl(DimNomenkl);
+ unitReportScale 'Коэфф. единицы отчета'    = DATA NUMERIC[18,6](DimNomenkl);
+ vatRate 'Ставка НДС'                       = DATA NUMERIC[10,2](DimNomenkl);
+// dimCostGroup 'Ценовая группа'              = DATA DimNomenklCostGroup(DimNomenkl);
+// dimNomenklPlant 'Номенклатура производства'= DATA DimNomenklPlant(DimNomenkl);
+// dimNomenklFinGroup 'Номенклатурная группа' = DATA DimNomenklFinGroup(DimNomenkl);
+//
+//EXTEND FORM formDimNomenklCard 
+//PROPERTIES
+//dimCostGroup 'Ценовая группа' = name(dimCostGroup(c)),
+//dimNomenklPlant 'Номенклатура производства' = name(dimNomenklPlant(c)),
+//dimNomenklFinGroup 'Номенклатурная группа' = name(dimNomenklFinGroup(c))
+//;
+
+
  EXTEND FORM formDimNomenkllist
  PROPERTIES 
+// dimCostGroup 'Ценовая группа' = name(dimCostGroup(d))
+//                                             ON CONTEXTMENU 'Загрузить из EXCEL' {
+//                                                 loadListFromExcel();
+//                                                 FOR   trim(lower(col1ListFromExcel(INTEGER i))) ==  trim(lower(name(DimNomenkl s_))) AND trim(lower(col2ListFromExcel(i))) ==  trim(lower(name(DimNomenklCostGroup p_)))  DO {
+//                                                     dimCostGroup(s_) <- p_;
+//                                                 }
+//                                             },     
+// dimNomenklFinGroup 'Номенклатурная группа' = name(dimNomenklFinGroup(d)),
+//     
+// dimNomenklPlant 'Номенклатура производства' = name(dimNomenklPlant(d))
+//                                             ON CONTEXTMENU 'Загрузить из EXCEL' {
+//                                                 loadListFromExcel();
+//                                                 FOR   trim(lower(col1ListFromExcel(INTEGER i))) ==  trim(lower(name(DimNomenkl s_))) AND trim(lower(col2ListFromExcel(i))) ==  trim(lower(name(DimNomenklPlant p_)))  DO {
+//                                                     dimNomenklPlant(s_) <- p_;
+//                                                 }
+//                                             }
+//     ,
+ vatRate 'Ставка НДС' = vatRate(d),
  unit 'Ед.учета' = name(unit(d)),
- unitReport 'Един. отчета' = name(unitReport(d)), 
- unitReportScale 'коэфф.' = unitReportScale(d),
- vatRate 'Ставка НДС' = vatRate(d)
+ unitReport 'Един. отчета' = name(unitReport(d)),
+ unitReportScale 'коэфф.' = unitReportScale(d)
  ;
+
+
+ DESIGN formDimNomenkllist {
+//     PROPERTY (dimCostGroup){charWidth = 15;}
+//     PROPERTY (dimNomenklFinGroup){charWidth = 15;}
+//     PROPERTY (dimNomenklPlant){charWidth = 15;}
+     PROPERTY (unit){charWidth = 5;}
+     PROPERTY (unitReport){charWidth = 5;}
+     PROPERTY (unitReportScale){charWidth = 5;}
+     PROPERTY (unitReportScale){charWidth = 5;}
+     PROPERTY (vatRate){charWidth = 5;}
+ }
  
 // добавление списка в CalcComposition
 TABLE dimDimNomenklTask(Task,DimNomenkl);

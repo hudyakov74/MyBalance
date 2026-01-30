@@ -1,0 +1,525 @@
+MODULE BReportConfigAction;
+
+REQUIRE    BReportConfig, DimensCFO;
+
+NAMESPACE MyBalance;
+
+maxLevelReportTmp = DATA LOCAL NESTED INTEGER(); // результат расчета из eval
+
+//// передача параметров через json - пока отложим
+//// 1 делаем форму для json генерации параметров
+//// 2 делаем генерацию crosstab - полностью программно с 0
+//// 3 обработкой подставляем кростабы друг под другом
+//FORM paramBReportConfigForm
+//OBJECTS rep = BReportConfig, group = BReportConfigGroup
+//FILTERS bReportConfig(group) == rep AND enableV(group)  AND NOT bReportPartition(group)
+//PROPERTIES    
+//    
+//ORDERS posV(group)
+//
+//;
+
+
+
+// версия через строки передача параметров
+bReportGenerateGroups 'Генерация формы, группы' (BReportConfig rep, BReportPartition currPartition){
+    // группы могут иметь свою иерархию вертикальную
+    // как выводить заголовок кросстаба ?
+    // как выводить в разные кростабы?
+    
+    rowGroupCodeStr(rep) <- NULL;
+    rowGroupNameStr(rep) <- NULL;
+    rowGroupStyleStr(rep) <- NULL;
+    rowGroupLevel(rep) <- NULL;
+    colGroupCodeStr(rep) <- NULL;
+    colGroupNameStr(rep) <- NULL;
+    disableTotalByHStr(rep) <- NULL;
+    totalCompareHStr(rep) <- NULL;
+    totalAutoCompareStr(rep) <- NULL;
+    totalAutoComparePercStr(rep) <- NULL;
+    
+    colEnabledLabelName(rep) <- NULL;
+    colCellHeaderNameStr(rep) <- NULL;
+    colCellHeaderNameUnitStr(rep) <- NULL;
+    colCellHeaderNameRatioStr(rep) <- NULL;
+    colCellMesuareFunctionStr(rep) <- NULL;
+    colCellExpression(rep) <- NULL;
+    colCellFormat(rep) <- NULL;
+    colCellType(rep) <- NULL;
+    dockToPreviuosHeader(rep) <- NULL;
+    
+    dockToPreviuosHeaderText(rep) <- NULL;
+    compareToBaseSub(rep) <- NULL;
+    required(rep) <- NULL;
+
+    LOCAL style = INTEGER ();
+    LOCAL j = INTEGER ();
+    
+    style() <- 1;
+    
+    FOR bReportConfig(BReportConfigGroup s) == rep AND enableV(s) 
+        AND
+        (
+        (NOT bReportPartition(s) AND (NOT currPartition OR NOT personalV(currPartition)))
+         OR
+        (  bReportPartition(s)  == currPartition AND personalV(currPartition) )
+        )
+        ORDER posV(s), s NOINLINE DO  {
+        // если иерархия не включается - то нумерация по порядку - нормально
+        // если включить иерархию - сдвиг надо считать по текущему элементу относительно базового - входного уровня.
+        
+        IF hierarchy(s) THEN {  // rowGroupLevel
+           
+            maxLevelReportTmp() <- NULL;
+            TRY {
+                EVAL ACTION 'maxLevelReportTmp() <-  maxLevelInt(' + idClass(group(s)) + '.empty) ;' ;//(-) 1
+            }
+            
+            maxLevelReportTmp() <- OVERRIDE level(s), maxLevelReportTmp(), 1; 
+            FOR iterate(INTEGER j, 1, maxLevelReportTmp()) ORDER j NOINLINE  DO {
+                rowGroupCodeStr(rep)  <- CONCAT ',',rowGroupCodeStr(rep),  (CONCAT '','lev',(j), idPosName(group(s)));
+                rowGroupNameStr(rep)  <- CONCAT ',',rowGroupNameStr(rep),  (CONCAT '','lev',(j), idNameName(group(s)));
+                rowGroupStyleStr(rep) <- CONCAT ',',rowGroupStyleStr(rep),   style() * 10 + j;
+                rowGroupLevel(rep) <- CONCAT ',',rowGroupLevel(rep),  ' '; // по шаблону
+            }
+            // надо добавить уровень в поля публикации для поля
+            rowGroupLevel(rep) <- CONCAT ',',rowGroupLevel(rep), (CONCAT '','- ($V\{', idNameName(group(s)),'lev\}<= ',maxLevelReportTmp(),'?',maxLevelReportTmp(),' -$V\{',idNameName(group(s)),'lev\}:0)'); //инфа о формуле о высоте группы
+           
+           
+            //6 - ($V{dimNomenklCostGroupPlev}<=maxGr? maxGr-$V{dimNomenklCostGroupPlev}.doubleValue():0)
+            // и заводим предопределенное поле
+            colEnabledLabelName(rep)        <- CONCAT ',', colEnabledLabelName(rep), '=',   (CONCAT '',idNameName(group(s)),'lev') ;
+            colCellHeaderNameStr(rep)       <- CONCAT '|,|', colCellHeaderNameStr(rep),      (CONCAT '',idNameName(group(s)),'lev');
+            colCellMesuareFunctionStr(rep)  <- CONCAT '|,|', colCellMesuareFunctionStr(rep),  ' ';
+            colCellHeaderNameUnitStr(rep)   <- CONCAT '|,|', colCellHeaderNameUnitStr(rep),  ' ';
+            colCellHeaderNameRatioStr(rep)  <- CONCAT '|,|', colCellHeaderNameRatioStr(rep),  ' ';
+            
+            colCellExpression(rep)          <- CONCAT '|,|', colCellExpression(rep),          ' ';
+            colCellFormat(rep)              <- CONCAT '|,|', colCellFormat(rep),              ' ';
+            colCellType(rep)                <- CONCAT '|,|', colCellType(rep),                'java.lang.Long';
+            dockToPreviuosHeader(rep)       <- CONCAT '|,|', dockToPreviuosHeader(rep),      '+';
+            dockToPreviuosHeaderText(rep)   <- CONCAT '|,|', dockToPreviuosHeaderText(rep),  ' ';
+            compareToBaseSub(rep)           <- CONCAT '|,|', compareToBaseSub(rep), '-';
+            required(rep)          <- CONCAT '|,|', required(rep),  '+';
+        }
+        ELSE {
+            rowGroupLevel(rep) <- CONCAT ',',rowGroupLevel(rep), ' ';
+            
+        }
+        rowGroupCodeStr(rep) <- CONCAT ',', rowGroupCodeStr(rep), idPosName(group(s));
+        rowGroupNameStr(rep) <- CONCAT ',', rowGroupNameStr(rep), idNameName(group(s));
+        rowGroupStyleStr(rep) <- CONCAT ',', rowGroupStyleStr(rep), style() * 10;
+        
+        style() <- style() + 1;
+    }
+
+   
+    FOR bReportConfig(BReportConfigGroup s) == rep AND enableH(s) AND NOT bReportPartition(s)
+        ORDER posH(s) NOINLINE DO {
+        colGroupCodeStr(rep) <- CONCAT ',', colGroupCodeStr(rep), idPosName(group(s));
+        colGroupNameStr(rep) <- CONCAT ',', colGroupNameStr(rep), idNameName(group(s));
+        disableTotalByHStr(rep) <- CONCAT ',', disableTotalByHStr(rep), (IF disableTotalByH(group(s)) THEN '+' ELSE '-');
+        totalCompareHStr(rep)   <- CONCAT ',', totalCompareHStr(rep),   (IF totalCompareH(group(s)) THEN '+' ELSE '-');
+       
+    }
+    FOR bReportConfig(BReportConfigColumns c) == rep AND (isMesuare(c) OR compareToBaseSub(c) OR required(c)) ORDER pos(c) NOINLINE DO {
+        colEnabledLabelName(rep)        <- CONCAT ',', colEnabledLabelName(rep), (CASE WHEN  required(c) THEN '=' WHEN NOT enable(c) AND isMesuare(c) THEN '!'  WHEN compareToBaseSub(c) OR enable(c) THEN '+' ELSE '-'), idPosName(c);
+        
+        colCellHeaderNameStr(rep)       <- CONCAT '|,|', colCellHeaderNameStr(rep),      (OVERRIDE name(c),' ');
+        colCellMesuareFunctionStr(rep)  <- CONCAT '|,|', colCellMesuareFunctionStr(rep), (OVERRIDE mesuareFunction(c),' ');
+        colCellHeaderNameUnitStr(rep)   <- CONCAT '|,|', colCellHeaderNameUnitStr(rep),  (OVERRIDE name(unit(c)),' ');
+        colCellHeaderNameRatioStr(rep)  <- CONCAT '|,|', colCellHeaderNameRatioStr(rep), (OVERRIDE (CONCAT '',ratio(unit(c))),' ');
+   
+        colCellExpression(rep)          <- CONCAT '|,|', colCellExpression(rep),         (OVERRIDE cellExpression(c),' ');
+        colCellFormat(rep)              <- CONCAT '|,|', colCellFormat(rep),             (OVERRIDE cellFormat(c),' ');
+        colCellType(rep)                <- CONCAT '|,|', colCellType(rep),               (OVERRIDE type(c),' ');
+        dockToPreviuosHeader(rep)       <- CONCAT '|,|', dockToPreviuosHeader(rep),  (IF dockToPreviuosHeader(c) THEN '-' ELSE '+');
+        dockToPreviuosHeaderText(rep)   <- CONCAT '|,|', dockToPreviuosHeaderText(rep),  (OVERRIDE dockToPreviuosHeaderText(c),' ');
+        compareToBaseSub(rep)           <- CONCAT '|,|', compareToBaseSub(rep),          (IF compareToBaseSub(c) THEN '+' ELSE '-');
+        required(rep)          <- CONCAT '|,|', required(rep),  (IF required(c) THEN '+' ELSE '-');
+
+ 
+        // ДЛЯ totalAutoCompare
+        IF totalAutoCompare(c) AND NOT compareToBaseSub(c) THEN {
+            // сделаем новое имя
+            colEnabledLabelName(rep) <- CONCAT ',', colEnabledLabelName(rep),'+', (CONCAT '','comp_' , idPosName(c));
+            compareToBaseSub(rep)    <- CONCAT '|,|', compareToBaseSub(rep),  '+';
+            colCellHeaderNameStr(rep)<- CONCAT '|,|',colCellHeaderNameStr(rep), (OVERRIDE name(c), ' ');
+            colCellHeaderNameUnitStr(rep)   <- CONCAT '|,|', colCellHeaderNameUnitStr(rep),  (OVERRIDE name(unit(c)),' ');
+            colCellHeaderNameRatioStr(rep)  <- CONCAT '|,|', colCellHeaderNameRatioStr(rep), (OVERRIDE (CONCAT '',ratio(unit(c))),' ');
+            colCellExpression(rep)   <- CONCAT '|,|', colCellExpression(rep), (OVERRIDE cellExpression(c), ' ');
+            // Сравнение делается на уровне ФУНКЦИЙ МЕР!!!  idPosName(c) - собираем от стандартного поля  (если указана мера???)
+            LOCAL f_ = STRING();
+            // $F{isBaseSection}==null?$F{value}.doubleValue():-$F{value}.doubleValue()
+            IF mesuareFunction(c) AND  length(trim(mesuareFunction(c))) > 1 THEN {
+                f_() <-  CONCAT '','$F\{isBaseSection\}==null?(', mesuareFunction(c) ,'):-(', mesuareFunction(c) ,')';
+            }
+            ELSE { 
+                f_() <-  CONCAT '','$F\{isBaseSection\}==null?$F\{', idPosName(c),'\}.doubleValue():-$F\{', idPosName(c),'\}.doubleValue()';
+            }
+            colCellMesuareFunctionStr(rep) <- CONCAT '|,|', colCellMesuareFunctionStr(rep), f_();
+            colCellType(rep) <- CONCAT '|,|', colCellType(rep),   'java.lang.Double'; // меры меняем - все double!!!
+
+            // используем подзаголовок
+            dockToPreviuosHeader(rep) <- CONCAT '|,|', dockToPreviuosHeader(rep), '-';
+            dockToPreviuosHeaderText(rep) <- CONCAT '|,|', dockToPreviuosHeaderText(rep), 'Отклонение';
+            // попробуем оставить как  основного поля
+            colCellFormat(rep) <- CONCAT '|,|', colCellFormat(rep), (OVERRIDE cellFormat(c), ' ');
+            // непринципиальные поля   
+            required(rep) <- CONCAT '|,|', required(rep), '-';
+        }
+
+        //ПОВТОР ДЛЯ totalAutoComparePerc
+        IF totalAutoComparePerc(c) THEN {
+            // сделаем новое имя
+            colEnabledLabelName(rep) <- CONCAT ',', colEnabledLabelName(rep),'+', (CONCAT '','compPerc_' , idPosName(c));
+            compareToBaseSub(rep)    <- CONCAT '|,|', compareToBaseSub(rep),  '+';
+            colCellHeaderNameStr(rep)<- CONCAT '|,|', colCellHeaderNameStr(rep), (OVERRIDE name(c), ' ');
+            colCellHeaderNameUnitStr(rep)   <- CONCAT '|,|', colCellHeaderNameUnitStr(rep),   ', %';
+            colCellHeaderNameRatioStr(rep)  <- CONCAT '|,|', colCellHeaderNameRatioStr(rep), (OVERRIDE (CONCAT '',ratio(unit(c))),' ');
+            
+                colCellExpression(rep)   <- CONCAT '|,|', colCellExpression(rep),
+                    (CONCAT '','$V\{compPerc_', idPosName(c), '\}==0?null:','$V\{comp_' , idPosName(c),'\}/','$V\{compPerc_', idPosName(c),'\}*100.0') 
+                ;
+//             idPosName(c) $F\{isBaseSection\}==null?$
+            // Сравнение делается на уровне ФУНКЦИЙ МЕР!!!  idPosName(c) - собираем от стандартного поля  (если указана мера???)
+            LOCAL f_ = STRING();
+            //$F{isBaseSection}==null?$F{value}.doubleValue():-$F{value}.doubleValue()
+            IF mesuareFunction(c) AND  length(trim(mesuareFunction(c))) > 1 THEN {
+                f_() <-  CONCAT '','$F\{isBaseSection\}==null?(0.0):(', mesuareFunction(c) ,')'; // 'это не будет работать?
+            }
+            ELSE {
+                f_() <-  CONCAT '','$F\{isBaseSection\}==null?0.0:$F\{', idPosName(c),'\}.doubleValue()';
+            }
+            colCellMesuareFunctionStr(rep) <- CONCAT '|,|', colCellMesuareFunctionStr(rep), f_();
+            colCellType(rep) <- CONCAT '|,|', colCellType(rep),   'java.lang.Double'; // меры меняем - все double!!!
+
+            // используем подзаголовок
+            dockToPreviuosHeader(rep) <- CONCAT '|,|', dockToPreviuosHeader(rep), '-';
+            dockToPreviuosHeaderText(rep) <- CONCAT '|,|', dockToPreviuosHeaderText(rep), 'Отклонение';
+            // попробуем оставить как  основного поля
+            colCellFormat(rep) <- CONCAT '|,|', colCellFormat(rep), (OVERRIDE cellFormat(c), ' ');
+            // непринципиальные поля   
+            required(rep) <- CONCAT '|,|', required(rep), '-';
+        }
+    } 
+    //вывод в лог 
+    IF  has(currentUser(), userRoleSID('dirAdmin')) THEN {
+        printToLog(rowGroupCodeStr(rep));
+        printToLog(rowGroupNameStr(rep));
+        printToLog(rowGroupStyleStr(rep));
+        printToLog(rowGroupLevel(rep));
+        printToLog(colGroupCodeStr(rep));
+        printToLog(colGroupNameStr(rep));
+        printToLog(colEnabledLabelName(rep));
+
+        printToLog( colCellHeaderNameStr(rep) );
+        printToLog( colCellHeaderNameUnitStr(rep) );
+        printToLog( colCellHeaderNameRatioStr(rep) );
+        
+        printToLog( colCellMesuareFunctionStr(rep) );
+        printToLog( colCellExpression(rep) );
+        printToLog( colCellFormat(rep) );
+        printToLog( colCellType(rep) );
+        printToLog( dockToPreviuosHeader(rep) );
+        printToLog( dockToPreviuosHeaderText(rep) );
+        printToLog( compareToBaseSub(rep) );
+        printToLog( required(rep) );
+        printToLog( disableTotalByHStr(rep)   );
+        printToLog( totalCompareHStr(rep) );
+        printToLog( totalAutoCompareStr(rep) );
+        printToLog( totalAutoComparePercStr(rep) );
+    }
+}
+
+bReportGenerateGroups 'Генерация формы, группы' (BReportConfig rep) { bReportGenerateGroups(rep, NULL); };
+
+bReportConfigCopy 'Копия настроек отчета' (BReportConfig rep, BReportConfig copy) {
+    report(copy)        <- report(rep);
+   // name(copy)          <- name(rep);
+    nameReport(copy)    <- nameReport(rep);
+    copyOf(copy)        <- rep;
+    // owner(copy) <- currentUser();
+    
+    DELETE BReportConfigSections c WHERE c IS BReportConfigSections AND bReportConfig(c) == copy;
+    DELETE BReportConfigColumns c WHERE c IS BReportConfigColumns AND bReportConfig(c) == copy;
+    DELETE BReportConfigGroup   c WHERE c IS BReportConfigGroup   AND bReportConfig(c) == copy;
+    
+    FOR bReportConfig(BReportConfigColumns c) = rep NOINLINE NEW new = BReportConfigColumns  DO {
+        bReportConfig(new) <- copy;
+        enable(new) <- enable(c);
+        pos(new)    <- pos(c);    
+        idPosName  (new) <- idPosName (c);    
+        idPosRef   (new) <- idPosRef  (c);    
+        idNameName (new) <- idNameName(c);    
+        idClass    (new) <- idClass   (c);    
+        idNameRef  (new) <- idNameRef (c);    
+        isMesuare  (new) <- isMesuare (c);    
+        name       (new) <- name      (c);
+        unit       (new) <- unit      (c);
+        type       (new) <- type      (c);
+        dockToPreviuosHeader (new)      <- dockToPreviuosHeader(c);
+        dockToPreviuosHeaderText (new)  <- dockToPreviuosHeaderText(c);
+        compareToBaseSub (new)          <- compareToBaseSub(c);
+        required (new)         <- required(c);
+        type (new) <- type(c);
+        mesuareFunction (new) <- mesuareFunction(c);
+        cellExpression (new) <- cellExpression(c);
+        cellFormat (new) <- cellFormat(c);
+        disableTotalByH(new) <- disableTotalByH(c);
+        totalCompareH(new)   <- totalCompareH(c);
+        totalAutoCompare(new)   <- totalAutoCompare(c);
+        totalAutoComparePerc(new)   <- totalAutoComparePerc(c);
+        FOR bReportConfig(BReportConfigGroup f) = rep AND group(f) == c //AND NOT bReportGroup(f) // это общая настройка
+                NEW newf = BReportConfigGroup DO {
+                    bReportConfig(newf) <- copy;
+                    group(newf) <- new;
+                    bReportPartition(newf) <- bReportPartition(f); // предварительно ставим "старую" ссылку - ниже заменяем 
+                    enableV(newf) <- enableV(f);
+                    enableH(newf) <- enableH(f);
+                    enableH(newf) <- enableH(f);
+                    posV(newf) <- posV(f);
+                    posH(newf) <- posH(f);
+                    
+                    hierarchy(newf) <- hierarchy(f);
+                    level(newf) <- level(f);
+                    horisontalOnly(newf) <- horisontalOnly(f);
+        }  
+    }
+
+    IF NOT (GROUP MAX TRUE IF bReportConfig(BReportConfigSections s) == copy) THEN {
+        FOR bReportConfig(BReportConfigSections s) == rep NEW newS = BReportConfigSections DO {
+            bReportConfig(newS) <- copy;
+            enable(newS) <- enable(s);        
+            pos(newS) <- pos(s);           
+            id(newS) <- id(s);            
+            name(newS) <- name(s);          
+            scenario(newS) <- scenario(s);      
+            interval(newS) <- interval(s);
+            negativeSign(newS) <- negativeSign(s);
+        }
+    }
+    DELETE BReportPartitionFilter c WHERE c IS BReportPartitionFilter AND bReportConfig(partition(c)) == copy;
+    DELETE BReportPartition c WHERE c IS BReportPartition AND bReportConfig(c) == copy;
+
+    LOCAL  forReplace = BReportPartition(BReportPartition);
+    FOR bReportConfig(BReportPartition c) = rep 
+        NEW new = BReportPartition DO {
+        forReplace(c) <- new;
+        bReportConfig(new) <- copy;
+        isEnable(new) <- enable(c);
+        includeDataFromGroup(new) <- includeDataFromGroup(c);
+        includeDataInGroup(new)   <- includeDataInGroup  (c);
+        isEnable(new) <- enable(c);
+        isGroup(new) <- isGroup(c);
+        pos(new) <- pos(c);
+        id(new) <- id(c);
+        name(new) <- name(c);
+        personalV(new) <- personalV(c);
+        crosstabWoHeader(new) <- crosstabWoHeader(c);
+        crosstabWoSummary(new) <- crosstabWoSummary(c);
+        
+        FOR partition(BReportPartitionFilter f) == c
+            NEW newf = BReportPartitionFilter DO {
+            partition(newf) <- new;
+           // filterParent(newf) <- TODO
+            enable(newf) <- enable(f);
+            condition(newf) <- condition(f);
+            type(newf) <- type(f);
+            
+            namePartitionFilter(newf) <- namePartitionFilter(f);
+            
+            column(newf) <- GROUP MAX (BReportConfigColumns newCol) IF bReportConfig(newCol) == copy 
+                                AND idNameName(newCol) ==  idNameName(column(f));
+            
+            // нет копии самих фильтров
+            IF idClass(column(newf)) AND idClass(column(newf)) != '' THEN {
+                //lBrepSel = DATA BOOLEAN (DimBdrItemGroup, BReportPartitionFilter)
+// EVAL ACTION 'lBrepSel(DimPlantProductLine d, newf) <- lBrepSel(d,f);';
+                EVAL ACTION  'lBrepSel('+idClass(column(newf))+' d, $1) <- lBrepSel(d, $2);' PARAMS newf, f;
+            }
+        }
+        
+        // замена в копиях 
+        FOR bReportConfig(BReportConfigGroup f1) = copy AND bReportPartition(f1) == c 
+              DO {
+           
+            bReportPartition(f1) <- new;
+        }
+    }
+    FOR bReportConfig(BReportPartition c) = copy DO {
+        
+        includeDataFromGroup(c) <- forReplace(includeDataFromGroup(c));
+        includeDataInGroup(c)   <- forReplace(includeDataInGroup  (c));
+    }
+
+
+}
+
+
+mbJasperGenerateAndFillTemplate(FILE file, BReportConfig conf) {
+    // если персональных настроек вертикальной иерархии в группах отчета нету - можно по старому в 1 вызов, иначе шаблон генерируем несколько раз
+    
+    
+    // 1. выясняем сколько разных групп - для каждой свой кростаб = тут разойдемся с общим шаблоном, если группу в 1 случае не выбрать как верт измерение - то все смешает, а тут точно все отдельно
+    // +todo заголовки разделов можно дооформлять!!!
+    // теперь  вопрос по объединениям разделов в один кросстаб
+    //  исходим из следующего
+    //  - если данных для конкретного раздела не будет то раздел не выходит
+    //  - если данные раздела есть, но их пометить как данные собранные для другого раздела - то получится объединение
+    //  тогда тут ничего не меняем, в настройку разделов добавляем поле - куда отправить данные раздела (другой раздел)  - так организуем объединения по или
+    
+    
+    IF( GROUP MAX TRUE IF bReportConfig(BReportPartition p) == conf AND enable(p) AND personalV(p)   ) THEN { //  AND NOT includeDataInGroup(p)
+        //03 тогда это для каждого кростаба отдельно прогонять - а куб видимо единый (в 1с был один куб все равно)
+        mbJasperDuplicateCrosstabTemplate(file, (GROUP SUM 1 IF bReportConfig(BReportPartition p) == conf AND enable(p)), 'crosstab');
+        LOCAL i = INTEGER();
+        FOR bReportConfig(BReportPartition p) == conf AND enable(p) ORDER pos(p), p  NOINLINE DO {
+            i() <- i() (+) 1;
+            bReportGenerateGroups(conf, p);
+            mbJasperFillTemplate( FILE( bRepRawFile() ), conf,  (CONCAT '','crosstab',i()), p, i());
+        }
+    }
+    ELSE {
+        bReportGenerateGroups(conf);
+        mbJasperFillTemplate( resource(), conf, '', NULL, 0);
+    }
+}
+
+
+
+
+
+//выбранный отчет копирует как собственный пользователя, 
+// если пользователь хочет сохранить как шаблон - выполняется перенос настроек из собственного в шаблон
+bReportConfigGetWorkCopyOrNew(BReportConfig rep, CustomUser u)  
+{
+    currentBReportConfig() <-  GROUP MAX BReportConfig r  IF owner(r) == u AND copyOf(r) == rep;
+    IF NOT currentBReportConfig() THEN {
+        NEW new = BReportConfig {
+            name(new) <- name(rep);
+            owner(new) <- u;
+            currentBReportConfig() <- new;
+        }
+    }
+    bReportConfigCopy(rep, currentBReportConfig());
+    APPLY;
+}
+
+// наверно это не надо - к удалению
+bReportConfigByCalcTask_ 'на основе текущего бюджета' (BReportConfig rep, CalcTask ct) {
+    // даты
+    enable(BReportConfigSections cc) <- NULL WHERE bReportConfig(cc) == rep;
+    LOCAL  sec = BReportConfigSections();
+    sec() <- GROUP MAX BReportConfigSections d IF scenario(d) == scenario(calc(ct))
+        AND bReportConfig(d) == rep
+        AND from(interval(d)) == calcDateBegin(calc(ct))
+        AND to(interval(d)) == calcDateEnd(calc(ct)) ;
+    
+    IF sec() THEN
+        {
+        enable(sec()) <- TRUE;
+        }
+        ELSE {
+        NEW n = BReportConfigSections {
+            bReportConfig(n) <- rep;
+            enable(n) <- TRUE ;
+            scenario(n) <- scenario(calc(ct));
+            interval(n) <- interval(calcDateBegin(calc(ct)), calcDateEnd(calc(ct)));
+        }
+    }
+    ;
+    // подразделения
+    isEnable(BReportPartition cc) <- NULL WHERE bReportConfig(cc) == rep;
+    LOCAL part = BReportPartition();
+    part() <- GROUP MAX BReportPartition d IF bReportConfig(d) == rep AND id(d) == 'текущий ордер';
+    IF  NOT part() THEN  NEW n = BReportPartition {
+        bReportConfig(n) <- rep;
+        isEnable(n) <- TRUE;
+        id(n) <- 'текущий ордер';
+        part() <- n;
+    }
+    ELSE {
+        isEnable( part()) <- TRUE;
+    }
+    
+    DELETE  BReportPartitionFilter f WHERE f IS BReportPartitionFilter AND partition(f) == part();
+    NEW n = BReportPartitionFilter {
+        partition(n) <- part();
+        enable(n) <- TRUE;
+        condition(n) <- BReportCondition.in;
+        type(n) <- DimRegisters.DimCFO;
+        column(n) <- GROUP MAX BReportConfigColumns cc IF bReportConfig(cc) == rep AND idClass(cc) == name(DimRegisters.DimCFO); 
+        lBrepSel(DimCFO d, n) <- checkedCFO(task(ct), d);
+    }
+    APPLY;
+}
+
+saveVariant 'Сохранить вариант' (BReportConfig rep) {
+    IF copyOf(copyOf(rep)) THEN // сохраняемый вариант сам имеет предка - т.е. не основной
+        {   
+            LOCAL lRepCopyCopy =  BReportConfig( );
+            lRepCopyCopy()     <- copyOf(copyOf(rep));
+            bReportConfigCopy(rep, copyOf(rep)); // copyOf(copyOf(rep));
+            copyOf(copyOf(rep)) <- lRepCopyCopy();
+            name  (copyOf(rep)) <- name(rep);
+            owner (copyOf(rep)) <- NULL;
+            APPLY;
+        }
+    ELSE MESSAGE 'Сохранение в преднастроенный отчет не выполняется, сохраните в новый вариант';
+}
+
+FORM  inputStringRepName 'Ввод нового имени отчета' 
+OBJECTS str = STRING[150]  PANEL 
+PROPERTIES val '' = VALUE (str) 
+;
+ 
+
+
+saveAsNewVariant 'Сохранить новый вариант' (BReportConfig rep) { //, STRING[150]  newName
+    DIALOG inputStringRepName OBJECTS str = name(rep) INPUT str_ DO {
+        currentBReportConfig() <- GROUP MAX BReportConfig s IF  trim(str_) == trim(name(s)) AND report(rep) == report(s);
+        IF currentBReportConfig() THEN
+            {
+                ASK 'Настройка с таким именем существует, перезаписать?' rewrite = YESNO DO {
+                    IF NOT rewrite THEN {
+                        currentBReportConfig() <- NULL;
+                    }   
+                } 
+            }
+        ELSE {
+            NEW new = BReportConfig {
+                currentBReportConfig() <- new;
+            }
+        }
+        
+         IF currentBReportConfig() THEN {
+            bReportConfigCopy(rep, currentBReportConfig());
+//            IF str_ == name(rep) OR NOT str_ THEN {
+//                name(currentBReportConfig()) <- CONCAT ' / ', name(rep), 'Копия', toChar(currentDateTime(), 'dd.MM.yy HH:mm');
+//            }
+//            ELSE {
+                name(currentBReportConfig()) <- str_;
+            //}
+            owner(currentBReportConfig()) <- NULL;
+            copyOf(currentBReportConfig()) <- OVERRIDE copyOf(copyOf(rep)), copyOf(rep);
+            
+            name(rep)       <- name(currentBReportConfig()); // вернем в текущий имя
+            nameReport(currentBReportConfig()) <- name(currentBReportConfig());
+            nameReport(rep) <- name(currentBReportConfig());
+            
+            copyOf(rep) <- currentBReportConfig(); // переподчиним чтобы не плодить
+            currentBReportConfig() <- rep; // оставим текущий как текущий 
+ 
+        }
+        APPLY;
+    }
+}
+
+fillByParent 'Сбросить до сохраненных настроек' (BReportConfig rep) {
+    currentBReportConfig() <- copyOf(rep);
+    bReportConfigCopy(currentBReportConfig(), rep);
+    owner(rep)  <- currentUser();
+    copyOf(rep) <- currentBReportConfig();
+}
+ 

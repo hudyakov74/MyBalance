@@ -1,0 +1,328 @@
+MODULE FormCostFactImport;
+
+REQUIRE  Utils, CubeCostFactImport, ExtTypeRequest, CubeKhpCost, ReportList;
+
+NAMESPACE  MyBalance;
+
+updateCostItemsCostFact(CalcTask ct, inp,raw,DimAccount acc,DimAccount accCorr)
+{   
+    dimCostItems(CubeCostFactImport s) <- inp WHERE raw == dimRawCostItems(s) AND acc == dimAccount(s) AND accCorr == dimCorrAccount(s) AND NOT dimCostItems(s) AND calc(s) == calc(ct) AND task(s) = task(ct);
+};
+ 
+
+updateCfoCostFact(CalcTask ct,DimCFO inp,DimRawCFO raw ,DimAccount acc)
+{   
+    dimCFO(CubeCostFactImport s)       <- inp WHERE raw == dimRawCFO(s)  AND acc == dimAccount(s)      AND NOT dimCFO(s)      AND calc(s) == calc(ct) AND task(s) = task(ct);
+};
+
+// зарегистрируем форму как новый тип форм
+EXTEND  CLASS TypeTask{
+     CostFactImport 'Импорт затрат из учетной системы'
+}
+
+
+FORM  formCostFactImport 'Импорт затрат из учетной системы';
+@createFormReqPropertysBeforeOBJ(costFactImport);
+EXTEND FORM formCostFactImport
+OBJECTS s =  CubeCostFactImport;
+
+@createFormReqPropertyAfterOBJ(CubeCostFactImport,formCostFactImport,s,calc,task,'Импорт затрат из учетной системы');
+//
+//EXTEND FORM  formCostFactImport 
+//PROPERTIES deleteAllVisible 'Удалить видимые записи' =  {DELETE CubeCostFactImport ss WHERE  [FILTER formCostFactImport.s](ss) AND calc(ss) == calc(calcTask) AND task(ss) == task(calcTask);} 
+//
+//PROPERTIES READONLY BACKGROUND #ffd4d4 IF dimCFOAccntShowError(dimAccount(s),dimRawCFO(s)) 
+//date 'дата' = date(s), 
+//value            'Сумма'                 =  value(s)
+//    FOOTER (GROUP SUM value(CubeCostFactImport i) 
+//    IF      calc(i) == calc(calcTask) 
+//        AND task(i) == task(calcTask) 
+//        AND [FILTER formCostFactImport.s](i))
+//,
+//dimCFO           'ЦФО'                   =  name(dimCFO(s))
+//CHANGEABLE ON CHANGE {
+//            DIALOG formDimCFOSelectlist OBJECTS d = dimCFO(s) 
+//             INPUT inp NULL  LIST name(inp) READONLY  DO {
+//                dimCFO(s) <- inp;
+//                IF inp THEN {
+//                    IF NOT dimCFOAccnt(dimAccount(s),dimRawCFO(s)) THEN dimCFOAccnt(dimAccount(s),dimRawCFO(s)) <- inp;
+//                    updateCfoCostFact(calcTask, inp, dimRawCFO(s),dimAccount(s));
+//                    }
+//                    ELSE {
+//                        ASK 'Очистить значение по умолчанию?'  DO {
+//                            dimCFOAccnt(dimAccount(s),dimRawCFO(s)) <- inp;
+//                    }
+//               } 
+//             } 
+// }
+// ON CONTEXTMENU 'Показывать как ошибку вкл/выкл' {  dimCFOAccntShowError(dimAccount(s),dimRawCFO(s))  <- NOT  dimCFOAccntShowError(dimAccount(s),dimRawCFO(s)); } 
+// ON CONTEXTMENU 'Очистить значение по умолчанию' {  dimCFOAccnt(dimAccount(s),dimRawCFO(s)) <- NULL ;
+// 
+// 
+// 
+//                                                 }
+//,
+//dimCostItems     'Статья затрат'         =  name(dimCostItems(s)) BACKGROUND IF dimCostCfoAccDisable(dimAccount(s),dimCorrAccount(s), dimRawCostItems(s),dimRawCFO(s))  THEN #eeeeee 
+//CHANGEABLE ON CHANGE {
+//            DIALOG formDimCostItemsSelectlist  OBJECTS d = dimCostItems(s)  
+//             INPUT inp NULL LIST name(inp) READONLY  DO {
+//                dimCostItems(s) <- inp;
+//                IF inp THEN {
+//                    IF NOT dimCostItemsAccAcc(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) 
+//                      THEN dimCostItemsAccAcc(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) <- inp;
+//               //     IF NOT dimCostItems(dimRawCostItems(s)) THEN dimCostItems(dimRawCostItems(s)) <- inp;
+//                    updateCostItemsCostFact(calcTask, inp, dimRawCostItems(s),dimAccount(s), dimCorrAccount(s));
+//                    }
+//                ELSE {
+//                    ASK 'Очистить значение по умолчанию?'  DO {
+//                        dimCostItemsAccAcc(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) <- NULL;
+//                //        dimCostItems(dimRawCostItems(s)) <- inp;  
+//                    }
+//                }              
+//             };
+//        
+//}
+//ON CONTEXTMENU 'Очистить значение по умолчанию' { dimCostItemsAccAcc(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) <- NULL ;}
+//ON CONTEXTMENU 'Вкл/выкл загрузку' { IF dimRawCostItems(s) THEN dimCostCfoAccDisable(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s),dimRawCFO(s)) <- NOT dimCostCfoAccDisable(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s),dimRawCFO(s));},
+////dimCostItemsAccDisable1 'Откл.' = dimCostItemsAccDisable(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) ON CHANGE {},
+//dimCostItemsAccDisable 'Откл' = dimCostCfoAccDisable(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s),dimRawCFO(s)) ON CHANGE {},
+//    
+//    
+//,
+//dimCostNonOperItems 'Статья 91' = name(dimCostNonOperItems(s)) 
+//CHANGEABLE ON CHANGE {
+//            DIALOG formDimCostNonOperItemsSelectlist OBJECTS d = dimCostNonOperItems(s) 
+//             INPUT inp NULL DO {
+//                dimCostNonOperItems(s) <- inp;
+//                IF inp THEN {
+//                    IF NOT dimCostNoOperItemsAccnt(dimAccount(s),dimRawCostItems(s)) THEN dimCostNoOperItemsAccnt(dimAccount(s),dimRawCostItems(s)) <- inp;
+//           //         IF NOT dimCostNonOperItems(dimRawCostItems(s)) THEN dimCostNonOperItems(dimRawCostItems(s)) <- inp;
+//                    updateCostNoOperItemsCostFact(calcTask, inp, dimRawCostItems(s),dimAccount(s));
+//                    }
+//                ELSE {
+//                    ASK 'Очистить значение по умолчанию?'  DO {
+//                        dimCostNoOperItemsAccnt(dimAccount(s),dimRawCostItems(s)) <- inp;
+//           //             dimCostNonOperItems(dimRawCostItems(s)) <- inp;  
+//                    }
+//                }              
+//             };
+//        
+//}
+//ON CONTEXTMENU 'Очистить значение по умолчанию' {dimCostNoOperItemsAccnt(dimAccount(s),dimRawCostItems(s))  <- NULL ;}
+//
+//
+//
+//dimAccount       'Cчет'                  =  name(dimAccount(s)),
+//dimCorrAccount   'Кор.счет'              =  name(dimCorrAccount(s)),
+//dimActivity     'Вид деятельности'       =  name(dimActivity(s)),
+//dimRawCalcCostActivityName     'Вид деят.загрузка'       =  dimRawCalcCostActivityName(s),
+//     
+//dimRawCFO        'ЦФО загрузка'          =  name(dimRawCFO(s)),
+//dimRawCFOMain    'ЦФО загрузка/основной' =  name(dimCFO(dimRawCFO(s))),
+//dimRawCostItemsCalc 'Статья кальк.загрузка'  =  name(dimRawCostItemsCalc(s)),
+//dimRawCostItems     'Статья загрузка'    =  name(dimRawCostItems(s)),
+//dimRawCostItemsMain 'Статья загрузка/основная' = name(dimCostItems(dimRawCostItems(s))),
+//dimRawCostItemsKey     'Статья загрузка, ключ' = dimRawCostItemsKey(s),
+//dimRawCalcCostItemsKey(s),
+//dimRawCalcCostItemsName(s),
+//dimRawCFOKey     'ЦФО загрузка, ключ' =  dimRawCFOKey(s),
+//dimAccountKey 'Cчет, ключ' =  dimAccountKey(s),
+//dimCorrAccountKey 'Кор.счет, ключ' =   dimCorrAccountKey(s),
+//dimRawCalcCostItemsCk1(s) READONLY SHOWIF has(currentUser(), userRoleSID('admin')), 
+//dimRawCalcCostItemsCk2(s) READONLY SHOWIF has(currentUser(), userRoleSID('admin')), 
+//dimRawCalcCostItemsCk3(s) READONLY SHOWIF has(currentUser(), userRoleSID('admin')) 
+//
+//FILTERGROUP ErrorFilter 
+//    FILTER 'Показать ошибки'
+//    NOT dimCostCfoAccDisable(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s),dimRawCFO(s))
+//        AND
+//    (
+//    dimCFOAccntShowError(dimAccount(s),dimRawCFO(s))
+//    OR 
+//    NOT dimCFO(s)
+//    OR 
+//    NOT dimCostItems(s) AND NOT isNoOper(dimAccount(s))
+//    )  
+//
+//
+//;
+// 
+//
+//DESIGN formCostFactImport {
+//    PROPERTY (date){ charWidth = 15;}
+//    PROPERTY (dimRawCostItems){ charWidth = 10;}
+//    PROPERTY (dimActivity){ charWidth = 10;}
+//    PROPERTY (dimRawCalcCostActivityName){ charWidth = 10;}
+//    PROPERTY (dimRawCostItemsCalc){ charWidth = 10;}
+//    PROPERTY (dimRawCostItemsKey){ charWidth = 10;}
+//    PROPERTY (dimRawCostItemsMain){ charWidth = 10;}
+//    PROPERTY (dimRawCFO){ charWidth = 10;}
+//    PROPERTY (dimRawCFOKey){ charWidth = 10;}
+//    PROPERTY (dimRawCFOMain){ charWidth = 10;}
+//    PROPERTY (dimAccount){ charWidth = 10;}
+//    PROPERTY (dimAccountKey){ charWidth = 10;}
+//    PROPERTY (dimCorrAccount){ charWidth = 10;}
+//    PROPERTY (dimCorrAccountKey){ charWidth = 10;}
+//    PROPERTY (dimCostItems){ charWidth = 20; }
+// 
+//    PROPERTY (dimCFO){ charWidth = 20; }
+//    PROPERTY (dimRawCalcCostItemsCk1(s)){ charWidth = 20; }
+//    PROPERTY (dimRawCalcCostItemsCk2(s)){ charWidth = 20; }
+//    PROPERTY (dimRawCalcCostItemsCk3(s)){ charWidth = 20; }
+//    PROPERTY (value){ charWidth = 13; fontStyle = 'bold'; pattern = '#,###.00';}
+//  //  PROPERTY (valueBalance){ charWidth = 13;  pattern = '#,###.00';}
+//}
+
+
+// вторая закладка - баланс
+// по подразделениям/статьям затрат
+EXTEND FORM formCostFactImport
+OBJECTS controlCost = ( dimCFO2 = DimCFO,dimCostItems2 = DimCostItems )
+FILTERS  valueCostFactImportByCalcTaskEnable(calcTask,dimCFO2,dimCostItems2) 
+        OR   sumKhpCostBy(calc(calcTask),dimCFO2,dimCostItems2) 
+PROPERTIES BACKGROUND #ffffe5 IF doNotUseImportItem(dimCostItems2)
+ON CONTEXTMENU 'Неиспользуемая статья при импорте вкл/выкл' {doNotUseImportItem(dimCostItems2) <- NOT doNotUseImportItem(dimCostItems2);}
+  dimCFO2 'Подразделение' = name(dimCFO2),
+       
+  dimCostItems2 'Статья затрат' = name(dimCostItems2)  ,
+  value2 'Сумма импорт'         = valueCostFactImportByCalcTaskEnable(calcTask,dimCFO2,dimCostItems2) 
+          FOOTER (GROUP SUM  valueCostFactImportByCalcTaskEnable(calcTask,dimCFO2_,DimCostItems dimCostItems2_)
+                        IF [FILTER formCostFactImport.controlCost](dimCFO2_,dimCostItems2_)
+                 )
+  ,
+  cost2 'В бюджетах'            =  sumKhpCostBy(calc(calcTask),dimCFO2,dimCostItems2)
+           FOOTER (GROUP SUM  sumKhpCostBy(calc(calcTask),dimCFO2_,DimCostItems dimCostItems2_)
+                        IF [FILTER formCostFactImport.controlCost](dimCFO2_,dimCostItems2_)
+                 )
+  ,
+  valueBalance2 'Отклонение'      = 
+                                 (valueCostFactImportByCalcTaskEnable(calcTask,dimCFO2,dimCostItems2)
+                                 (-)       
+                                 sumKhpCostBy(calc(calcTask),dimCFO2,dimCostItems2))
+                                 IF NOT doNotUseImportItem(dimCostItems2)
+              FOOTER 
+              (GROUP SUM  valueCostFactImportByCalcTaskEnable(calcTask,dimCFO2_,DimCostItems dimCostItems2_)
+                        IF NOT doNotUseImportItem( dimCostItems2_ ) AND [FILTER formCostFactImport.controlCost](dimCFO2_,dimCostItems2_)
+                 )  
+                 (-)  
+              (GROUP SUM  sumKhpCostBy(calc(calcTask),dimCFO2_,DimCostItems dimCostItems2_)
+                        IF NOT doNotUseImportItem( dimCostItems2_ ) AND  [FILTER formCostFactImport.controlCost](dimCFO2_,dimCostItems2_)
+                 )                  
+ ;
+DESIGN formCostFactImport
+{
+
+    PROPERTY (value2) {fontStyle = 'bold'; pattern = '#,###.00';}
+    PROPERTY (cost2) {  pattern = '#,###.00';}
+    PROPERTY (valueBalance2) {  pattern = '#,###.00';}
+    PROPERTY (dimCFO2) {  charWidth = 15;}
+    PROPERTY (dimCostItems2) {  charWidth = 15;}
+    OBJECTS {
+        NEW tabPanel {
+           tabbed = TRUE;
+            fill = 1;
+            align  = STRETCH;
+            NEW first {
+                caption = 'Импортировано';
+                fill = 1;
+                MOVE BOX (s){
+                    fill = 1;
+                    align = STRETCH;
+                };
+            }
+            MOVE BOX (controlCost) {
+                caption = 'Контроль, затраты';
+            fill = 1;
+            align  = STRETCH;
+            }
+        }
+    }
+}
+//// расшифровки 
+//EXTEND FORM formCostFactImport
+//    OBJECTS cost  = (costAcc = DimAccount, costAccCorr = DimAccount) 
+//    FILTERS dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s))
+//    PROPERTIES READONLY
+//    costFlag 'v' = name(dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s))) CHANGEABLE 
+//            ON CONTEXTMENU 'Сбросить' {dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s)) <- NULL;}
+//            ON CONTEXTMENU 'Использовать статью затрат в текущей строке' {
+//                IF dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s)) THEN {
+//                   dimCostItemsAccAcc(dimAccount(s), dimCorrAccount(s), dimRawCostItems(s)) <- dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s));
+//                   updateCostItemsCostFact(calcTask, dimCostItemsAccAcc(costAcc, costAccCorr, dimRawCostItems(s)), dimRawCostItems(s),dimAccount(s), dimCorrAccount(s));
+//                }
+//            }
+//            ,
+//        
+//    costAcc 'счет'        = name(costAcc),
+//    costAccCorr 'кор.сч.' = name(costAccCorr)
+// 
+//    OBJECTS       cfo   = (cfoAcc = DimAccount )
+//    FILTERS dimCFOAccnt(cfoAcc, dimRawCFO(s)) 
+//    PROPERTIES READONLY
+//    cfoFlag 'v' = name(dimCFOAccnt(cfoAcc, dimRawCFO(s))) CHANGEABLE  
+//            ON CONTEXTMENU 'Сбросить' {dimCFOAccnt(cfoAcc, dimRawCFO(s))  <- NULL;}
+//    ON CONTEXTMENU 'Использовать статью затрат в текущей строке' {
+//        IF dimCFOAccnt(cfoAcc, dimRawCFO(s))  THEN {
+//          dimCFOAccnt(dimAccount(s),dimRawCFO(s)) <- dimCFOAccnt(cfoAcc, dimRawCFO(s)) ;
+//            updateCfoCostFact(calcTask, dimCFOAccnt(cfoAcc, dimRawCFO(s)), dimRawCFO(s), dimAccount(s));
+//        }
+//    },
+//    cfoAcc 'счет'        = name(cfoAcc)
+//    
+//;
+//
+//DESIGN formCostFactImport {
+//    PROPERTY  (costFlag) {charWidth = 13;}
+//    PROPERTY  (cfoFlag) {charWidth = 13;}
+//    PROPERTY  (costAcc) {charWidth = 13;}
+//    PROPERTY  (costAccCorr) {charWidth = 13;}
+//    PROPERTY  (cfoAcc) {charWidth = 13;}
+//}   
+//    
+
+///1 МЕНЮ
+// меню функции загрузка данных
+EXTEND CLASS SectionRequest {
+    sectionCostFactImport   'Импорт затрат'
+}
+
+///2 ФУНКЦИИ
+functionsCostFactImport1  ABSTRACT (CalcTask,ExtRequest);
+
+runActions(CalcTask calcTask) {
+  DIALOG extRequestSelectList OBJECTS  sr = SectionRequest.sectionCostFactImport, firm = dimFirm(calc(calcTask)), er INPUT extReq FLOAT CANCEL DO {
+            functionsCostFactImport1(calcTask,extReq);
+     }  
+}; 
+
+///3 ОФОРМЛЕНИЕ
+EXTEND FORM formCostFactImport 
+PROPERTIES exec 'Импорт/экспорт...' = runActions(calcTask);
+ 
+// ДИЗАЙН
+DESIGN formCostFactImport {
+    panelFirstHorizontal   {
+        MOVE PROPERTY (exec) FIRST;
+    }
+    TOOLBARRIGHT (s) {
+     //   PROPERTY (deleteAllVisible);
+    }
+    OBJECTS {
+    
+    };
+    first {
+        NEW bottPanel {
+            fill = 0.1;
+            caption = 'Соответствия';
+            collapsible = TRUE;
+            collapsed = TRUE;
+            horizontal = TRUE;
+            lines = 1;
+//            MOVE BOX(cfo) {fill = 1; caption = '';};
+//            MOVE BOX(cost) {fill = 1; caption = '';};
+        }
+    }
+    
+}
+
+   

@@ -1,15 +1,19 @@
 MODULE Scenario;
  
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
  // Сценарий
- CLASS Scenario 'Сценарии';
+ CLASS Scenario 'Сценарии' {
+   empty 'empty'
+ };
  TABLE scenario(Scenario);
  nameScenario 'Наименование' = DATA STRING[100] (Scenario) IN id;
  mainScenario 'Основной' = DATA BOOLEAN (Scenario) IN id;
+ colorBackground 'Цвет фона сценария' =  DATA COLOR(Scenario);
+ colorForeground 'Цвет шрифта сценария' =  DATA COLOR(Scenario);
  FORM scenarioList 'Сценарии'
  OBJECTS sc = Scenario
- PROPERTIES(sc) mainScenario, nameScenario, NEW, DELETE ;
+ PROPERTIES(sc) mainScenario, nameScenario, colorForeground, colorBackground, NEW, DELETE ;
  
  FORM scenarioListSelect 'Сценарии'
  OBJECTS sc = Scenario

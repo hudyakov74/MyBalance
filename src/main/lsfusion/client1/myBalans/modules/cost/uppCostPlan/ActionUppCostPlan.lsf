@@ -1,0 +1,125 @@
+MODULE ActionUppCostPlan;
+
+REQUIRE FormUppCostPlan, ImportUppCostPlan, Utils;
+
+NAMESPACE MyBalance;
+
+
+EXTEND CLASS TypeRequest {
+    typeImportUppCostPlan           'Импорт УПП. Заявки на расходы подразделений',
+    typeImportUppCostPlanCompare    'Для сверки: Импорт УПП. Заявки на расходы подразделений'
+}
+
+importUppCostPlan(CalcTask ct, ExtRequest extR, INTEGER versionNum) ABSTRACT;
+
+FORM paramImportFormUppCostPlan
+   
+  PROPERTIES i 'Год планируемый для импорта' = formInteger() PANEL 
+;
+DESIGN paramImportFormUppCostPlan{PROPERTY (i){pattern = '0000';}}
+
+functionsImportFormUppCostPlan(CalcTask ct, ExtRequest extR) + {
+    CASE  
+        WHEN type(extR) == TypeRequest.typeImportUppCostPlan THEN {
+            importUppCostPlan(ct, extR, 0);
+        }
+        WHEN type(extR) == TypeRequest.typeImportUppCostPlanCompare THEN {
+            importUppCostPlan(ct, extR, 1);
+        }
+}
+
+importUppCostPlan(CalcTask ct, ExtRequest extR, INTEGER versionNum) + {
+    formInteger() <- extractYear(currentDate())+1 IF NOT formInteger();
+    DIALOG paramImportFormUppCostPlan  DO {  
+        
+    headers('Authorization') <- passwordBasicAuth(extSource(extR));
+    //1.     
+    DELETE CubeUppCostPlan d WHERE d IS CubeUppCostPlan AND (versionNum(d) == versionNum OR NOT versionNum(d) AND versionNum == 0);
+
+ 
+
+        odataGet(extR,
+            textImportUppPlan() + ' and Год eq ' + toChar(formInteger(), '9999') +'' // Document_УБИ_БЮ_БюджетныйОрдер
+
+            , 'formImportSaleFactF51'
+        );
+        IMPORT formImportUppCostPlan JSON FROM resultFile();
+        FOR imported(INTEGER n) DO importedUppPlan(n) <- TRUE;
+        IF debugMode(extR) THEN SHOW formImportUppCostPlan DOCKED NOWAIT;
+
+        FOR uppPlan_valueVGoods(INTEGER i)
+            NEW  n = CubeUppCostPlan DO {
+            calc(n) <- calc(ct);
+            task(n) <- task(ct);
+            versionNum(n) <- IF versionNum == 0 THEN NULL ELSE versionNum;
+
+            typeUppCostPlan(n)      <-  TypeUppCostPlan.year;
+            date(n)                 <-  toDate(uppPlan_date( uppPlan_valueVGoods(i) ));
+            number(n)               <-  uppPlan_number( uppPlan_valueVGoods(i) );
+            responsibleCfo(n)       <-  uppPlan_vCfo( uppPlan_valueVGoods(i) );
+            responsiblePlant(n)     <-  uppPlan_Plant( uppPlan_valueVGoods(i) );
+            responsibleCfoIsWork(n) <-  uppPlan_isInWorkCfo(uppPlan_valueVGoods(i));
+            responsibleFio(n)       <-  uppPlan_Responsible( uppPlan_valueVGoods(i) );
+            responsibleDepartment(n)<-  uppPlan_Department( uppPlan_valueVGoods(i) );
+            
+            nomenkl(n)              <-  uppPlan_vtovarName(i);
+            //isService(n)            <-  ;
+            consumerCfo(n)          <-  uppPlan_vCfoSpisaniia(i);
+            consumerCostItems(n)    <-  uppPlan_Cost(i);
+            consumerDateUse(n)      <-  IF toDate(uppPlan_PlanMonthForUse(i))<2000_01_01  
+                                        THEN 
+                                        firstDayOfMonth(toDateFormat(
+                                                    '01'
+                                                    +toChar(uppPlan_Month(uppPlan_valueVGoods(i)),'00')
+                                                    +toChar(uppPlan_Year(uppPlan_valueVGoods(i)),'0000'),'DDMMYYYY'
+                                        ))
+                                        ELSE firstDayOfMonth(toDate(uppPlan_PlanMonthForUse(i))) ;// uppPlan_Month  / uppPlan_Year // 
+            
+            sum(n)                  <-  uppPlan_vsumma(i) IF versionNum == 0;
+            sumCompare(n)           <-  uppPlan_vsumma(i) IF versionNum != 0;
+            ndsRate(n)              <-  20.0;
+
+        }
+    FOR uppPlan_valueVGoodsProchieie(INTEGER i)
+        NEW  n = CubeUppCostPlan DO {
+        calc(n) <- calc(ct);
+        task(n) <- task(ct);
+        versionNum(n) <- IF versionNum == 0 THEN NULL ELSE versionNum;
+
+        typeUppCostPlan(n)      <-  TypeUppCostPlan.year;
+        date(n)                 <-  toDate(uppPlan_date( uppPlan_valueVGoods(i) ));
+        number(n)               <-  uppPlan_number( uppPlan_valueVGoods(i) );
+        responsibleCfo(n)       <-  uppPlan_vCfo( uppPlan_valueVGoods(i) );
+        responsiblePlant(n)     <-  uppPlan_Plant( uppPlan_valueVGoods(i) );
+        responsibleCfoIsWork(n) <-  uppPlan_isInWorkCfo(uppPlan_valueVGoods(i));
+        responsibleFio(n)       <-  uppPlan_Responsible( uppPlan_valueVGoods(i) );
+        responsibleDepartment(n)<-  uppPlan_Department( uppPlan_valueVGoods(i) );
+
+        nomenkl(n)              <-  uppPlan_vtovarName1(i);
+        isService(n)            <-  TRUE;
+        consumerCfo(n)          <-  uppPlan_vCfoSpisaniia1(i);
+        consumerCostItems(n)    <-  uppPlan_Cost1(i);
+                    consumerDateUse(n)      <-  IF toDate(uppPlan_PlanMonthForUse1(i))<2000_01_01
+                        THEN
+                        firstDayOfMonth(toDateFormat(
+                                '01'
+                                    +toChar(uppPlan_Month(uppPlan_valueVGoods(i)),'00')
+                                    +toChar(uppPlan_Year(uppPlan_valueVGoods(i)),'0000'),'DDMMYYYY'
+                            ))
+                        ELSE firstDayOfMonth(toDate(uppPlan_PlanMonthForUse1(i))) ;// uppPlan_Month  / uppPlan_Year // 
+
+        sum(n)                  <-  uppPlan_vsumma1(i) IF versionNum == 0;
+        sumCompare(n)           <-  uppPlan_vsumma1(i) IF versionNum != 0;
+        ndsRate(n)              <-  20.0;
+
+    }
+    }
+    
+    IF NOT debugMode(extR) THEN  {
+        importedUppPlan(n) <- NULL ;
+        uppPlan_valueVGoodsProchieie(n) <- NULL ;
+        uppPlan_valueVGoods(n) <- NULL ;
+    };
+};
+
+

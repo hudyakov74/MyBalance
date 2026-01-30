@@ -1,6 +1,6 @@
 MODULE CoreMenu;
 
-NAMESPACE Budget;
+NAMESPACE MyBalance;
 
 NAVIGATOR {
   NEW FOLDER catalogsMB 'Классификаторы' FIRST WINDOW toolbar {

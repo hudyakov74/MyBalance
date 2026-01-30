@@ -1,0 +1,55 @@
+MODULE backupConf;
+
+REQUIRE Utils, Backup;
+
+NAMESPACE MyBalance;
+
+pathToJar 'Путь к файлу конфигурации jar' = DATA STRING[200]();
+ 
+CLASS BackupServerJar;
+
+date    = DATA DATETIME (BackupServerJar);
+name    = DATA STRING[200](BackupServerJar);
+fileJar = DATA RAWFILE (BackupServerJar);
+size    = DATA LONG(BackupServerJar); 
+
+EXTEND FORM backup 
+PROPERTIES pathToJar()  PANEL
+OBJECTS j = BackupServerJar 
+PROPERTIES(j) date, name, size;
+DESIGN backup {
+     pane {
+        NEW  MyBalanceConf {
+            caption = 'сохранение jar в бд';
+            
+            fill = 1;
+            MOVE PROPERTY (pathToJar()){tooltip = 'функция для задач: backupConfSheduleRunFunction()';};
+            MOVE BOX(j) {fill = 1;}
+        }
+     }   
+ }
+ 
+backupConfSheduleRunFunction 'MyBalance Сохранить конфигурацию в БД'() {
+    TRY
+    {
+        IF pathToJar() THEN {
+        listFiles(pathToJar());
+            FOR fileModifiedDateTime(INTEGER i)   DO {
+                IF endsWith(lower(fileName(i)), '.jar')  AND  NOT fileIsDirectory(i)  AND NOT (GROUP MAX BackupServerJar b IF name(b) == fileName(i) AND date(b) == fileModifiedDateTime(i) ) THEN
+                   APPLY {
+                        NEW b = BackupServerJar {
+                            READ pathToJar()+fileName(i) TO rawFile;
+                            date(b) <- fileModifiedDateTime(i) ;
+                            name(b) <- fileName(i);
+                            fileJar(b) <- rawFile();
+                            size(b) <- fileSize(i);
+                        }
+                   } 
+            }
+        }
+    }
+    CATCH
+    {
+        MESSAGE 'не удалось прочитать файлы в каталоге с jar файлами (в конце нужна /)' ;
+    }
+}

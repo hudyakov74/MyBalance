@@ -2,7 +2,7 @@ MODULE FormsDriverExt;
 
 REQUIRE   CalcTask, Utils, CalcTaskSheduler;
 
-NAMESPACE Forms;
+NAMESPACE MyBalance;
 
 openTask(Calc c, Task cc) + {
      IF NOT isGroup(cc) THEN {

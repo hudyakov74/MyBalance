@@ -1,0 +1,28 @@
+MODULE FormSalary7All;
+
+REQUIRE FormSalary7input, FormSalary7percent;
+
+NAMESPACE MyBalance;
+
+DESIGN formSalary7 {
+    OBJECTS {
+        NEW tabPanel {
+            tabbed = TRUE;
+            fill = 1;
+            
+            MOVE BOX (input) {caption = 'Начисления ввод';}; 
+            MOVE BOX (costK) {caption = 'Коэффициенты начислений';}; 
+          
+            NEW tabPanelTable LAST {
+                tabbed = TRUE;
+                fill = 1;
+                caption = 'Таблицы';
+                MOVE BOX (s) {caption = 'Результат начислений';};
+                MOVE BOX (koefList) {caption = 'Коэффициенты';};
+            }
+        }
+    }
+}
+
+
+@addMenuImportExport(formSalary7,'7.1 План зарплата, импорт', TypeTask.Salary7); 

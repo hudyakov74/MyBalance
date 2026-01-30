@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 7.0.3.final using JasperReports Library version 6.21.5  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="pattern16x3levels" pageWidth="2000" pageHeight="500" orientation="Landscape" columnWidth="1960" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="c2c85f45-cbc3-4415-8a63-f97ce666748b">
+	<property name="com.jaspersoft.studio.report.description" value=""/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<style name="StyleGroupRow" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG00" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG10" backcolor="#FEFFA8" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG11" backcolor="#FEFFDB" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG12" backcolor="#FFFFEB" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG13" backcolor="#FFFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG14" backcolor="#FFFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG15" backcolor="#FEFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG20" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG21" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG22" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG23" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG24" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG25" backcolor="#DAFFD1" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG30" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG31" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG32" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG33" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG34" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG35" backcolor="#FEFFE0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG40" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG41" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG42" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG43" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG44" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG45" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG50" backcolor="#F3FFF0" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG51" backcolor="#F2FFFF" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG52" backcolor="#F2FFFF" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG53" backcolor="#F2FFFF" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG54" backcolor="#F2FFFF" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG55" backcolor="#F2FFFF" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG60" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG61" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG62" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG63" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG64" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG65" backcolor="#FFFDF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG70" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG71" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG72" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG73" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG74" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG75" backcolor="#F6FFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG80" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG81" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG82" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG83" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG84" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<style name="StyleG85" backcolor="#FEFFF2" fontName="Times New Roman" fontSize="8"/>
+	<queryString>
+		<![CDATA[]]>
+	</queryString>
+	<field name="printNameReport" class="java.lang.String"/>
+	<field name="printPeriodsReport" class="java.lang.String"/>
+	<field name="printFiltersReport" class="java.lang.String"/>
+	<title>
+		<band height="40">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField textAdjust="StretchHeight">
+				<reportElement x="10" y="0" width="415" height="30" uuid="f44144c3-61d8-4ef6-a1ee-459e96162712">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{printNameReport} + "\n" + $F{printPeriodsReport}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement positionType="Float" x="10" y="30" width="415" height="10" uuid="5b5efcab-2544-4c8a-81c0-e4a3f52e9aa1"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left"/>
+				<textFieldExpression><![CDATA[$F{printFiltersReport}]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<summary>
+		<band height="375" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<crosstab ignoreWidth="true">
+				<reportElement x="10" y="5" width="770" height="370" uuid="2c31707f-ccf8-49b0-983d-6b49df26320f">
+					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.HorizontalRowLayout"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<crosstabHeaderCell>
+					<cellContents>
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+					</cellContents>
+				</crosstabHeaderCell>
+				<rowGroup name="vGroup" width="0" totalPosition="End">
+					<bucket class="java.lang.String"/>
+					<crosstabRowHeader>
+						<cellContents mode="Opaque">
+							<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents mode="Opaque">
+							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+							<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="hGroup" height="20" totalPosition="End">
+					<bucket class="java.lang.String"/>
+					<crosstabColumnHeader>
+						<cellContents mode="Opaque">
+							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.grid.JSSGridBagLayout"/>
+							<box>
+								<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+								<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+								<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+								<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents mode="Opaque">
+							<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<crosstabCell width="190" height="0">
+					<cellContents mode="Opaque">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="95" height="0" columnTotalGroup="hGroup">
+					<cellContents mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="190" height="13" rowTotalGroup="vGroup">
+					<cellContents>
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="95" height="13" rowTotalGroup="vGroup" columnTotalGroup="hGroup">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="10" height="5" uuid="02e114d3-ef78-4a41-859a-470ca1769487">
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

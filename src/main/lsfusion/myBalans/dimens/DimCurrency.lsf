@@ -2,7 +2,7 @@ MODULE DimCurrency;
 
 REQUIRE TaskTune,ExtFormRequestList,Dimens;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimCurrency 'Валюты';
 TABLE dimCurrency(DimCurrency);

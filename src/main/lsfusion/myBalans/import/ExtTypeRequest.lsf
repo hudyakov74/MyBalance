@@ -1,11 +1,16 @@
 MODULE ExtTypeRequest;
 
-NAMESPACE ExtSystem; 
+NAMESPACE MyBalance; 
 
+// тип импорта  
 CLASS TypeRequest 'Типы импортов' {
-     
+    dimSync 'Синхронизация справочников'  
 }
 FORM TypeRequestList 'Типы импортов' 
 OBJECTS s = TypeRequest PROPERTIES(s) READONLY staticCaption
 LIST TypeRequest OBJECT s;
 
+
+EXTEND CLASS  TypeRequest {
+    typeFormKhpCostImport 'Импорт затрат подразделений / ИТАН'
+}

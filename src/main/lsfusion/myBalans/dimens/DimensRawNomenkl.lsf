@@ -1,8 +1,8 @@
 MODULE DimensRawNomenkl;
 
-REQUIRE TaskTune,Dimens,DimensNomenkl,ExtFormRequestList;
+REQUIRE TaskTune,Dimens,DimensNomenkl,ExtFormRequestList; //, DimNomenklPack;
 
-NAMESPACE   Dimens; 
+NAMESPACE MyBalance; 
 
 CLASS DimRawNomenkl 'Номенклатура внешняя';
 TABLE dimRawNomenkl(DimRawNomenkl);
@@ -18,19 +18,42 @@ unit       'Единица учета'  = DATA DimUnitNomenkl(DimRawNomenkl);
 codeSource 'код источника' = DATA  ISTRING[10]  (DimRawNomenkl) INDEXED ;
 
 // Свойство - привязка к номенклатуре
-dimNomenkl 'Номенклатура' = DATA DimNomenkl (DimRawNomenkl) DEFAULTCOMPARE 'CONTAINS'; 
+dimNomenkl 'Номенклатура' = DATA DimNomenkl (DimRawNomenkl);
+
+//dimNomenklPack 'Упаковка' = DATA DimNomenklPack (DimRawNomenkl); 
 
 formDimRawNomenkllistSelectNom(DimRawNomenkl rNom) {
   DIALOG formDimNomenklSelectlist OBJECTS d = dimNomenkl(rNom) CHANGE;
 };
  
 EXTEND FORM formDimRawNomenkllist
-PROPERTIES nameNom 'Номенклатура основная'= name(dimNomenkl(d)) AFTER name(d) ON CHANGE formDimRawNomenkllistSelectNom(d);
- 
- 
- 
+PROPERTIES nameNom 'Номенклатура основная'= name(dimNomenkl(d)) AFTER name(d) ON CHANGE formDimRawNomenkllistSelectNom(d)
+   ON CONTEXTMENU 'Загрузить из EXCEL' {
+    loadListFromExcel();
+    FOR   trim(lower(col1ListFromExcel(INTEGER i))) ==  trim(lower(name(DimRawNomenkl s_))) AND trim(lower(col2ListFromExcel(i))) ==  trim(lower(name(DimNomenkl p_)))  DO {
+        dimNomenkl(s_) <- p_;
+    }
+}
+;
 
- getOrCreateNomenklViaRaw(STRING  nameRawNomenkl) {
+EXTEND FORM formDimRawNomenklCard
+    PROPERTIES nameNom 'Номенклатура основная'= name(dimNomenkl(c)) AFTER name(c) ON CHANGE formDimRawNomenkllistSelectNom(c);
+//
+//EXTEND FORM formDimRawNomenkllist
+//    PROPERTIES namePack 'Упаковка'= name(dimNomenklPack(d)) AFTER nameNom
+//     ON CONTEXTMENU 'Загрузить из EXCEL' {
+//         loadListFromExcel();
+//         FOR   trim(lower(col1ListFromExcel(INTEGER i))) ==  trim(lower(name(DimRawNomenkl s_))) AND trim(lower(col2ListFromExcel(i))) ==  trim(lower(name(DimNomenklPack p_)))  DO {
+//             dimNomenklPack(s_) <- p_; 
+//         }            
+//     }
+//;
+//
+//EXTEND FORM formDimRawNomenklCard
+//    PROPERTIES namePack 'Упаковка'= name(dimNomenklPack(c)) AFTER nameNom;
+
+
+getOrCreateNomenklViaRaw(STRING  nameRawNomenkl) {
         newByNameDimRawNomenkl(nameRawNomenkl);
         // currentDimRawPartner
           IF NOT dimNomenkl(currentDimRawNomenkl()) THEN {
